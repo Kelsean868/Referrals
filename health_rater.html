@@ -18,34 +18,18 @@
             --primary-accent: #005f73; 
             --primary-accent-darker: #003d4d;
             --secondary-accent: #ae8625; 
-            --secondary-accent-darker: #8c6c1d;
             --shadow-soft: 0 3px 6px rgba(0,0,0,0.04);
             --shadow-medium: 0 5px 15px rgba(0,0,0,0.06);
             --shadow-strong: 0 8px 25px rgba(0,0,0,0.08);
             --font-body: 'Montserrat', sans-serif;
             --font-heading: 'Source Serif Pro', serif; 
         }
-
-        .dark-mode {
-            --bg-main: #1f2937; 
-            --bg-bento-box: #2b3c4d; 
-            --text-primary: #f0f4f8; 
-            --text-secondary: #d1d5db; 
-            --text-muted: #9ca3af;    
-            --border-color: #4b5f71; 
-            --primary-accent: #25a1af; 
-            --primary-accent-darker: #1e838f;
-            --secondary-accent: #daa520; 
-            --secondary-accent-darker: #b8860b;
-        }
-
         body {
             font-family: var(--font-body);
             background-color: var(--bg-main);
             color: var(--text-primary);
             transition: background-color 0.3s ease, color 0.3s ease;
         }
-        
         h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--primary-accent); }
         .bento-box {
             background-color: var(--bg-bento-box);
@@ -56,7 +40,6 @@
             border: 1px solid var(--border-color);
         }
         .bento-box:hover { transform: translateY(-5px); box-shadow: var(--shadow-strong); }
-
         input, select {
             border: 1px solid var(--border-color); padding: 0.85rem 1.15rem; border-radius: 0.375rem; 
             transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, color 0.3s ease;
@@ -67,18 +50,14 @@
             border-color: var(--primary-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 25%, transparent); 
             outline: none; background-color: var(--bg-bento-box);
         }
-        
         .button-base {
             font-weight: 600; padding-top: 0.85rem; padding-bottom: 0.85rem; border-radius: 0.375rem;
             transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
             box-shadow: var(--shadow-soft); text-transform: uppercase; letter-spacing: 0.025em; cursor: pointer;
         }
         .button-base:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
-        
         .primary-btn { background-color: var(--primary-accent); color: white; }
         .primary-btn:hover { background-color: var(--primary-accent-darker); }
-        .dark-mode .primary-btn { color: var(--bg-bento-box); }
-        
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(29, 45, 53, 0.7);
@@ -91,22 +70,13 @@
             box-shadow: var(--shadow-strong);
         }
         .breakdown-row { display: flex; justify-content: space-between; flex-wrap: wrap; }
-        
         .loader {
-            width: 48px;
-            height: 48px;
-            border: 5px solid var(--primary-accent);
-            border-bottom-color: transparent;
-            border-radius: 50%;
-            display: inline-block;
-            box-sizing: border-box;
+            width: 48px; height: 48px; border: 5px solid var(--primary-accent);
+            border-bottom-color: transparent; border-radius: 50%;
+            display: inline-block; box-sizing: border-box;
             animation: rotation 1s linear infinite;
         }
-
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-6 lg:p-8">
@@ -128,79 +98,43 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="family-status" class="block text-sm font-medium text-[var(--text-muted)]">Family Status</label>
-                            <select id="family-status" class="mt-1 w-full p-2.5">
-                                <option value="single_male">Single Male</option>
-                                <option value="single_female">Single Female</option>
-                                <option value="husband_wife">Husband & Wife</option>
-                            </select>
+                            <select id="family-status" class="mt-1 w-full p-2.5"></select>
                         </div>
                         <div>
                             <label for="age-band" class="block text-sm font-medium text-[var(--text-muted)]">Age Band</label>
-                            <select id="age-band" class="mt-1 w-full p-2.5">
-                                <option value="under_40">Under 40</option>
-                                <option value="40_49">40-49</option>
-                                <option value="50_59">50-59</option>
-                                <option value="60_65">60-65</option>
-                                <option value="66_67">66-67</option>
-                                <option value="68_70">68-70</option>
-                            </select>
+                            <select id="age-band" class="mt-1 w-full p-2.5"></select>
                         </div>
                         <div>
                             <label for="children-count" class="block text-sm font-medium text-[var(--text-muted)]">Number of Children</label>
-                            <select id="children-count" class="mt-1 w-full p-2.5">
-                                <option value="0">0 Children</option>
-                                <option value="1">1 Child</option>
-                                <option value="2+">2 or More Children</option>
-                            </select>
+                            <select id="children-count" class="mt-1 w-full p-2.5"></select>
                         </div>
                     </div>
                 </div>
-
                 <div class="bento-box">
                     <h2 class="text-2xl font-bold mb-4"><i class="fas fa-clipboard-list mr-3 text-[var(--secondary-accent)]"></i>Plan Options</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="plan-type" class="block text-sm font-medium text-[var(--text-muted)]">Plan Type</label>
-                             <select id="plan-type" class="mt-1 w-full p-2.5">
-                                <option value="base_and_mm">Base Plan + Major Medical</option>
-                                <option value="base_only">COVERCARE Base Plan Only</option>
-                                <option value="mm_only">Major Medical Only</option>
-                            </select>
+                             <select id="plan-type" class="mt-1 w-full p-2.5"></select>
                         </div>
                         <div>
                             <label for="payment-frequency" class="block text-sm font-medium text-[var(--text-muted)]">Payment Frequency</label>
-                            <select id="payment-frequency" class="mt-1 w-full p-2.5">
-                                <option value="annual">Annual</option>
-                                <option value="semi">Semi-Annual</option>
-                                <option value="quarterly">Quarterly</option>
-                            </select>
+                            <select id="payment-frequency" class="mt-1 w-full p-2.5"></select>
                         </div>
                         <div id="base-plan-options" class="contents">
                             <div>
                                 <label for="dental-vision" class="block text-sm font-medium text-[var(--text-muted)]">Dental & Vision Included</label>
-                                <select id="dental-vision" class="mt-1 w-full p-2.5">
-                                    <option value="no">No</option>
-                                    <option value="yes">Yes</option>
-                                </select>
+                                <select id="dental-vision" class="mt-1 w-full p-2.5"></select>
                             </div>
                             <div id="maternity-container">
                                 <label for="maternity" class="block text-sm font-medium text-[var(--text-muted)]">Maternity Coverage</label>
-                                 <select id="maternity" class="mt-1 w-full p-2.5">
-                                    <option value="no">No</option>
-                                    <option value="yes">Yes</option>
-                                </select>
+                                 <select id="maternity" class="mt-1 w-full p-2.5"></select>
                             </div>
                         </div>
                          <div id="major-medical-options" class="contents">
                              <div>
                                 <label for="major-medical-amount" class="block text-sm font-medium text-[var(--text-muted)]">Major Medical Coverage</label>
-                                <select id="major-medical-amount" class="mt-1 w-full p-2.5">
-                                    <option value="50000">$50,000</option>
-                                    <option value="100000">$100,000</option>
-                                    <option value="200000">$200,000</option>
-                                    <option value="300000">$300,000</option>
-                                    <option value="500000">$500,000</option>
-                                </select>
+                                <select id="major-medical-amount" class="mt-1 w-full p-2.5"></select>
                             </div>
                         </div>
                     </div>
@@ -212,13 +146,11 @@
                     <h2 class="text-2xl font-bold mb-2"><i class="fas fa-receipt mr-3 text-[var(--secondary-accent)]"></i>Premium Summary</h2>
                     <p id="total-premium" class="text-4xl font-bold text-[var(--primary-accent)] mt-4">$0.00</p>
                     <p id="total-premium-label" class="text-sm text-[var(--text-muted)]">(Total Annual Premium)</p>
-                    <div id="premium-breakdown" class="text-left mt-6 pt-4 border-t border-[var(--border-color)] text-[var(--text-secondary)] text-sm space-y-1">
-                    </div>
+                    <div id="premium-breakdown" class="text-left mt-6 pt-4 border-t border-[var(--border-color)] text-[var(--text-secondary)] text-sm space-y-1"></div>
                     
                     <div id="finders-fee-section" class="text-left mt-6 pt-4 border-t-2 border-dashed border-[var(--secondary-accent)]">
                         <h3 class="text-lg font-bold text-[var(--primary-accent)] mb-2">Initial Finder's Fee</h3>
-                        <div id="finders-fee-breakdown" class="text-[var(--text-secondary)] text-sm space-y-1">
-                        </div>
+                        <div id="finders-fee-breakdown" class="text-[var(--text-secondary)] text-sm space-y-1"></div>
                     </div>
                      
                     <button id="create-referral-btn" class="mt-6 w-full primary-btn button-base py-3">
@@ -244,8 +176,8 @@
             </div>
             <p id="client-modal-error" class="text-red-500 text-sm text-center mt-4"></p>
             <div class="mt-6 flex justify-end space-x-3">
-                <button id="close-client-modal-btn" type="button" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Cancel</button>
-                <button id="submit-referral-btn" type="button" class="button-base primary-btn py-2 px-4">Submit Referral</button>
+                <button type="button" id="close-client-modal-btn" class="button-base bg-gray-200 text-gray-700">Cancel</button>
+                <button type="button" id="submit-referral-btn" class="button-base primary-btn">Submit Referral</button>
             </div>
         </div>
     </div>
@@ -292,7 +224,8 @@
                 currentUser = user;
                 appEl.classList.remove('hidden');
                 loaderEl.classList.add('hidden');
-                calculateAndDisplay(); 
+                populateDropdowns();
+                calculateAndDisplay();
             } else {
                 loaderEl.innerHTML = `
                      <div class="text-center bento-box max-w-lg mx-auto">
@@ -331,12 +264,27 @@
         closeModalBtn.addEventListener('click', () => clientInfoModal.style.display = 'none');
         submitReferralBtn.addEventListener('click', submitReferral);
 
+        function populateDropdowns() {
+            const options = {
+                'family-status': {'Single Male': 'single_male', 'Single Female': 'single_female', 'Husband & Wife': 'husband_wife'},
+                'age-band': {'Under 40': 'under_40', '40-49': '40_49', '50-59': '50_59', '60-65': '60_65', '66-67': '66_67', '68-70': '68_70'},
+                'children-count': {'0 Children': '0', '1 Child': '1', '2 or More': '2+'},
+                'plan-type': {'Base Plan + Major Medical': 'base_and_mm', 'Base Plan Only': 'base_only', 'Major Medical Only': 'mm_only'},
+                'payment-frequency': {'Annual': 'annual', 'Semi-Annual': 'semi', 'Quarterly': 'quarterly'},
+                'dental-vision': {'No': 'no', 'Yes': 'yes'},
+                'maternity': {'No': 'no', 'Yes': 'yes'},
+                'major-medical-amount': {'$50,000': '50000', '$100,000': '100000', '$200,000': '200000', '$300,000': '300000', '$500,000': '500000'}
+            };
+            for(const id in options) {
+                const select = document.getElementById(id);
+                select.innerHTML = Object.entries(options[id]).map(([text, value]) => `<option value="${value}">${text}</option>`).join('');
+            }
+        }
+
         function getElement(id) { return document.getElementById(id); }
         
         function formatCurrency(value) {
-            if (typeof value !== 'number' || isNaN(value)) {
-                return 'N/A';
-            }
+            if (typeof value !== 'number' || isNaN(value)) { return 'N/A'; }
             return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         }
         
@@ -345,22 +293,16 @@
             const familyStatus = getElement('family-status').value;
             const ageBand = getElement('age-band').value;
             
-            const basePlanOptions = document.getElementById('base-plan-options');
-            const majorMedicalOptions = document.getElementById('major-medical-options');
-            const maternityContainer = document.getElementById('maternity-container');
-            const maternitySelect = getElement('maternity');
-
-            basePlanOptions.style.display = (planType === 'mm_only') ? 'none' : 'contents';
-            majorMedicalOptions.style.display = (planType === 'base_only') ? 'none' : 'contents';
+            getElement('base-plan-options').style.display = (planType === 'mm_only') ? 'none' : 'contents';
+            getElement('major-medical-options').style.display = (planType === 'base_only') ? 'none' : 'contents';
             
+            const maternityContainer = getElement('maternity-container');
+            const maternitySelect = getElement('maternity');
             if ((familyStatus === 'single_female' || familyStatus === 'husband_wife') && planType !== 'mm_only') {
                 maternityContainer.style.display = 'block';
-                if (['50_59', '60_65', '66_67', '68_70'].includes(ageBand)) {
-                    maternitySelect.value = 'no';
-                    maternitySelect.disabled = true;
-                } else {
-                    maternitySelect.disabled = false;
-                }
+                const isMaternityEligible = !['50_59', '60_65', '66_67', '68_70'].includes(ageBand);
+                maternitySelect.disabled = !isMaternityEligible;
+                if(!isMaternityEligible) maternitySelect.value = 'no';
             } else {
                 maternityContainer.style.display = 'none';
                 maternitySelect.value = 'no';
@@ -368,6 +310,10 @@
         }
 
         function calculateAndDisplay() {
+            if(typeof RATES === 'undefined') {
+                document.body.innerHTML = 'Error: Rate data not found.';
+                return;
+            }
             handleUIChanges();
 
             const planType = getElement('plan-type').value;
@@ -379,40 +325,26 @@
             const mmAmount = getElement('major-medical-amount').value;
             const frequency = getElement('payment-frequency').value;
 
-            let baseRateSet = {annual:0, semi:0, quarterly:0, monthly:0};
+            let baseRateSet = {annual:0, semi:0, quarterly:0};
             if (planType !== 'mm_only') {
-                let baseRateKey = familyStatus;
-                if (familyStatus === 'single_female' || familyStatus === 'husband_wife') {
-                    baseRateKey += (maternity === 'yes' && !getElement('maternity').disabled) ? '_with_maternity' : '_no_maternity';
-                }
-                const baseRateTable = withDV ? RATES.base.with_dv : RATES.base.standard;
-                baseRateSet = baseRateTable[baseRateKey]?.[ageBand]?.[childrenCount] || baseRateSet;
+                let baseRateKey = familyStatus + ((familyStatus === 'single_female' || familyStatus === 'husband_wife') ? ((maternity === 'yes' && !getElement('maternity').disabled) ? '_with_maternity' : '_no_maternity') : '');
+                baseRateSet = (withDV ? RATES.base.with_dv : RATES.base.standard)[baseRateKey]?.[ageBand]?.[childrenCount] || baseRateSet;
             }
 
-            let mmRateSet = {annual:0, semi:0, quarterly:0, monthly:0};
+            let mmRateSet = {annual:0, semi:0, quarterly:0};
             if (planType !== 'base_only') {
-                let mmRateKey = familyStatus;
-                if (familyStatus.startsWith('single_female')) mmRateKey = 'single_female';
-                const mmChildrenKey = (childrenCount === '0') ? '0' : '1+';
-                mmRateSet = RATES.major_medical[mmAmount]?.[mmRateKey]?.[ageBand]?.[mmChildrenKey] || mmRateSet;
+                let mmRateKey = familyStatus.startsWith('single_female') ? 'single_female' : familyStatus;
+                mmRateSet = RATES.major_medical[mmAmount]?.[mmRateKey]?.[ageBand]?.[childrenCount === '0' ? '0' : '1+'] || mmRateSet;
             }
 
-            const basePremium = baseRateSet[frequency] || 0;
-            const mmPremium = mmRateSet[frequency] || 0;
-            const totalPremium = basePremium + mmPremium;
-
+            const totalPremium = (baseRateSet[frequency] || 0) + (mmRateSet[frequency] || 0);
             getElement('total-premium').textContent = formatCurrency(totalPremium);
-            const frequencyLabel = frequency.charAt(0).toUpperCase() + frequency.slice(1);
-            getElement('total-premium-label').textContent = `(Total ${frequencyLabel} Premium)`;
+            getElement('total-premium-label').textContent = `(Total ${frequency.charAt(0).toUpperCase() + frequency.slice(1)} Premium)`;
             
-            let breakdownHTML = '';
-            if (planType !== 'mm_only') {
-                breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(basePremium)}</strong></p>`;
-            }
-            if (planType !== 'base_only') {
-                breakdownHTML += `<p class="breakdown-row"><span>Major Medical:</span> <strong>${formatCurrency(mmPremium)}</strong></p>`;
-            }
-            breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t border-[var(--border-color)] pt-2 mt-2"><span>Total ${frequencyLabel} Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
+            let breakdownHTML = ``;
+            if (planType !== 'mm_only') breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(baseRateSet[frequency])}</strong></p>`;
+            if (planType !== 'base_only') breakdownHTML += `<p class="breakdown-row"><span>Major Medical:</span> <strong>${formatCurrency(mmRateSet[frequency])}</strong></p>`;
+            breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t border-[var(--border-color)] pt-2 mt-2"><span>Total Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
             getElement('premium-breakdown').innerHTML = breakdownHTML;
             
             const annualPremium = (baseRateSet.annual || 0) + (mmRateSet.annual || 0);
@@ -422,7 +354,6 @@
                 totalPremium: totalPremium,
                 premiumBeforeTax: annualPremium 
             };
-
             calculateAndDisplayFindersFee(annualPremium);
         }
 
@@ -431,7 +362,6 @@
             const incomeTax = totalCommission * 0.25;
             const netCommission = totalCommission - incomeTax;
             const findersFee = netCommission * 0.50;
-
             lastCalculatedData.findersFee = findersFee;
 
             findersFeeBreakdownEl.innerHTML = `
@@ -453,28 +383,22 @@
                 errorEl.textContent = "Please fill out all client fields.";
                 return;
             }
-             errorEl.textContent = "";
+            errorEl.textContent = "";
 
             submitReferralBtn.innerHTML = '<span class="loader !w-6 !h-6"></span>';
             submitReferralBtn.disabled = true;
 
             try {
-                const referralData = {
+                await addDoc(collection(db, "referrals"), {
                     ...lastCalculatedData,
                     referrerId: currentUser.uid,
                     referrerName: currentUser.displayName,
-                    clientName,
-                    clientEmail,
-                    clientContact,
+                    clientName, clientEmail, clientContact,
                     status: 'Pending',
                     createdAt: Timestamp.now()
-                };
-
-                await addDoc(collection(db, "referrals"), referralData);
-                
+                });
                 clientInfoModal.style.display = 'none';
                 successModal.style.display = 'flex';
-
             } catch (error) {
                 console.error("Error adding document: ", error);
                 errorEl.textContent = "Could not submit referral. Please try again.";
