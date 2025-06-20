@@ -116,6 +116,7 @@
             <div id="auth-container" class="text-right">
                 <a href="./index.html" class="text-sm font-semibold text-[var(--primary-accent)] hover:underline block mb-2">&larr; Back to Dashboard</a>
                 <span id="user-display" class="block text-sm font-semibold text-[var(--text-primary)]"></span>
+                 <button id="logout-btn" class="button-base bg-red-600 hover:bg-red-700 text-white text-sm py-2 px-4 !px-4 !py-2 mt-2">Logout</button>
             </div>
         </header>
 
@@ -230,27 +231,23 @@
 
         // --- AUTHENTICATION & INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
+            
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('edit')) {
                 editMode = true;
                 referralIdToEdit = urlParams.get('edit');
-                getElement('main-header').textContent = "Edit Motor Referral";
-                getElement('create-referral-btn').textContent = "Update Referral";
-                getElement('modal-header').textContent = "Update Client & Vehicle Info";
-                getElement('submit-referral-btn').textContent = "Update Referral";
-                getElement('success-header').textContent = "Referral Updated Successfully!";
             }
 
             onAuthStateChanged(auth, async (user) => {
-                const appEl = getElement('motor-rater-app');
-                const loaderEl = getElement('auth-loader');
+                const appEl = document.getElementById('motor-rater-app');
+                const loaderEl = document.getElementById('auth-loader');
                 if (user) {
                     const userDoc = await getDoc(doc(db, "users", user.uid));
                     currentUserData = userDoc.exists() ? { uid: user.uid, ...userDoc.data() } : null;
-                    document.getElementById('user-display').textContent = currentUserData.name || user.email;
-
+                    
                     appEl.classList.remove('hidden');
                     loaderEl.classList.add('hidden');
+                    
                     if (editMode && referralIdToEdit) {
                         await initializeRaterForEdit();
                     } else {
@@ -265,13 +262,21 @@
         });
 
         function initializeRater() {
+            if(editMode) {
+                 getElement('main-header').textContent = "Edit Motor Referral";
+                getElement('create-referral-btn').textContent = "Update Referral";
+                getElement('modal-header').textContent = "Update Client & Vehicle Info";
+                getElement('submit-referral-btn').textContent = "Update Referral";
+                getElement('success-header').textContent = "Referral Updated Successfully!";
+            }
+            getElement('user-display').textContent = currentUserData.name || currentUserData.email;
+
             const calculatorsContainer = getElement('calculators');
             calculatorsContainer.innerHTML = getCalculatorHTML();
             
-            const allInputs = document.querySelectorAll('input, select');
-            
-            document.getElementById('vehicle-type-selector').addEventListener('change', handleVehicleTypeChange);
-            allInputs.forEach(input => {
+            // Attach all event listeners now that the HTML is in place
+            getElement('vehicle-type-selector').addEventListener('change', handleVehicleTypeChange);
+            document.querySelectorAll('#motor-rater-app input, #motor-rater-app select').forEach(input => {
                 input.addEventListener('input', () => {
                     clearTimeout(window.calcTimeout);
                     window.calcTimeout = setTimeout(calculatePremium, 250);
@@ -284,6 +289,12 @@
             getElement('submit-referral-btn').addEventListener('click', handleReferralSubmission);
             getElement('copy-quote-btn').addEventListener('click', copyQuoteToClipboard);
             getElement('download-pdf-btn').addEventListener('click', generateAndDownloadPDF);
+            getElement('logout-btn').addEventListener('click', () => {
+                signOut(auth).then(() => {
+                    window.location.href = './index.html';
+                }).catch(error => console.error('Logout error:', error));
+            });
+
             getElement('currentYear').textContent = new Date().getFullYear();
 
             setupUITriggers();
@@ -360,7 +371,7 @@
                 }
             }
             
-            // Populate client info and fee waiver checkbox
+            // Populate client info
             getElement('client-name').value = data.clientName || '';
             getElement('client-email').value = data.clientEmail || '';
             getElement('client-contact').value = data.clientContact || '';
@@ -405,7 +416,6 @@
 
         function handleCreateReferralClick() {
             if (currentUserData && lastCalculatedData.totalPremium > 0) {
-                // Set waiver checkbox based on user's profile default
                 getElement('waive-fee-checkbox').checked = currentUserData.waivesAllFees || false;
                 getElement('client-info-modal').style.display = 'flex';
             } else if (!currentUserData) {
@@ -430,6 +440,7 @@
             const prefix = lastCalculatedData.typePrefix;
             const feeWaived = getElement('waive-fee-checkbox').checked;
             
+            // Gather all form data for saving/updating
             const referralData = { 
                 ...lastCalculatedData, 
                 clientName, clientEmail, clientContact, licensePlate,
@@ -460,6 +471,7 @@
                 tpl: getElement(`${prefix}-tpl-check`)?.checked,
             };
             
+            // Add special discounts dynamically
             Object.values(SPECIAL_DISCOUNTS).forEach(id => {
                 referralData[`${id}Check`] = getElement(`${prefix}-${id}-check`)?.checked;
                 referralData[`${id}Value`] = getFloatValue(`${prefix}-${id}-value`);
@@ -610,7 +622,7 @@
             lastCalculatedData.findersFee = fee;
             getElement('finders-fee-breakdown').innerHTML = `
                 <div class="breakdown-row"><span>Total Commission (10%)</span><span class="breakdown-value">$${formatCurrency(commission)}</span></div>
-                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span class="breakdown-value">-$${formatCurrency(tax)}</span></div>
+                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span class="breakdown-value">-${formatCurrency(tax)}</span></div>
                 <div class="breakdown-row font-semibold border-t border-[var(--border-color)] pt-1 mt-1"><span>Net Commission</span><span class="breakdown-value">$${formatCurrency(net)}</span></div>
                 <div class="breakdown-row text-green-600 mt-2 font-bold"><span class="breakdown-label">Your Estimated Fee (${commissionSplit*100}%)</span><span class="breakdown-value">$${formatCurrency(fee)}</span></div>`;
             feeSection.classList.remove('hidden');
