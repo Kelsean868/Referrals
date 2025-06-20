@@ -4,11 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
     <title>Insurance Referral Hub</title>
     <meta name="description"
         content="A platform for insurance referrers to create quotes and track commissions for motor and health insurance.">
     <meta name="author" content="Your Name">
+
+    <!-- PWA Manifest & Meta Tags -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#005f73">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Referral Hub">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/005f73/FFFFFF?text=Hub">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -432,7 +439,6 @@
         let userReferrals = [];
         let performanceChart = null;
         
-        // Hardcoded tier settings to prevent permission errors for non-admins
         const commissionTiers = [
             { name: "Bronze", minReferrals: 0, split: 50, bonusPercentage: 0 },
             { name: "Silver", minReferrals: 10, split: 70, bonusPercentage: 0 },
@@ -477,7 +483,6 @@
                 }
             });
             
-            // Other event listeners that are safe to set on load
             const referralsTableBody = document.getElementById('referrals-table-body');
             if(referralsTableBody) {
                 referralsTableBody.addEventListener('click', e => {
@@ -491,7 +496,7 @@
                         if (referral) showDetailsModal(referral);
                     }
                     if (target.classList.contains('edit-referral-btn')) {
-                        const insuranceType = target.dataset.type.toLowerCase(); // 'Health' or 'Motor'
+                        const insuranceType = target.dataset.type.toLowerCase();
                         window.location.href = `./${insuranceType}_rater.html?edit=${referralId}`;
                     }
                     if (target.classList.contains('update-status-btn')) {
