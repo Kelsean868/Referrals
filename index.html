@@ -134,6 +134,14 @@
             border-radius: 0.75rem; position: relative;
             box-shadow: var(--shadow-strong);
         }
+        .password-toggle {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 
@@ -162,9 +170,13 @@
                             <div>
                                 <label for="login-password"
                                     class="block text-sm font-medium text-[var(--text-muted)]">Password</label>
-                                <input type="password" id="login-password" required class="mt-1 w-full">
+                                <div class="relative">
+                                    <input type="password" id="login-password" required class="mt-1 w-full pr-10">
+                                    <i class="fas fa-eye password-toggle" id="toggle-login-password"></i>
+                                </div>
+                                <a href="#" id="forgot-password-link" class="text-xs text-[var(--primary-accent)] hover:underline mt-1 block text-right">Forgot Password?</a>
                             </div>
-                            <p id="login-error" class="text-red-500 text-sm text-center"></p>
+                            <p id="login-error" class="text-red-500 text-sm text-center h-4"></p>
                             <button type="submit" class="w-full main-action-button button-base">Sign In</button>
                             <p class="text-center text-sm">
                                 Don't have an account? <a href="#" id="show-register" class="font-semibold text-[var(--primary-accent)] hover:underline">Register here</a>
@@ -185,9 +197,12 @@
                             <div>
                                 <label for="register-password"
                                     class="block text-sm font-medium text-[var(--text-muted)]">Password</label>
-                                <input type="password" id="register-password" required class="mt-1 w-full">
+                                <div class="relative">
+                                    <input type="password" id="register-password" required class="mt-1 w-full pr-10">
+                                    <i class="fas fa-eye password-toggle" id="toggle-register-password"></i>
+                                </div>
                             </div>
-                            <p id="register-error" class="text-red-500 text-sm text-center"></p>
+                            <p id="register-error" class="text-red-500 text-sm text-center h-4"></p>
                             <button type="submit" class="w-full main-action-button button-base">Register</button>
                              <p class="text-center text-sm">
                                 Already have an account? <a href="#" id="show-login" class="font-semibold text-[var(--primary-accent)] hover:underline">Sign in here</a>
@@ -300,6 +315,25 @@
             </div>
         </div>
     </div>
+
+    <!-- Password Reset Modal -->
+    <div id="reset-password-modal" class="modal-overlay hidden">
+        <div class="modal-content max-w-md">
+            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Reset Password</h3>
+            <form id="reset-password-form">
+                <p class="text-[var(--text-secondary)] text-sm mb-4">Enter your email address and we'll send you a link to reset your password.</p>
+                <div>
+                    <label for="reset-email" class="block text-sm font-medium text-[var(--text-muted)]">Email</label>
+                    <input type="email" id="reset-email" required class="mt-1 w-full">
+                </div>
+                <p id="reset-message" class="text-sm text-center h-4 my-4"></p>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" id="close-reset-modal-btn" class="button-base bg-gray-200 text-gray-700">Cancel</button>
+                    <button type="submit" class="button-base main-action-button">Send Reset Link</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -307,6 +341,7 @@
             getAuth, 
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
+            sendPasswordResetEmail,
             onAuthStateChanged,
             signOut,
             updateProfile
@@ -548,8 +583,50 @@
         // --- AUTH FORMS ---
         document.getElementById('show-register').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); });
         document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); });
-        document.getElementById('login-form').addEventListener('submit', async (e) => { e.preventDefault(); const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; try { await signInWithEmailAndPassword(auth, email, password); } catch (error) { document.getElementById('login-error').textContent = "Invalid email or password."; } });
-        document.getElementById('register-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('register-name').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; try { const cred = await createUserWithEmailAndPassword(auth, email, password); await updateProfile(cred.user, { displayName: name }); await setDoc(doc(db, "users", cred.user.uid), { name, email, role: 'referrer', commissionSplit: 50 }); } catch (error) { document.getElementById('register-error').textContent = error.message; } });
+        document.getElementById('login-form').addEventListener('submit', async (e) => { e.preventDefault(); const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; try { await signInWithEmailAndPassword(auth, email, password); document.getElementById('login-error').textContent = ''; } catch (error) { document.getElementById('login-error').textContent = "Invalid email or password."; } });
+        document.getElementById('register-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('register-name').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; try { const cred = await createUserWithEmailAndPassword(auth, email, password); await updateProfile(cred.user, { displayName: name }); await setDoc(doc(db, "users", cred.user.uid), { name, email, role: 'referrer', commissionSplit: 50 }); document.getElementById('register-error').textContent = ''; } catch (error) { document.getElementById('register-error').textContent = error.message; } });
+        
+        // --- NEW: Password Visibility and Reset Logic ---
+        function togglePasswordVisibility(inputId, toggleId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleIcon = document.getElementById(toggleId);
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        document.getElementById('toggle-login-password').addEventListener('click', () => togglePasswordVisibility('login-password', 'toggle-login-password'));
+        document.getElementById('toggle-register-password').addEventListener('click', () => togglePasswordVisibility('register-password', 'toggle-register-password'));
+
+        const resetModal = document.getElementById('reset-password-modal');
+        document.getElementById('forgot-password-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            resetModal.classList.remove('hidden');
+        });
+        document.getElementById('close-reset-modal-btn').addEventListener('click', () => resetModal.classList.add('hidden'));
+        document.getElementById('reset-password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('reset-email').value;
+            const messageEl = document.getElementById('reset-message');
+            messageEl.textContent = 'Sending...';
+            messageEl.classList.remove('text-red-500', 'text-green-500');
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                messageEl.textContent = 'Password reset email sent! Check your inbox.';
+                messageEl.classList.add('text-green-500');
+            } catch (error) {
+                messageEl.textContent = 'Error sending email. Please check the address.';
+                messageEl.classList.add('text-red-500');
+                console.error("Password reset error:", error);
+            }
+        });
 
     </script>
 
