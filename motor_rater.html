@@ -133,7 +133,7 @@
                 </div>
 
                 <div id="calculators">
-                    <!-- Calculator forms are now hardcoded below -->
+                    <!-- Calculator forms will be injected here by JS -->
                 </div>
             </div>
 
@@ -554,7 +554,8 @@
                 if(getElement(`${prefix}-${id}-check`)?.checked) {
                     const amount = premiumToDiscount * rate;
                     totalDiscountAmount += amount;
-                    discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- ${id.replace('-', ' ')} (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`;
+                    const label = id.charAt(0).toUpperCase() + id.slice(1).replace('-', ' ');
+                    discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- ${label} (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`;
                 }
             });
             
@@ -791,24 +792,24 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div id="p-sum-insured-container"><label for="p-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Sum Insured ($)</label><input type="number" id="p-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 80000" min="50000"></div>
                         <div><label for="p-vehicle-age" class="block text-sm font-medium text-[var(--text-muted)]">Vehicle Age</label><input type="number" id="p-vehicle-age" class="mt-1 w-full p-2.5" placeholder="e.g., 5"></div>
-                        <div><label for="p-coverage-type" class="block text-sm font-medium text-[var(--text-muted)]">Coverage Type</label><select id="p-coverage-type" class="mt-1 w-full p-2.5"><option value="comprehensive">Comprehensive</option><option value="third-party">Third Party Only</option></select></div>
-                        <div><label for="p-engine-cc" class="block text-sm font-medium text-[var(--text-muted)]">Engine Capacity</label><select id="p-engine-cc" class="mt-1 w-full p-2.5"><option value="under-2000">Under 2000cc</option><option value="over-2000">Over 2000cc</option></select></div>
+                        <div><label for="p-coverage-type" class="block text-sm font-medium text-[var(--text-muted)]">Coverage</label><select id="p-coverage-type" class="mt-1 w-full p-2.5"><option value="comprehensive">Comprehensive</option><option value="third-party">Third Party</option></select></div>
+                        <div><label for="p-engine-cc" class="block text-sm font-medium text-[var(--text-muted)]">Engine</label><select id="p-engine-cc" class="mt-1 w-full p-2.5"><option value="under-2000">Under 2000cc</option><option value="over-2000">Over 2000cc</option></select></div>
                         <div><label for="p-vehicle-model" class="block text-sm font-medium text-[var(--text-muted)]">Model Type</label><select id="p-vehicle-model" class="mt-1 w-full p-2.5"><option value="standard">Standard</option><option value="honda-city">Honda City</option><option value="hybrid">Hybrid</option><option value="electric">Electric</option></select></div>
                     </div>
-                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6 mt-6">Driver Details</h3>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Driver Details</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                          <div><label for="p-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="p-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35"></div>
                         <div><label for="p-driving-exp" class="block text-sm font-medium text-[var(--text-muted)]">Driving Exp.</label><input type="number" id="p-driving-exp" class="mt-1 w-full p-2.5" placeholder="e.g., 10"></div>
                          <div><label for="p-occupation" class="block text-sm font-medium text-[var(--text-muted)]">Occupation</label><select id="p-occupation" class="mt-1 w-full p-2.5"><option value="standard">Standard</option><option value="travelling">Travelling Officer</option><option value="music">Musician/DJ</option><option value="shift">Shift Worker</option><option value="protective">Protective Services</option></select></div>
                     </div>
-                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6 mt-6">Extra Loadings</h3>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Extra Loadings</h3>
                     <div id="p-extra-loadings-container" class="space-y-2"></div>
                     <button id="p-add-loading-btn" class="mt-2 text-sm secondary-btn !py-1 !px-3 !normal-case">Add Loading</button>
-                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6 mt-6">Discounts</h3>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Discounts</h3>
                     <div class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div><label for="p-ncd" class="block text-sm font-medium text-[var(--text-muted)]">No Claim Discount</label><select id="p-ncd" class="mt-1 w-full p-2.5"><option value="0">0 Years</option><option value="1">1 Year</option><option value="2">2 Years</option><option value="3">3 Years</option><option value="4">4+ Years (Max)</option></select></div>
-                            <div class="grid grid-cols-1 gap-2"><div class="flex items-center"><input id="p-ansa-staff-check" type="checkbox" class="h-4 w-4"><label for="p-ansa-staff-check" class="ml-3 block text-sm font-medium">ANSA Staff (10%)</label></div><div class="flex items-center"><input id="p-other-motor-check" type="checkbox" class="h-4 w-4"><label for="p-other-motor-check" class="ml-3 block text-sm font-medium">Other Motor Policy (10%)</label></div><div class="flex items-center"><input id="p-multi-client-check" type="checkbox" class="h-4 w-4"><label for="p-multi-client-check" class="ml-3 block text-sm font-medium">Multi-Client/Business (15%)</label></div></div>
+                            <div class="grid grid-cols-1 gap-2"><div class="flex items-center"><input id="p-ansa-staff-check" type="checkbox" class="h-4 w-4"><label for="p-ansa-staff-check" class="ml-3 block text-sm font-medium">ANSA Staff (10%)</label></div><div class="flex items-center"><input id="p-other-motor-check" type="checkbox" class="h-4 w-4"><label for="p-other-motor-check" class="ml-3 block text-sm font-medium">Other Motor (10%)</label></div><div class="flex items-center"><input id="p-multi-client-check" type="checkbox" class="h-4 w-4"><label for="p-multi-client-check" class="ml-3 block text-sm font-medium">Multi-Client (15%)</label></div></div>
                         </div>
                         <h4 class="text-md font-bold text-[var(--text-secondary)] pt-2 border-t mt-4">Special Discounts</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -818,7 +819,7 @@
                             <div class="flex items-center"><input id="p-fleet-check" type="checkbox" class="h-4 w-4"><label for="p-fleet-check" class="ml-3 block text-sm font-medium">Fleet Discount</label><input type="number" id="p-fleet-value" class="ml-auto w-24 p-1.5" placeholder="%" disabled></div>
                         </div>
                     </div>
-                     <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6 mt-6">Optional Benefits</h3>
+                     <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Optional Benefits</h3>
                     <div id="p-benefits-container" class="space-y-4">
                         <div class="flex items-center"><input id="p-windscreen-check" type="checkbox" class="h-4 w-4"><label for="p-windscreen-check" class="ml-3 block text-sm font-medium">Windscreen ($5k Free)</label><input type="number" id="p-windscreen-value" class="ml-4 w-40 p-1.5" placeholder="Total Value ($)" disabled></div>
                          <div id="p-woe-container" class="flex items-center"><input id="p-woe-check" type="checkbox" class="h-4 w-4"><label id="p-woe-label" for="p-woe-check" class="ml-3 block text-sm font-medium">Waiver of Excess</label></div>
@@ -830,16 +831,89 @@
 
             <!-- Platinum Drive Calculator -->
             <div id="platinum-calculator" class="form-section bento-box">
-                <!-- Content identical to Private Car for brevity, but with 'pl-' prefixes -->
-                 <h2 class="text-2xl font-bold">Platinum Drive Details</h2>
-                 <!-- ... Full Platinum Form Here ... -->
+                 <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Platinum Drive Details</h2><label for="pl-advanced-mode-check" class="flex items-center cursor-pointer"><span class="mr-3 text-sm font-medium">Advanced Mode</span><div class="relative"><input type="checkbox" id="pl-advanced-mode-check" class="sr-only peer"><div class="block bg-gray-300 w-12 h-6 rounded-full peer-checked:bg-[var(--primary-accent)]"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-6"></div></div></label></div>
+                 <div id="pl-advanced-section" class="advanced-section"><h4 class="font-semibold text-[var(--text-primary)] mb-2">Manual Rate Override</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label for="pl-override-rate" class="block text-sm font-medium mb-1">Custom Rate (%)</label><input type="number" id="pl-override-rate" class="w-full p-2" placeholder="e.g., 3.5"></div><fieldset class="space-y-1"><legend class="text-sm font-medium text-[var(--text-muted)] mb-1">Rate Includes:</legend><div class="flex items-center"><input type="checkbox" id="pl-adv-inc-base" checked class="h-4 w-4"><label for="pl-adv-inc-base" class="ml-2 text-sm">Base Premium</label></div><div class="flex items-center"><input type="checkbox" id="pl-adv-inc-ncd" checked class="h-4 w-4"><label for="pl-adv-inc-ncd" class="ml-2 text-sm">NCD</label></div><div class="flex items-center"><input type="checkbox" id="pl-adv-inc-age-exp" class="h-4 w-4"><label for="pl-adv-inc-age-exp" class="ml-2 text-sm">Age/Exp Loadings</label></div></fieldset></div></div>
+                <div class="space-y-6 mt-6">
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)]">Vehicle Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label for="pl-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Sum Insured ($)</label><input type="number" id="pl-sum-insured" class="mt-1 w-full p-2.5" placeholder="Min $650,000" min="650000"></div>
+                        <div><label for="pl-vehicle-age" class="block text-sm font-medium text-[var(--text-muted)]">Vehicle Age</label><input type="number" id="pl-vehicle-age" class="mt-1 w-full p-2.5" placeholder="Max 2" max="2"></div>
+                        <div><label for="pl-engine-cc" class="block text-sm font-medium text-[var(--text-muted)]">Engine</label><select id="pl-engine-cc" class="mt-1 w-full p-2.5"><option value="under-2000">Under 2000cc</option><option value="over-2000">Over 2000cc</option></select></div>
+                        <div><label for="pl-vehicle-model" class="block text-sm font-medium text-[var(--text-muted)]">Model Type</label><select id="pl-vehicle-model" class="mt-1 w-full p-2.5"><option value="standard">Standard</option><option value="hybrid">Hybrid</option><option value="electric">Electric</option></select></div>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Driver Details</h3>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div><label for="pl-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="pl-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35"></div>
+                        <div><label for="pl-driving-exp" class="block text-sm font-medium text-[var(--text-muted)]">Driving Exp.</label><input type="number" id="pl-driving-exp" class="mt-1 w-full p-2.5" placeholder="e.g., 10"></div>
+                         <div><label for="pl-occupation" class="block text-sm font-medium text-[var(--text-muted)]">Occupation</label><select id="pl-occupation" class="mt-1 w-full p-2.5"><option value="standard">Standard</option><option value="travelling">Travelling Officer</option><option value="music">Musician/DJ</option><option value="shift">Shift Worker</option><option value="protective">Protective Services</option></select></div>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Extra Loadings</h3>
+                    <div id="pl-extra-loadings-container" class="space-y-2"></div>
+                    <button id="pl-add-loading-btn" class="mt-2 text-sm secondary-btn !py-1 !px-3 !normal-case">Add Loading</button>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Discounts</h3>
+                     <p class="text-xs text-[var(--text-muted)] -mt-4">Note: Maximum NCD is required for Platinum Drive.</p>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div><label for="pl-ncd" class="block text-sm font-medium text-[var(--text-muted)]">No Claim Discount</label><select id="pl-ncd" class="mt-1 w-full p-2.5"><option value="4">4+ Years (Max)</option><option value="0">0 Years</option><option value="1">1 Year</option><option value="2">2 Years</option><option value="3">3 Years</option></select></div>
+                            <div class="grid grid-cols-1 gap-2"><div class="flex items-center"><input id="pl-ansa-staff-check" type="checkbox" class="h-4 w-4"><label for="pl-ansa-staff-check" class="ml-3 block text-sm font-medium">ANSA Staff (10%)</label></div><div class="flex items-center"><input id="pl-other-motor-check" type="checkbox" class="h-4 w-4"><label for="pl-other-motor-check" class="ml-3 block text-sm font-medium">Other Motor (10%)</label></div><div class="flex items-center"><input id="pl-multi-client-check" type="checkbox" class="h-4 w-4"><label for="pl-multi-client-check" class="ml-3 block text-sm font-medium">Multi-Client (15%)</label></div></div>
+                        </div>
+                         <h4 class="text-md font-bold text-[var(--text-secondary)] pt-2 border-t mt-4">Special Discounts</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                            <div class="flex items-center"><input id="pl-csr-check" type="checkbox" class="h-4 w-4"><label for="pl-csr-check" class="ml-3 block text-sm font-medium">CSR/Agent</label><input type="number" id="pl-csr-value" class="ml-auto w-24 p-1.5" placeholder="%" disabled></div>
+                            <div class="flex items-center"><input id="pl-underwriter-check" type="checkbox" class="h-4 w-4"><label for="pl-underwriter-check" class="ml-3 block text-sm font-medium">Underwriter</label><input type="number" id="pl-underwriter-value" class="ml-auto w-24 p-1.5" placeholder="%" disabled></div>
+                            <div class="flex items-center"><input id="pl-manager-check" type="checkbox" class="h-4 w-4"><label for="pl-manager-check" class="ml-3 block text-sm font-medium">Manager Special</label><input type="number" id="pl-manager-value" class="ml-auto w-24 p-1.5" placeholder="%" disabled></div>
+                            <div class="flex items-center"><input id="pl-fleet-check" type="checkbox" class="h-4 w-4"><label for="pl-fleet-check" class="ml-3 block text-sm font-medium">Fleet Discount</label><input type="number" id="pl-fleet-value" class="ml-auto w-24 p-1.5" placeholder="%" disabled></div>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Optional Benefits</h3>
+                    <div class="space-y-4">
+                         <p class="text-sm text-[var(--text-muted)] -mt-2">Loss of Use and Windscreen (up to $20,000) are included free.</p>
+                        <div class="flex items-center"><input id="pl-windscreen-check" type="checkbox" class="h-4 w-4"><label for="pl-windscreen-check" class="ml-3 block text-sm font-medium">Increase Windscreen (>$20k)</label><input type="number" id="pl-windscreen-value" class="ml-4 w-40 p-1.5" placeholder="Total Value ($)" disabled></div>
+                         <div id="pl-woe-container" class="flex items-center"><input id="pl-woe-check" type="checkbox" class="h-4 w-4"><label id="pl-woe-label" for="pl-woe-check" class="ml-3 block text-sm font-medium">Waiver of Excess</label></div>
+                         <div class="flex items-center"><input id="pl-pa-check" type="checkbox" class="h-4 w-4"><label for="pl-pa-check" class="ml-3 block text-sm font-medium">Personal Accident ($200k)</label></div>
+                         <div class="flex items-center"><input id="pl-tpl-check" type="checkbox" class="h-4 w-4"><label for="pl-tpl-check" class="ml-3 block text-sm font-medium">Increased Third Party Limits</label></div>
+                    </div>
+                </div>
             </div>
             
             <!-- Commercial Vehicle Calculator -->
             <div id="commercial-calculator" class="form-section bento-box">
-                <!-- Content identical to Private Car, but with 'c-' prefixes and commercial-specific fields -->
-                 <h2 class="text-2xl font-bold">Commercial Vehicle Details</h2>
-                 <!-- ... Full Commercial Form Here ... -->
+                <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold">Commercial Details</h2><label for="c-advanced-mode-check" class="flex items-center cursor-pointer"><span class="mr-3 text-sm font-medium">Advanced Mode</span><div class="relative"><input type="checkbox" id="c-advanced-mode-check" class="sr-only peer"><div class="block bg-gray-300 w-12 h-6 rounded-full peer-checked:bg-[var(--primary-accent)]"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-6"></div></div></label></div>
+                 <div id="c-advanced-section" class="advanced-section"><h4 class="font-semibold text-[var(--text-primary)] mb-2">Manual Rate Override</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label for="c-override-rate" class="block text-sm font-medium mb-1">Custom Rate (%)</label><input type="number" id="c-override-rate" class="w-full p-2" placeholder="e.g., 8.5"></div><fieldset class="space-y-1"><legend class="text-sm font-medium text-[var(--text-muted)] mb-1">Rate Includes:</legend><div class="flex items-center"><input type="checkbox" id="c-adv-inc-base" checked class="h-4 w-4"><label for="c-adv-inc-base" class="ml-2 text-sm">Base Premium</label></div><div class="flex items-center"><input type="checkbox" id="c-adv-inc-ncd" checked class="h-4 w-4"><label for="c-adv-inc-ncd" class="ml-2 text-sm">NCD</label></div><div class="flex items-center"><input type="checkbox" id="c-adv-inc-age-exp" class="h-4 w-4"><label for="c-adv-inc-age-exp" class="ml-2 text-sm">Age/Exp Loadings</label></div></fieldset></div></div>
+                 <div class="space-y-6 mt-6">
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)]">Vehicle Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div id="c-sum-insured-container"><label for="c-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Sum Insured ($)</label><input type="number" id="c-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 90000" min="50000"></div>
+                        <div><label for="c-vehicle-age" class="block text-sm font-medium text-[var(--text-muted)]">Vehicle Age</label><input type="number" id="c-vehicle-age" class="mt-1 w-full p-2.5" placeholder="e.g., 5"></div>
+                        <div><label for="c-coverage-type" class="block text-sm font-medium text-[var(--text-muted)]">Coverage</label><select id="c-coverage-type" class="mt-1 w-full p-2.5"><option value="comprehensive">Comprehensive</option><option value="third-party">Third Party</option></select></div>
+                        <div id="c-usage-container"><label for="c-usage" class="block text-sm font-medium text-[var(--text-muted)]">Usage</label><select id="c-usage" class="mt-1 w-full p-2.5"><option value="private-pickup">Private Use Pick-up</option><option value="own-goods">Own Goods</option><option value="other">All Other Usages</option></select></div>
+                        <div id="c-hp-container" class="hidden"><label for="c-hp" class="block text-sm font-medium text-[var(--text-muted)]">Horsepower (HP)</label><select id="c-hp" class="mt-1 w-full p-2.5"><option value="upto-30">Up to 30 HP</option><option value="31-50">31 - 50 HP</option><option value="over-50">Over 50 HP</option></select></div>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Driver Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div><label for="c-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="c-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35"></div>
+                        <div><label for="c-driving-exp" class="block text-sm font-medium text-[var(--text-muted)]">Driving Exp.</label><input type="number" id="c-driving-exp" class="mt-1 w-full p-2.5" placeholder="e.g., 10"></div>
+                        <div><label for="c-occupation" class="block text-sm font-medium text-[var(--text-muted)]">Occupation</label><select id="c-occupation" class="mt-1 w-full p-2.5"><option value="standard">Standard</option><option value="travelling">Travelling Officer</option><option value="music">Musician/DJ</option><option value="shift">Shift Worker</option><option value="protective">Protective Services</option></select></div>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Extra Loadings</h3>
+                    <div id="c-extra-loadings-container" class="space-y-2"></div>
+                    <button id="c-add-loading-btn" class="mt-2 text-sm secondary-btn !py-1 !px-3 !normal-case">Add Loading</button>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Discounts</h3>
+                    <div id="c-discounts-section" class="space-y-4">
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div><label for="c-ncd" class="block text-sm font-medium text-[var(--text-muted)]">No Claim Discount</label><select id="c-ncd" class="mt-1 w-full p-2.5"><option value="0">0 Years</option><option value="1">1 Year</option><option value="2">2 Years</option><option value="3">3 Years</option><option value="4">4+ Years (Max)</option></select></div>
+                            <div class="grid grid-cols-1 gap-2"><div class="flex items-center"><input id="c-ansa-staff-check" type="checkbox" class="h-4 w-4"><label for="c-ansa-staff-check" class="ml-3 block text-sm font-medium">ANSA Staff (10%)</label></div><div class="flex items-center"><input id="c-other-motor-check" type="checkbox" class="h-4 w-4"><label for="c-other-motor-check" class="ml-3 block text-sm font-medium">Other Motor (10%)</label></div><div class="flex items-center"><input id="c-multi-client-check" type="checkbox" class="h-4 w-4"><label for="c-multi-client-check" class="ml-3 block text-sm font-medium">Multi-Client (15%)</label></div></div>
+                        </div>
+                        <div id="c-private-pickup-discount-container" class="hidden"><label for="c-private-pickup-discount" class="block text-sm font-medium text-[var(--text-muted)]">Private Use Pick-Up Discount</label><select id="c-private-pickup-discount" class="mt-1 w-full p-2.5"><option value="0">None</option><option value="0.10">10%</option><option value="0.15">15%</option><option value="0.20">20%</option><option value="0.25">25%</option></select></div>
+                         <h4 class="text-md font-bold text-[var(--text-secondary)] pt-2 border-t mt-4">Special Discounts</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                            <div class="flex items-center"><input id="c-csr-check" type="checkbox" class="h-4 w-4"><label for="c-csr-check" class="ml-3 block text-sm font-medium">CSR/Agent</label><input type="number" id="c-csr-value" class="ml-auto w-24 p-1.5" placeholder="%" disabled></div>
+                            <div class="flex items-center"><input id="c-underwriter-check" type="checkbox" class="h-4 w-4"><label for="c-underwriter-check" class="ml-3 block text-sm font-medium">Underwriter</label><input type="number" id="c-underwriter-value" class="ml-auto w-24 p-1.5" placeholder="%" disabled></div>
+                            <div class="flex items-center"><input id="c-manager-check" type="checkbox" class="h-4 w-4"><label for="c-manager-check" class="ml-3 block text-sm font-medium">Manager Special</label><input type="number" id="c-manager-value" class="ml-auto w-24 p-1.5" placeholder="%" disabled></div>
+                            <div class="flex items-center"><input id="c-fleet-check" type="checkbox" class="h-4 w-4"><label for="c-fleet-check" class="ml-3 block text-sm font-medium">Fleet Discount</label><input type="number" id="c-fleet-value" class="ml-auto w-24 p-1.5" placeholder="%" disabled></div>
+                        </div>
+                    </div>
+                 </div>
             </div>
             `;
         }
