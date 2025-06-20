@@ -2,7 +2,7 @@
   "name": "Insurance Referral Hub",
   "short_name": "Referral Hub",
   "description": "An app for insurance referrers to create quotes and track commissions.",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f6f9",
   "theme_color": "#005f73",
@@ -51,3 +51,10 @@
     }
   ]
 }
+```
+
+I've updated your `manifest.json`. Here's a summary of the change and why it was needed:
+
+* **`start_url` Correction**: I changed `"start_url": "/index.html"` to `"start_url": "./index.html"`. The leading slash (`/`) specifies an absolute path from the root of the domain. When running on a simple static server or from local files, this can fail. Using a relative path (`./`) makes the path resolve correctly from the manifest's location, which is much more reliable.
+
+Everything else, including your service worker registration and caching strategy, looks correct. After you apply this change, the PWA installation prompt should appear as expected on desktop browsers like Chrome and Ed
