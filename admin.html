@@ -93,7 +93,7 @@
                     <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Total Referrers</h2>
                     <p id="total-referrers-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
                 </div>
-                 <!-- NEW: Monthly Performance Chart -->
+                <!-- NEW: Monthly Performance Chart -->
                 <div class="bento-box md:col-span-2 lg:col-span-1">
                      <h2 class="text-lg font-semibold text-center text-[var(--text-secondary)]">This Month's Performance</h2>
                      <div class="relative h-48 w-48 mx-auto mt-4">
@@ -334,8 +334,8 @@
             payoutPeriodLabel.textContent = `For business won in ${lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
 
             const referralsToPay = referrals.filter(r => {
-                const referralDate = r.createdAt.toDate();
-                return r.status === 'Won' && !r.feeWaived && referralDate >= startOfLastMonth && referralDate <= endOfLastMonth;
+                const wonDate = r.wonAt ? r.wonAt.toDate() : null;
+                return r.status === 'Won' && !r.feeWaived && wonDate && wonDate >= startOfLastMonth && wonDate <= endOfLastMonth;
             });
 
             const totalToPay = referralsToPay.reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee), 0);
@@ -458,9 +458,17 @@
         
         async function handleStatusChange(event) {
             const selectElement = event.target;
+            const newStatus = selectElement.value;
+            const referralId = selectElement.dataset.id;
             selectElement.disabled = true;
+
+            const updateData = { status: newStatus };
+            if (newStatus === 'Won') {
+                updateData.wonAt = Timestamp.now();
+            }
+
             try {
-                await updateDoc(doc(db, "referrals", selectElement.dataset.id), { status: selectElement.value });
+                await updateDoc(doc(db, "referrals", referralId), updateData);
             } catch (error) { console.error("Error updating status: ", error); alert("Could not update status.");
             } finally { selectElement.disabled = false; }
         }
@@ -569,7 +577,8 @@
                 referrerId, referrerName, clientName, insuranceType, approvedPremium, 
                 findersFee, finalFindersFee: findersFee,
                 status: 'Won', 
-                feeWaived: false, // Manually added referrals default to not waived
+                wonAt: Timestamp.now(), // Set won date for manual entries
+                feeWaived: false, 
                 createdAt: Timestamp.now(),
                 isManualEntry: true,
             };
@@ -598,14 +607,16 @@
             
             const q = query(collection(db, 'referrals'), 
                 where('status', '==', 'Won'), 
-                where('createdAt', '>=', startOfLastMonth),
-                where('createdAt', '<=', endOfLastMonth)
+                where('wonAt', '>=', startOfLastMonth),
+                where('wonAt', '<=', endOfLastMonth)
             );
 
             try {
                 const querySnapshot = await getDocs(q);
                 if (querySnapshot.empty) {
                     alert("No 'Won' referrals found for the previous month to pay out.");
+                    e.target.disabled = false;
+                    e.target.textContent = "Finalize & Pay";
                     return;
                 }
 
@@ -615,7 +626,6 @@
 
                 querySnapshot.forEach(doc => {
                     const referral = doc.data();
-                    // Crucially, only process if the fee is NOT waived
                     if (!referral.feeWaived) {
                         const fee = referral.finalFindersFee || referral.findersFee;
                         totalPaid += fee;
@@ -662,7 +672,6 @@
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-            // Filter for referrals submitted this month
             const thisMonthReferrals = referrals.filter(r => r.createdAt.toDate() >= startOfMonth);
 
             const potentialFees = thisMonthReferrals
