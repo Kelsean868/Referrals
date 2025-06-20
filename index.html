@@ -142,13 +142,28 @@
             cursor: pointer;
             color: var(--text-muted);
         }
+        .loader {
+            width: 48px; height: 48px; border: 5px solid var(--primary-accent);
+            border-bottom-color: transparent; border-radius: 50%;
+            display: inline-block; box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 
 <body class="min-h-screen">
     <div id="app-container" class="w-full max-w-7xl mx-auto my-8 p-4 md:p-6 lg:p-8">
+        <!-- Auth Loader -->
+        <div id="auth-loader" class="flex items-center justify-center py-20">
+            <div class="text-center">
+                <div class="loader mx-auto"></div>
+                <p class="mt-4 text-[var(--text-secondary)]">Authenticating...</p>
+            </div>
+        </div>
+
         <!-- Login/Register View -->
-        <div id="auth-view">
+        <div id="auth-view" class="hidden">
             <header class="mb-10 md:mb-14 text-center">
                 <h1 class="page-title text-4xl sm:text-5xl md:text-6xl mb-3">
                     Insurance Referral Hub
@@ -376,7 +391,8 @@
         
         // Global variable to hold all referrals for the current user
         let userReferrals = [];
-
+        
+        const authLoader = document.getElementById('auth-loader');
         const authView = document.getElementById('auth-view');
         const appView = document.getElementById('app-view');
         const logoutBtn = document.getElementById('logout-btn');
@@ -390,6 +406,7 @@
         logoutBtn.addEventListener('click', () => signOut(auth));
 
         onAuthStateChanged(auth, async (user) => {
+            authLoader.classList.add('hidden');
             if (user) {
                 authView.classList.add('hidden');
                 appView.classList.remove('hidden');
