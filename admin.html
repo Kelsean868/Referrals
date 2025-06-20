@@ -292,7 +292,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, writeBatch, where, Timestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, writeBatch, where, Timestamp, runTransaction, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC5hOOzqCPieEpg5ajCBhsScroaB-c1kYg",
@@ -539,75 +539,111 @@
         }
         
         async function checkAndApplyTierPromotion(referrerId) {
+            let promotedToBonusTier = false;
+            let newTierForBonus;
+            let referrerNameForBonus;
+
+            // Step 1: Atomic Transaction for User Promotion
             try {
                 await runTransaction(db, async (transaction) => {
                     const userRef = doc(db, "users", referrerId);
+                    const settingsRef = doc(db, "settings", "commissionTiers");
+
                     const userDoc = await transaction.get(userRef);
-                    if (!userDoc.exists()) return;
+                    const settingsDoc = await transaction.get(settingsRef);
+
+                    if (!userDoc.exists() || !settingsDoc.exists()) {
+                        throw "User or settings document not found!";
+                    }
 
                     const userData = userDoc.data();
+                    const tiers = [...settingsDoc.data().tiers].sort((a, b) => b.minReferrals - a.minReferrals);
                     const newCount = (userData.wonReferralsCount || 0) + 1;
-                    
-                    const settingsRef = doc(db, "settings", "commissionTiers");
-                    const settingsDoc = await transaction.get(settingsRef);
-                    const tiers = settingsDoc.data().tiers.sort((a,b) => b.minReferrals - a.minReferrals);
-                    
+
                     const currentTier = tiers.find(t => t.name === (userData.currentTier || 'Bronze')) || tiers[tiers.length - 1];
                     const newTier = tiers.find(t => newCount >= t.minReferrals);
 
                     transaction.update(userRef, { wonReferralsCount: newCount });
 
                     if (newTier && newTier.name !== currentTier.name) {
-                        transaction.update(userRef, { 
+                        transaction.update(userRef, {
                             currentTier: newTier.name,
                             commissionSplit: newTier.split
                         });
 
-                        // Check for retroactive bonus
                         const bonusTier = tiers.find(t => t.bonusPercentage > 0);
-                        if (newTier.name === bonusTier.name) {
-                            const now = new Date();
-                            const period = `${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`;
-                            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                            
-                            const q = query(collection(db, "referrals"), 
-                                where("referrerId", "==", referrerId),
-                                where("status", "==", "Won"),
-                                where("wonAt", "<", Timestamp.fromDate(startOfMonth)), // business won *before* this month
-                                where("isBonusApplied", "!=", true)
-                            );
-                            
-                            const referralsToBonusSnapshot = await getDocs(q);
-                            let totalBonus = 0;
-                            
-                            referralsToBonusSnapshot.forEach(refDoc => {
-                                const refData = refDoc.data();
-                                const fee = refData.finalFindersFee || refData.findersFee || 0;
-                                if(fee > 0){
-                                    totalBonus += fee * (bonusTier.bonusPercentage / 100);
-                                    transaction.update(refDoc.ref, { isBonusApplied: true });
-                                }
-                            });
-                            
-                            if(totalBonus > 0){
-                                const bonusRef = doc(collection(db, "bonuses"));
-                                transaction.set(bonusRef, {
-                                    referrerId: referrerId,
-                                    referrerName: userData.name,
-                                    earnedAt: Timestamp.now(),
-                                    period: period,
-                                    bonusAmount: totalBonus,
-                                    status: 'Owed'
-                                });
-                            }
+                        if (bonusTier && newTier.name === bonusTier.name) {
+                            promotedToBonusTier = true;
+                            newTierForBonus = newTier;
+                            referrerNameForBonus = userData.name;
                         }
                     }
                 });
+                console.log("Transaction successful. User promotion applied if necessary.");
             } catch (e) {
-                console.error("Transaction failed: ", e);
-                alert("A critical error occurred while updating referrer level. Please check the logs.");
+                console.error("User promotion transaction failed: ", e);
+                alert("A critical error occurred while updating the referrer's level. Bonus calculation was skipped.");
+                return; // Stop if transaction fails
+            }
+
+            // Step 2: Non-atomic Bonus Calculation (runs only if promotion happened and was to a bonus tier)
+            if (promotedToBonusTier && newTierForBonus) {
+                console.log(`User ${referrerNameForBonus} promoted to bonus tier. Calculating retroactive bonus.`);
+                try {
+                    const now = new Date();
+                    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+                    // This query is now OUTSIDE the transaction
+                    const q = query(collection(db, "referrals"),
+                        where("referrerId", "==", referrerId),
+                        where("status", "==", "Won"),
+                        where("wonAt", "<", Timestamp.fromDate(startOfMonth)),
+                        where("isBonusApplied", "!=", true)
+                    );
+
+                    const referralsToBonusSnapshot = await getDocs(q);
+                    if (referralsToBonusSnapshot.empty) {
+                        console.log("No previous referrals found for retroactive bonus application.");
+                        return;
+                    }
+
+                    const batch = writeBatch(db);
+                    let totalBonus = 0;
+
+                    referralsToBonusSnapshot.forEach(refDoc => {
+                        const refData = refDoc.data();
+                        const fee = refData.finalFindersFee || refData.findersFee || 0;
+                        if (fee > 0) {
+                            totalBonus += fee * (newTierForBonus.bonusPercentage / 100);
+                            batch.update(refDoc.ref, { isBonusApplied: true });
+                        }
+                    });
+
+                    if (totalBonus > 0) {
+                        const period = `${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`;
+                        const bonusRef = doc(collection(db, "bonuses"));
+                        batch.set(bonusRef, {
+                            referrerId: referrerId,
+                            referrerName: referrerNameForBonus,
+                            earnedAt: Timestamp.now(),
+                            period: period,
+                            bonusAmount: totalBonus,
+                            status: 'Owed'
+                        });
+
+                        await batch.commit();
+                        console.log(`Successfully applied a retroactive bonus of ${totalBonus} for ${referrerNameForBonus}.`);
+                        alert(`Referrer promoted and a retroactive bonus of ${formatCurrency(totalBonus)} was applied!`);
+                    } else {
+                        console.log("No bonus amount to apply.");
+                    }
+                } catch (bonusError) {
+                    console.error("Bonus calculation/application failed: ", bonusError);
+                    alert("The user was promoted, but an error occurred during the retroactive bonus calculation. Please check the logs and apply any bonus manually if needed.");
+                }
             }
         }
+
 
         async function handleFeeWaiverChange(event) {
             const checkbox = event.target;
