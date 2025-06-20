@@ -121,6 +121,7 @@
                                 <th class="p-4 text-sm font-semibold text-right">Approved Premium</th>
                                 <th class="p-4 text-sm font-semibold text-right">Final Fee</th>
                                 <th class="p-4 text-sm font-semibold text-center">Status</th>
+                                <th class="p-4 text-sm font-semibold text-center">Fee Waived</th>
                             </tr>
                         </thead>
                         <tbody id="admin-referrals-table-body"></tbody>
@@ -202,7 +203,7 @@
         </div>
     </div>
     
-    <!-- NEW: Admin Edit Profile Modal -->
+    <!-- Admin Edit Profile Modal -->
     <div id="admin-edit-profile-modal" class="modal-overlay hidden">
         <div class="modal-content">
              <div class="flex justify-between items-start mb-6">
@@ -307,7 +308,7 @@
 
         function updateSummaryCards(referrals) {
             document.getElementById('pending-referrals-count').textContent = referrals.filter(r => ['Pending', 'Resubmitted'].includes(r.status)).length;
-            const totalOwed = referrals.filter(r => r.status === 'Won').reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
+            const totalOwed = referrals.filter(r => r.status === 'Won' && !r.feeWaived).reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
             document.getElementById('finders-fee-owed-total').textContent = formatCurrency(totalOwed);
         }
         
@@ -325,7 +326,7 @@
 
             const referralsToPay = referrals.filter(r => {
                 const referralDate = r.createdAt.toDate();
-                return r.status === 'Won' && referralDate >= startOfLastMonth && referralDate <= endOfLastMonth;
+                return r.status === 'Won' && !r.feeWaived && referralDate >= startOfLastMonth && referralDate <= endOfLastMonth;
             });
 
             const totalToPay = referralsToPay.reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee), 0);
@@ -339,9 +340,9 @@
             referrals.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
             tableBody.innerHTML = referrals.map(ref => {
                 const isEditable = !['Won', 'Paid', 'Lost', 'Rejected', 'Cancelled'].includes(ref.status);
-                const finalFee = ref.finalFindersFee || ref.findersFee || 0;
+                const finalFee = ref.feeWaived ? 0 : (ref.finalFindersFee || ref.findersFee || 0);
                 let rowClass = '';
-                if (ref.status === 'Paid') rowClass = 'opacity-50';
+                if (ref.status === 'Paid' || ref.status === 'Lost' || ref.status === 'Cancelled') rowClass = 'opacity-50';
                 if (ref.status === 'Resubmitted') rowClass = 'status-resubmitted';
 
                 return `
@@ -357,12 +358,16 @@
                                 ${['Pending', 'Approved', 'Won', 'Lost', 'Rejected', 'Cancelled', 'Resubmitted', 'Paid'].map(s => `<option value="${s}" ${ref.status === s ? 'selected' : ''} ${s === 'Paid' ? 'disabled' : ''}>${s}</option>`).join('')}
                             </select>
                         </td>
+                        <td class="p-4 text-center">
+                            <input type="checkbox" class="h-5 w-5 fee-waiver-checkbox" data-id="${ref.id}" ${ref.feeWaived ? 'checked' : ''} ${ref.status === 'Paid' ? 'disabled' : ''}>
+                        </td>
                     </tr>
                 `;
             }).join('');
             
             tableBody.querySelectorAll('.status-select').forEach(el => el.addEventListener('change', handleStatusChange));
             tableBody.querySelectorAll('.approved-premium-input').forEach(el => el.addEventListener('change', handlePremiumChange));
+            tableBody.querySelectorAll('.fee-waiver-checkbox').forEach(el => el.addEventListener('change', handleFeeWaiverChange));
         }
 
         function displayReferrersForManagement(referrers) {
@@ -400,7 +405,8 @@
             `).join('');
         }
         
-        async function calculateNewFindersFee(approvedPremium, insuranceType, referrerId) {
+        async function calculateNewFindersFee(approvedPremium, insuranceType, referrerId, feeWaived = false) {
+            if (feeWaived) return 0;
             const referrer = allReferrers.find(r => r.id === referrerId);
             const commissionSplit = (referrer && referrer.commissionSplit) ? referrer.commissionSplit / 100 : 0.50;
 
@@ -419,9 +425,26 @@
             try {
                 const referralDoc = await getDoc(referralRef);
                 const referralData = referralDoc.data();
-                const newFee = await calculateNewFindersFee(approvedPremium, referralData.insuranceType, referralData.referrerId);
+                const newFee = await calculateNewFindersFee(approvedPremium, referralData.insuranceType, referralData.referrerId, referralData.feeWaived);
                 await updateDoc(referralRef, { approvedPremium: approvedPremium, finalFindersFee: newFee });
             } catch (error) { console.error("Error updating premium: ", error); alert("Could not update premium."); }
+        }
+        
+        async function handleFeeWaiverChange(event) {
+            const checkbox = event.target;
+            const referralId = checkbox.dataset.id;
+            const feeWaived = checkbox.checked;
+            const referralRef = doc(db, "referrals", referralId);
+            try {
+                const referralDoc = await getDoc(referralRef);
+                const referralData = referralDoc.data();
+                const newFee = await calculateNewFindersFee(referralData.approvedPremium || 0, referralData.insuranceType, referralData.referrerId, feeWaived);
+                await updateDoc(referralRef, { feeWaived: feeWaived, finalFindersFee: newFee });
+            } catch (error) {
+                console.error("Error updating fee waiver status:", error);
+                alert("Could not update fee waiver status.");
+                checkbox.checked = !feeWaived; // Revert on failure
+            }
         }
         
         async function handleStatusChange(event) {
@@ -537,6 +560,7 @@
                 referrerId, referrerName, clientName, insuranceType, approvedPremium, 
                 findersFee, finalFindersFee: findersFee,
                 status: 'Won', 
+                feeWaived: false, // Manually added referrals default to not waived
                 createdAt: Timestamp.now(),
                 isManualEntry: true,
             };
@@ -582,11 +606,19 @@
 
                 querySnapshot.forEach(doc => {
                     const referral = doc.data();
-                    const fee = referral.finalFindersFee || referral.findersFee;
-                    totalPaid += fee;
-                    paidReferralIds.push(doc.id);
-                    batch.update(doc.ref, { status: 'Paid' });
+                    // Crucially, only process if the fee is NOT waived
+                    if (!referral.feeWaived) {
+                        const fee = referral.finalFindersFee || referral.findersFee;
+                        totalPaid += fee;
+                        paidReferralIds.push(doc.id);
+                        batch.update(doc.ref, { status: 'Paid' });
+                    }
                 });
+                
+                if (totalPaid <= 0) {
+                    alert("No non-waived fees to process for this period.");
+                    return;
+                }
 
                 const paymentDoc = {
                     payoutDate: Timestamp.now(),
