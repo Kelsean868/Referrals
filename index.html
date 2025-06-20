@@ -27,9 +27,6 @@
             --primary-accent: #005f73;
             --primary-accent-darker: #003d4d;
             --secondary-accent: #ae8625;
-            --gold-accent: #FFD700;
-            --silver-accent: #C0C0C0;
-            --bronze-accent: #CD7F32;
             --shadow-soft: 0 3px 6px rgba(0, 0, 0, 0.04);
             --shadow-medium: 0 5px 15px rgba(0, 0, 0, 0.06);
             --font-body: 'Montserrat', sans-serif;
@@ -161,9 +158,9 @@
             font-weight: 700;
             text-transform: uppercase;
         }
-        .tier-Bronze { background-color: var(--bronze-accent); color: white; }
-        .tier-Silver { background-color: var(--silver-accent); color: var(--text-primary); }
-        .tier-Gold { background-color: var(--gold-accent); color: var(--text-primary); }
+        .tier-Bronze { background-color: #CD7F32; color: white; }
+        .tier-Silver { background-color: #C0C0C0; color: var(--text-primary); }
+        .tier-Gold { background-color: #FFD700; color: var(--text-primary); }
     </style>
 </head>
 
@@ -371,6 +368,20 @@
         </div>
     </div>
     
+    <!-- NEW: Forced Password Reset Modal -->
+    <div id="force-reset-modal" class="modal-overlay hidden">
+        <div class="modal-content max-w-lg text-center">
+            <i class="fas fa-shield-halved text-5xl text-yellow-500 mx-auto mb-4"></i>
+            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Security Update Required</h3>
+            <p class="text-[var(--text-secondary)] text-sm mb-6">For your security, we require passwords to be updated every 90 days. Your password has expired.</p>
+            <p id="force-reset-message" class="text-sm h-4 my-4"></p>
+            <div class="flex justify-center gap-3 pt-4">
+                <button type="button" id="force-reset-send-link-btn" class="button-base primary-btn">Send Password Reset Link</button>
+                <button type="button" id="force-reset-logout-btn" class="button-base bg-red-600 text-white">Logout</button>
+            </div>
+        </div>
+    </div>
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
@@ -427,28 +438,66 @@
         logoutBtn.addEventListener('click', () => signOut(auth));
 
         onAuthStateChanged(auth, async (user) => {
-            authLoader.classList.add('hidden');
             if (user) {
-                authView.classList.add('hidden');
-                appView.classList.remove('hidden');
-                await setupDashboard(user);
+                // User is signed in, now check password policy
+                const passwordPolicyMet = await checkPasswordPolicy(user);
+                if (passwordPolicyMet) {
+                    authLoader.classList.add('hidden');
+                    authView.classList.add('hidden');
+                    appView.classList.remove('hidden');
+                    await setupDashboard(user);
+                } else {
+                    // Password has expired, show force reset modal
+                    authLoader.classList.add('hidden');
+                    authView.classList.add('hidden');
+                    appView.classList.add('hidden');
+                    document.getElementById('force-reset-modal').classList.remove('hidden');
+                }
             } else {
+                // No user is signed in
+                authLoader.classList.add('hidden');
                 appView.classList.add('hidden');
                 authView.classList.remove('hidden');
                 adminLinkContainer.innerHTML = '';
             }
         });
+        
+        async function checkPasswordPolicy(user) {
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (!userDoc.exists()) return true; // New user, no policy to check
+
+            const userData = userDoc.data();
+            const lastUpdate = userData.passwordLastUpdatedAt?.toDate();
+            
+            if (!lastUpdate) {
+                // If the field doesn't exist, this is their first sign-in since the policy was enacted.
+                // We'll update it now for future checks.
+                await updateDoc(userDocRef, { passwordLastUpdatedAt: Timestamp.now() });
+                return true;
+            }
+
+            const ninetyDaysAgo = new Date();
+            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+            if (lastUpdate < ninetyDaysAgo) {
+                // Password is older than 90 days
+                return false;
+            }
+
+            return true;
+        }
+
 
         async function setupDashboard(user) {
             userGreeting.textContent = `Hello, ${user.displayName || user.email}!`;
             
-            // Fetch global tier settings
             const settingsDoc = await getDoc(doc(db, "settings", "commissionTiers"));
             if (settingsDoc.exists()) {
                 commissionTiers = settingsDoc.data().tiers.sort((a,b) => a.minReferrals - b.minReferrals);
             }
             
-            // Listen for user-specific data
             onSnapshot(doc(db, "users", user.uid), (userDoc) => {
                 const userData = userDoc.data();
                 if (userData.role === 'admin') {
@@ -738,8 +787,53 @@
         // --- AUTH FORMS ---
         document.getElementById('show-register').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); });
         document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); });
-        document.getElementById('login-form').addEventListener('submit', async (e) => { e.preventDefault(); const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; try { await signInWithEmailAndPassword(auth, email, password); document.getElementById('login-error').textContent = ''; } catch (error) { document.getElementById('login-error').textContent = "Invalid email or password."; } });
-        document.getElementById('register-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('register-name').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; try { const cred = await createUserWithEmailAndPassword(auth, email, password); await updateProfile(cred.user, { displayName: name }); await setDoc(doc(db, "users", cred.user.uid), { name, email, role: 'referrer', commissionSplit: 50, waivesAllFees: false, currentTier: 'Bronze', wonReferralsCount: 0 }); document.getElementById('register-error').textContent = ''; } catch (error) { document.getElementById('register-error').textContent = error.message; } });
+        
+        document.getElementById('login-form').addEventListener('submit', async (e) => { 
+            e.preventDefault(); 
+            const email = document.getElementById('login-email').value; 
+            const password = document.getElementById('login-password').value; 
+            const errorEl = document.getElementById('login-error');
+            errorEl.textContent = '';
+            try { 
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                // On successful login, check if a password reset was required and update the timestamp
+                const userDocRef = doc(db, 'users', userCredential.user.uid);
+                const userDoc = await getDoc(userDocRef);
+                if(userDoc.exists() && userDoc.data().passwordResetRequired) {
+                    await updateDoc(userDocRef, {
+                        passwordLastUpdatedAt: Timestamp.now(),
+                        passwordResetRequired: false
+                    });
+                }
+            } catch (error) { 
+                errorEl.textContent = "Invalid email or password."; 
+            } 
+        });
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => { 
+            e.preventDefault(); 
+            const name = document.getElementById('register-name').value; 
+            const email = document.getElementById('register-email').value; 
+            const password = document.getElementById('register-password').value; 
+            const errorEl = document.getElementById('register-error');
+            errorEl.textContent = '';
+            try { 
+                const cred = await createUserWithEmailAndPassword(auth, email, password); 
+                await updateProfile(cred.user, { displayName: name }); 
+                await setDoc(doc(db, "users", cred.user.uid), { 
+                    name, 
+                    email, 
+                    role: 'referrer', 
+                    commissionSplit: 50, 
+                    waivesAllFees: false, 
+                    currentTier: 'Bronze', 
+                    wonReferralsCount: 0,
+                    passwordLastUpdatedAt: Timestamp.now() // Set initial password date
+                }); 
+            } catch (error) { 
+                errorEl.textContent = error.message; 
+            } 
+        });
         
         // --- Password Visibility and Reset Logic ---
         function togglePasswordVisibility(inputId, toggleId) {
@@ -782,6 +876,24 @@
                 console.error("Password reset error:", error);
             }
         });
+
+        // --- Forced Password Reset Logic ---
+        document.getElementById('force-reset-logout-btn').addEventListener('click', () => signOut(auth));
+        document.getElementById('force-reset-send-link-btn').addEventListener('click', async () => {
+            const messageEl = document.getElementById('force-reset-message');
+            messageEl.textContent = 'Sending...';
+            messageEl.classList.remove('text-red-500', 'text-green-500');
+            try {
+                await sendPasswordResetEmail(auth, auth.currentUser.email);
+                await updateDoc(doc(db, 'users', auth.currentUser.uid), { passwordResetRequired: true });
+                messageEl.textContent = 'Password reset email sent! Please check your inbox, reset your password, then log out and sign back in.';
+                messageEl.classList.add('text-green-500');
+            } catch (error) {
+                 messageEl.textContent = 'Error sending reset email.';
+                messageEl.classList.add('text-red-500');
+            }
+        });
+
 
     </script>
 
