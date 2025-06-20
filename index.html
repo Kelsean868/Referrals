@@ -341,7 +341,7 @@
         <div class="modal-content">
             <div class="flex justify-between items-start mb-4">
                 <h3 class="text-2xl font-bold text-[var(--primary-accent)]">Referral Details</h3>
-                <button id="close-details-modal-btn" class="text-2xl text-[var(--text-muted)] hover:text-[var(--text-primary)]">&times;</button>
+                <button id="close-details-modal-btn" class="text-2xl text-[var(--text-muted)] hover:text-[var(--primary-accent)]">&times;</button>
             </div>
             <div id="details-modal-content" class="text-sm space-y-2 text-[var(--text-secondary)] max-h-[60vh] overflow-y-auto pr-2">
                 <!-- Details will be injected here -->
@@ -430,20 +430,11 @@
             { name: "Gold", minReferrals: 20, split: 95, bonusPercentage: 25 }
         ];
 
-        const authLoader = document.getElementById('auth-loader');
-        const authView = document.getElementById('auth-view');
-        const appView = document.getElementById('app-view');
-        const logoutBtn = document.getElementById('logout-btn');
-        const userGreeting = document.getElementById('user-greeting');
-        const unpaidFindersFeeTotal = document.getElementById('unpaid-finders-fee-total');
-        const referralsTableBody = document.getElementById('referrals-table-body');
-        const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
-        const adminLinkContainer = document.getElementById('admin-link-container');
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
-
-        logoutBtn.addEventListener('click', () => signOut(auth));
-
         onAuthStateChanged(auth, async (user) => {
+            const authLoader = document.getElementById('auth-loader');
+            const authView = document.getElementById('auth-view');
+            const appView = document.getElementById('app-view');
+
             if (user) {
                 // User is signed in, now check password policy
                 const passwordPolicyMet = await checkPasswordPolicy(user);
@@ -464,7 +455,7 @@
                 authLoader.classList.add('hidden');
                 appView.classList.add('hidden');
                 authView.classList.remove('hidden');
-                adminLinkContainer.innerHTML = '';
+                document.getElementById('admin-link-container').innerHTML = '';
             }
         });
         
@@ -497,19 +488,21 @@
 
 
         async function setupDashboard(user) {
-            userGreeting.textContent = `Hello, ${user.displayName || user.email}!`;
+            document.getElementById('user-greeting').textContent = `Hello, ${user.displayName || user.email}!`;
             
             // Listen for user-specific data
             onSnapshot(doc(db, "users", user.uid), (userDoc) => {
                 const userData = userDoc.data();
-                if (userData.role === 'admin') {
-                    document.getElementById('dashboard-title').textContent = "Admin / Referrer Dashboard";
-                    adminLinkContainer.innerHTML = `<a href="./admin.html" class="button-base !px-4 !py-2 bg-[var(--secondary-accent)] text-white">Admin Panel</a>`;
-                } else {
-                    adminLinkContainer.innerHTML = '';
-                    document.getElementById('dashboard-title').textContent = "Referrer Dashboard";
+                if(userData) {
+                    if (userData.role === 'admin') {
+                        document.getElementById('dashboard-title').textContent = "Admin / Referrer Dashboard";
+                        document.getElementById('admin-link-container').innerHTML = `<a href="./admin.html" class="button-base !px-4 !py-2 bg-[var(--secondary-accent)] text-white">Admin Panel</a>`;
+                    } else {
+                        document.getElementById('admin-link-container').innerHTML = '';
+                        document.getElementById('dashboard-title').textContent = "Referrer Dashboard";
+                    }
+                    displayTierProgress(userData);
                 }
-                displayTierProgress(userData);
             });
             
             loadDashboardData(user.uid);
@@ -523,6 +516,9 @@
                 displayReferrals(userReferrals);
                 updateUnpaidBalance(userReferrals);
                 updatePerformanceChart(userReferrals);
+            }, (error) => {
+                console.error("Error loading referrals:", error);
+                document.getElementById('referrals-table-body').innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">Could not load referrals due to a database error.</td></tr>`;
             });
             
             try {
@@ -531,16 +527,17 @@
                     displayPaymentHistory(allPayments, userId);
                 }, (error) => {
                      console.error("Could not load payment history due to permissions:", error.message);
-                     paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Could not load payment history.</td></tr>`;
+                     document.getElementById('payment-history-table-body').innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Could not load payment history.</td></tr>`;
                 });
             } catch (error) {
                  console.error("Error setting up payment listener:", error);
-                 paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Error loading payment history.</td></tr>`;
+                 document.getElementById('payment-history-table-body').innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Error loading payment history.</td></tr>`;
             }
         }
         
         function displayTierProgress(userData) {
-            if (!commissionTiers.length) return;
+            const container = document.getElementById('tier-progress-container');
+            if (!container || !commissionTiers.length) return;
             
             const currentTierName = userData.currentTier || 'Bronze';
             const wonCount = userData.wonReferralsCount || 0;
@@ -582,10 +579,12 @@
             progressHTML += `</div>`;
 
 
-            document.getElementById('tier-progress-container').innerHTML = progressHTML;
+            container.innerHTML = progressHTML;
         }
         
         function updateUnpaidBalance(referrals) {
+            const unpaidFindersFeeTotal = document.getElementById('unpaid-finders-fee-total');
+            if (!unpaidFindersFeeTotal) return;
             const unpaidTotal = referrals
                 .filter(r => r.status === 'Won' && !r.feeWaived)
                 .reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
@@ -593,6 +592,8 @@
         }
 
         function displayReferrals(referrals) {
+            const referralsTableBody = document.getElementById('referrals-table-body');
+            if (!referralsTableBody) return;
             if (!referrals.length) {
                 referralsTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-[var(--text-muted)]">You have not made any referrals yet.</td></tr>';
                 return;
@@ -627,6 +628,8 @@
         }
         
         function displayPaymentHistory(allPayments, userId) {
+            const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
+            if (!paymentHistoryTableBody) return;
             allPayments.sort((a, b) => b.payoutDate.toDate() - a.payoutDate.toDate());
             if(!allPayments.length) {
                 paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">No payment history found.</td></tr>`;
@@ -642,7 +645,7 @@
         }
 
         // --- Event Listeners for new features ---
-        referralsTableBody.addEventListener('click', e => {
+        document.getElementById('referrals-table-body').addEventListener('click', e => {
             const target = e.target.closest('button');
             if (!target) return;
 
@@ -734,7 +737,9 @@
         
         // --- CHART LOGIC ---
         function updatePerformanceChart(referrals) {
-            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const chartEl = document.getElementById('performanceChart');
+            if (!chartEl) return;
+            const ctx = chartEl.getContext('2d');
             
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
