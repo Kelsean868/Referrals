@@ -224,6 +224,7 @@
                 </div>
                 <div id="nav-buttons" class="flex items-center space-x-4">
                     <div id="admin-link-container"></div>
+                    <a href="./profile.html" class="button-base bg-white text-[var(--primary-accent)] text-sm py-2 px-4 !px-4 !py-2">My Profile</a>
                     <button id="logout-btn" class="button-base bg-red-600 hover:bg-red-700 text-white text-sm py-2 px-4 !px-4 !py-2">Logout</button>
                 </div>
             </header>
@@ -586,7 +587,7 @@
         document.getElementById('login-form').addEventListener('submit', async (e) => { e.preventDefault(); const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; try { await signInWithEmailAndPassword(auth, email, password); document.getElementById('login-error').textContent = ''; } catch (error) { document.getElementById('login-error').textContent = "Invalid email or password."; } });
         document.getElementById('register-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('register-name').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; try { const cred = await createUserWithEmailAndPassword(auth, email, password); await updateProfile(cred.user, { displayName: name }); await setDoc(doc(db, "users", cred.user.uid), { name, email, role: 'referrer', commissionSplit: 50 }); document.getElementById('register-error').textContent = ''; } catch (error) { document.getElementById('register-error').textContent = error.message; } });
         
-        // --- NEW: Password Visibility and Reset Logic ---
+        // --- Password Visibility and Reset Logic ---
         function togglePasswordVisibility(inputId, toggleId) {
             const passwordInput = document.getElementById(inputId);
             const toggleIcon = document.getElementById(toggleId);
