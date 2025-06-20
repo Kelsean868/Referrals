@@ -177,10 +177,11 @@
         <!-- Login/Register View -->
         <div id="auth-view" class="hidden">
             <header class="mb-10 md:mb-14 text-center">
-                <h1 class="page-title text-4xl sm:text-5xl md:text-6xl mb-3">
+                <h1 class="page-title text-4xl sm:text-5xl md:text-6xl mb-2">
                     Insurance Referral Hub
                 </h1>
-                <p class="text-[var(--text-secondary)] mt-5 text-md md:text-lg max-w-3xl mx-auto">
+                <p class="text-xl font-semibold text-[var(--secondary-accent)] mb-4">Earn money for your referrals!</p>
+                <p class="text-[var(--text-secondary)] text-md md:text-lg max-w-3xl mx-auto">
                     Welcome! Please sign in or register to continue.
                 </p>
             </header>
@@ -291,7 +292,7 @@
                             </p>
                             <a href="./health_rater.html" class="main-action-button button-base mt-4">Open Health Rater</a>
                         </div>
-                        <div class="bento-box text-center">
+                         <div class="bento-box text-center">
                             <i class="fas fa-home text-5xl text-[var(--primary-accent)] mx-auto mb-4"></i>
                             <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Property Insurance</h3>
                             <p class="text-[var(--text-secondary)] text-sm mb-6 flex-grow">
@@ -444,10 +445,9 @@
                  logoutBtn.addEventListener('click', () => {
                     signOut(auth).then(() => {
                         window.location.reload();
-                    }).catch(error => console.error('Logout error:', error));
+                    });
                 });
             }
-
             onAuthStateChanged(auth, async (user) => {
                 const authLoader = document.getElementById('auth-loader');
                 const authView = document.getElementById('auth-view');
