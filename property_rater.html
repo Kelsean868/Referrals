@@ -112,25 +112,31 @@
             border: 1px solid var(--secondary-accent);
             border-radius: 0.5rem; padding: 1rem; margin-top: 1.5rem;
         }
+        .loader {
+            width: 48px; height: 48px; border: 5px solid var(--primary-accent);
+            border-bottom-color: transparent; border-radius: 50%;
+            display: inline-block; box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-6 lg:p-8">
-
-    <div class="fixed top-4 right-4 z-[101] flex items-center space-x-4">
-        <a href="./index.html" class="text-sm font-semibold text-[var(--primary-accent)] hover:underline">&larr; Back to Hub</a>
-        <div class="theme-switch-wrapper">
-            <span class="mr-2 text-xs font-semibold" id="themeToggleLabel">LIGHT</span>
-            <label class="theme-switch" for="themeToggleCheckbox">
-                <input type="checkbox" id="themeToggleCheckbox" />
-                <div class="slider round"></div>
-            </label>
-        </div>
+    <div id="auth-loader" class="text-center p-20">
+        <div class="loader mx-auto"></div>
+        <p class="mt-4 text-[var(--text-secondary)]">Authenticating...</p>
     </div>
 
-    <div class="w-full max-w-6xl mx-auto my-8">
-        <header class="mb-10 text-center">
-            <h1 class="text-4xl sm:text-5xl font-bold mb-3">TATIL Property Insurance Rater</h1>
-            <p class="text-xl text-[var(--text-secondary)]">Homeowners & Commercial Property Premiums, Simplified.</p>
+    <div id="property-rater-app" class="w-full max-w-6xl mx-auto my-8 hidden">
+        <header class="flex justify-between items-start mb-10">
+            <div class="text-left">
+                 <h1 id="main-header" class="text-4xl sm:text-5xl font-bold mb-3">TATIL Property Insurance Rater</h1>
+                 <p class="text-xl text-[var(--text-secondary)]">Homeowners & Commercial Property Premiums, Simplified.</p>
+            </div>
+            <div class="text-right">
+                <a href="./index.html" class="text-sm font-semibold text-[var(--primary-accent)] hover:underline block mb-2">&larr; Back to Dashboard</a>
+                <span id="user-display" class="block text-sm font-semibold text-[var(--text-primary)]"></span>
+            </div>
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -162,7 +168,6 @@
                             </label>
                         </div>
                         
-                        <!-- Client Age Input -->
                         <div class="mb-6">
                             <label for="home-client-age" class="block text-sm font-medium text-[var(--text-muted)]">Client's Age (for tax purposes)</label>
                             <input type="number" id="home-client-age" class="mt-1 w-full p-2.5" placeholder="e.g., 55">
@@ -242,8 +247,12 @@
                     <div id="premium-breakdown" class="text-left mt-6 pt-4 border-t border-[var(--border-color)] text-[var(--text-secondary)] text-sm space-y-1">
                         <!-- Breakdown populated by JS -->
                     </div>
-                    <button id="generate-quote-btn" class="mt-6 w-full primary-btn button-base py-3">
-                        Generate Official Quote
+                     <div id="finders-fee-section" class="text-left mt-6 pt-4 border-t-2 border-dashed border-[var(--secondary-accent)] hidden">
+                        <h3 class="text-lg font-bold text-[var(--primary-accent)] mb-2">Finder's Fee Estimate</h3>
+                        <div id="finders-fee-breakdown" class="text-[var(--text-secondary)] text-sm space-y-1"></div>
+                    </div>
+                    <button id="create-referral-btn" class="mt-6 w-full primary-btn button-base py-3">
+                        Create Referral
                     </button>
                 </div>
             </div>
@@ -257,329 +266,325 @@
     <!-- Modals -->
     <div id="client-info-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h3 class="text-xl font-bold leading-6 mb-4">Client & Property Information</h3>
+            <h3 id="modal-header" class="text-xl font-bold leading-6 mb-4">Client & Property Information</h3>
             <div class="space-y-4">
                 <input type="text" id="client-name" placeholder="Client's Full Name" class="w-full">
                 <input type="text" id="property-address" placeholder="Property Address" class="w-full">
             </div>
+             <div class="flex items-center space-x-3 mt-4 pt-4 border-t border-[var(--border-color)]">
+                <input type="checkbox" id="waive-fee-checkbox" class="h-4 w-4">
+                <label for="waive-fee-checkbox" class="text-sm font-medium text-[var(--text-secondary)]">Waive finder's fee for this referral</label>
+            </div>
+            <p id="client-modal-error" class="text-red-500 text-sm text-center mt-4"></p>
             <div class="mt-6 flex justify-end space-x-3">
                 <button id="close-client-modal-btn" type="button" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Cancel</button>
-                <button id="submit-quote-btn" type="button" class="button-base primary-btn py-2 px-4">Generate</button>
+                <button id="submit-referral-btn" type="button" class="button-base primary-btn py-2 px-4">Submit Referral</button>
             </div>
         </div>
     </div>
 
-    <div id="final-quote-modal" class="modal-overlay hidden">
+    <div id="success-modal" class="modal-overlay hidden">
         <div class="modal-content max-w-2xl">
-            <h3 class="text-xl font-bold leading-6 mb-4">Official Property Insurance Quotation</h3>
-            <div id="quote-output-container" class="w-full h-96 overflow-y-auto bg-[var(--bg-main)] p-4 border border-[var(--border-color)] rounded-md">
-                <pre id="quote-output" class="whitespace-pre-wrap text-sm font-mono"></pre>
-            </div>
+            <h3 id="success-header" class="text-xl font-bold leading-6 mb-2 text-green-600">Referral Submitted Successfully!</h3>
+            <p class="text-sm text-[var(--text-muted)] mb-4">You can track the status on your dashboard.</p>
             <div class="mt-6 flex flex-wrap justify-end gap-3">
-                <button id="close-quote-modal-btn" type="button" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Close</button>
-                <button id="download-pdf-btn" type="button" class="button-base secondary-btn py-2 px-4">Download PDF</button>
-                <button id="copy-quote-btn" type="button" class="button-base primary-btn py-2 px-4">Copy Quote</button>
+                <a href="./index.html" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Dashboard</a>
             </div>
         </div>
     </div>
     
     <!-- Data file for rates -->
     <script src="./property_rater_data.js"></script>
+    
+    <!-- Firebase and App Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, getDoc, addDoc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // --- THEME TOGGLE ---
-        const themeToggle = document.getElementById('themeToggleCheckbox');
-        const themeToggleLabel = document.getElementById('themeToggleLabel');
-        function applyTheme(isDark) {
-            document.documentElement.classList.toggle('dark-mode', isDark);
-            document.body.classList.toggle('dark-mode', isDark);
-            if(themeToggleLabel) themeToggleLabel.textContent = isDark ? 'DARK' : 'LIGHT';
-            if(themeToggle) themeToggle.checked = isDark;
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5hOOzqCPieEpg5ajCBhsScroaB-c1kYg",
+            authDomain: "insurance-referrer-hub.firebaseapp.com",
+            projectId: "insurance-referrer-hub",
+            storageBucket: "insurance-referrer-hub.appspot.com",
+            messagingSenderId: "1007719344655",
+            appId: "1:1007719344655:web:6e5565f2f957300e8fd17a",
+            measurementId: "G-T9W94R7QJF"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- Global State ---
+        let currentUserData = null;
+        let lastCalculatedData = {};
+        let editMode = false;
+        let referralIdToEdit = null;
+
+        // --- DOM Elements ---
+        const getElement = (id) => document.getElementById(id);
+        
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof PROPERTY_RATES === 'undefined') {
+                document.body.innerHTML = '<div class="text-red-500 text-center p-8">Error: Could not load rate data. Please ensure property_rater_data.js is present.</div>';
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('edit')) {
+                editMode = true;
+                referralIdToEdit = urlParams.get('edit');
+                getElement('main-header').textContent = "Edit Property Referral";
+                getElement('create-referral-btn').textContent = "Update Referral";
+                getElement('modal-header').textContent = "Update Client & Property Info";
+                getElement('submit-referral-btn').textContent = "Update Referral";
+                getElement('success-header').textContent = "Referral Updated Successfully!";
+            }
+
+            onAuthStateChanged(auth, async (user) => {
+                const appEl = getElement('property-rater-app');
+                const loaderEl = getElement('auth-loader');
+                if (user) {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    currentUserData = userDoc.exists() ? { uid: user.uid, ...userDoc.data() } : null;
+                    getElement('user-display').textContent = currentUserData?.name || user.email;
+                    
+                    appEl.classList.remove('hidden');
+                    loaderEl.classList.add('hidden');
+                    if (editMode && referralIdToEdit) {
+                        await initializeRaterForEdit();
+                    } else {
+                        initializeRater();
+                    }
+                } else {
+                    loaderEl.innerHTML = `<div class="text-center bento-box max-w-lg mx-auto"><h3 class="text-xl font-bold leading-6 mb-2">Authentication Error</h3><p class="text-[var(--text-secondary)]">You must be logged in to use the rater.</p><div class="mt-6"><a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a></div></div>`;
+                    appEl.classList.add('hidden');
+                }
+            });
+
+            setupTheme();
+            getElement('currentYear').textContent = new Date().getFullYear();
+        });
+
+        function initializeRater() {
+            setupEventListeners();
+            handlePolicyTypeChange();
         }
-        themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
-        const savedTheme = localStorage.getItem('theme');
-        applyTheme(savedTheme === 'dark' || (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches));
-
-        // --- GLOBAL & DOM ELEMENTS ---
-        let quoteDataForPdf = {};
-        const policyTypeSelector = document.getElementById('policy-type');
-        const homeownersSection = document.getElementById('homeowners-section');
-        const commercialSection = document.getElementById('commercial-section');
-        const resultsSection = document.getElementById('results-section');
-        const allInputs = document.querySelectorAll('input, select');
         
-        // --- MODAL & QUOTE ELEMENTS ---
-        const generateQuoteBtn = document.getElementById('generate-quote-btn');
-        const clientInfoModal = document.getElementById('client-info-modal');
-        const closeClientModalBtn = document.getElementById('close-client-modal-btn');
-        const submitQuoteBtn = document.getElementById('submit-quote-btn');
-        const finalQuoteModal = document.getElementById('final-quote-modal');
-        const closeQuoteModalBtn = document.getElementById('close-quote-modal-btn');
-        const downloadPdfBtn = document.getElementById('download-pdf-btn');
-        const copyQuoteBtn = document.getElementById('copy-quote-btn');
-        const quoteOutput = document.getElementById('quote-output');
+        async function initializeRaterForEdit() {
+            const referralDoc = await getDoc(doc(db, "referrals", referralIdToEdit));
+            if (referralDoc.exists()) {
+                const data = referralDoc.data();
+                if(data.referrerId !== currentUserData.uid) {
+                    document.body.innerHTML = `<div class="text-red-500 text-center p-8">Error: You do not have permission to edit this referral.</div>`;
+                    return;
+                }
+                initializeRater();
+                populateFormWithData(data);
+            } else {
+                 document.body.innerHTML = `<div class="text-red-500 text-center p-8">Error: Referral not found.</div>`;
+            }
+        }
         
-        // --- ADVANCED MODE ELEMENTS ---
-        const homeAdvancedCheck = document.getElementById('home-advanced-mode-check');
-        const homeAdvancedSection = document.getElementById('home-advanced-section');
-        const homeStandardInputs = document.getElementById('home-standard-inputs');
-        const commAdvancedCheck = document.getElementById('comm-advanced-mode-check');
-        const commAdvancedSection = document.getElementById('comm-advanced-section');
-        const commStandardInputs = document.getElementById('comm-standard-inputs');
+        function populateFormWithData(data) {
+            getElement('policy-type').value = data.policyType;
+            handlePolicyTypeChange(); // This will show the correct form section
+            
+            if(data.policyType === 'homeowners'){
+                getElement('home-client-age').value = data.clientAge || '';
+                getElement('home-plan-type').value = data.planType || 'individual';
+                getElement('home-building-sum-insured').value = data.buildingSumInsured || '';
+                getElement('home-contents-sum-insured').value = data.contentsSumInsured || '';
+            } else if(data.policyType === 'commercial'){
+                 getElement('comm-building-sum-insured').value = data.buildingSumInsured || '';
+            }
+            
+            getElement('client-name').value = data.clientName || '';
+            getElement('property-address').value = data.propertyAddress || '';
+            getElement('waive-fee-checkbox').checked = data.feeWaived || false;
+            
+            // Re-run calculation with populated data
+            calculateAndDisplay();
+        }
 
         // --- EVENT LISTENERS ---
-        policyTypeSelector.addEventListener('change', handlePolicyTypeChange);
-        allInputs.forEach(input => {
-            input.addEventListener('input', calculateAndDisplay);
-        });
-
-        homeAdvancedCheck.addEventListener('change', (e) => {
-            homeAdvancedSection.style.display = e.target.checked ? 'block' : 'none';
-            homeStandardInputs.style.display = e.target.checked ? 'none' : 'block';
-            calculateAndDisplay();
-        });
+        function setupEventListeners() {
+            document.querySelectorAll('#property-rater-app input, #property-rater-app select').forEach(input => {
+                 input.addEventListener('input', calculateAndDisplay);
+            });
+            getElement('create-referral-btn').addEventListener('click', () => {
+                getElement('waive-fee-checkbox').checked = currentUserData?.waivesAllFees || false;
+                getElement('client-info-modal').style.display = 'flex';
+            });
+            getElement('close-client-modal-btn').addEventListener('click', () => getElement('client-info-modal').style.display = 'none');
+            getElement('submit-referral-btn').addEventListener('click', submitReferral);
+        }
         
-        commAdvancedCheck.addEventListener('change', (e) => {
-            commAdvancedSection.style.display = e.target.checked ? 'block' : 'none';
-            commStandardInputs.style.display = e.target.checked ? 'none' : 'block';
-            calculateAndDisplay();
-        });
-
-        const numberInputs = document.querySelectorAll('input[inputmode="numeric"]');
-        numberInputs.forEach(input => {
-            input.addEventListener('input', formatNumberInput);
-        });
-        
-        generateQuoteBtn.addEventListener('click', () => clientInfoModal.style.display = 'flex');
-        closeClientModalBtn.addEventListener('click', () => clientInfoModal.style.display = 'none');
-        submitQuoteBtn.addEventListener('click', generateFinalQuote);
-        closeQuoteModalBtn.addEventListener('click', () => finalQuoteModal.style.display = 'none');
-        downloadPdfBtn.addEventListener('click', generateAndDownloadPDF);
-        copyQuoteBtn.addEventListener('click', copyQuoteToClipboard);
-
         // --- UI & HELPER FUNCTIONS ---
         function handlePolicyTypeChange() {
-            const selectedType = policyTypeSelector.value;
-            homeownersSection.classList.remove('active');
-            commercialSection.classList.remove('active');
-
-            if (selectedType === 'homeowners') {
-                homeownersSection.classList.add('active');
-            } else if (selectedType === 'commercial') {
-                commercialSection.classList.add('active');
-            }
+            const selectedType = getElement('policy-type').value;
+            getElement('homeowners-section').classList.toggle('active', selectedType === 'homeowners');
+            getElement('commercial-section').classList.toggle('active', selectedType === 'commercial');
+            getElement('results-section').classList.toggle('hidden', !selectedType);
             calculateAndDisplay();
         }
         
-        function getFloatValue(id) {
-            const element = document.getElementById(id);
-            if (!element) return 0;
-            const value = element.value || '0';
-            return parseFloat(value.replace(/,/g, '')) || 0;
+        const getFloatValue = (id) => parseFloat(getElement(id).value.replace(/,/g, '')) || 0;
+        const formatCurrency = (value) => isNaN(value) ? '0.00' : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        // --- Calculation Engine ---
+        function calculateAndDisplay() {
+            const policyType = getElement('policy-type').value;
+            if (!policyType) return;
+            
+            let premiumData = {};
+            if(policyType === 'homeowners') {
+                premiumData = calculateHomeownersPremium();
+            } else if (policyType === 'commercial') {
+                premiumData = calculateCommercialPremium();
+            }
+            
+            const { basePremium, taxAmount, breakdownHTML } = premiumData;
+            const totalPremium = basePremium + taxAmount;
+            
+            getElement('total-premium').textContent = `$${formatCurrency(totalPremium)}`;
+            getElement('premium-breakdown').innerHTML = breakdownHTML;
+            
+            lastCalculatedData = {
+                insuranceType: 'Property',
+                policyType: policyType,
+                ...premiumData,
+                totalPremium: totalPremium
+            };
+            
+            calculateAndDisplayFindersFee(basePremium);
         }
 
-        function formatCurrency(value) {
-            if (isNaN(value)) return '0.00';
-            return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        function calculateHomeownersPremium() {
+            const buildingSumInsured = getFloatValue('home-building-sum-insured');
+            const contentsSumInsured = getFloatValue('home-contents-sum-insured');
+            const planType = getElement('home-plan-type').value;
+            
+            const buildingRate = PROPERTY_RATES.homeowners.building[planType];
+            const contentsRate = PROPERTY_RATES.homeowners.contents;
+            
+            const buildingPremium = (buildingSumInsured / 1000) * buildingRate;
+            const contentsPremium = (contentsSumInsured / 1000) * contentsRate;
+            const basePremium = buildingPremium + contentsPremium;
+            
+            const clientAge = getFloatValue('home-client-age');
+            const taxAmount = (clientAge > 0 && clientAge < 60) ? basePremium * PROPERTY_RATES.tax.ipt : 0;
+            
+            let breakdownHTML = '';
+            if (buildingPremium > 0) breakdownHTML += `<p>Building Premium: <strong class="float-right">$${formatCurrency(buildingPremium)}</strong></p>`;
+            if (contentsPremium > 0) breakdownHTML += `<p>Contents Premium: <strong class="float-right">$${formatCurrency(contentsPremium)}</strong></p>`;
+            if (basePremium > 0) {
+                breakdownHTML += `<p class="border-t border-[var(--border-color)] pt-2 mt-2">Base Premium: <strong class="float-right">$${formatCurrency(basePremium)}</strong></p>`;
+                breakdownHTML += `<p>Insurance Premium Tax (6%): <strong class="float-right">${clientAge >= 60 ? 'Exempt' : '$' + formatCurrency(taxAmount)}</strong></p>`;
+            }
+            
+            return { basePremium, taxAmount, breakdownHTML, clientAge, planType, buildingSumInsured, contentsSumInsured };
         }
         
-        function formatNumberInput(e) {
-            const input = e.target;
-            let cursorPosition = input.selectionStart;
-            let originalValue = input.value;
-            let originalLength = originalValue.length;
-            let rawValue = originalValue.replace(/[^\d.]/g, '');
-            let parts = rawValue.split('.');
-            let integerPart = parts[0];
-            let decimalPart = parts.length > 1 ? '.' + parts[1] : '';
-            let formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-            let formattedValue = formattedInteger + decimalPart;
-            input.value = formattedValue;
-            let newLength = formattedValue.length;
-            let newCursorPosition = cursorPosition + (newLength - originalLength);
-            input.setSelectionRange(newCursorPosition, newCursorPosition);
-        }
-
-        // --- CALCULATION ENGINE ---
-        function calculateAndDisplay() {
-            if (typeof PROPERTY_RATES === 'undefined') {
-                resultsSection.classList.remove('hidden');
-                document.getElementById('total-premium').textContent = 'Error';
-                document.getElementById('premium-breakdown').innerHTML = `<p class="text-red-500">Rate data is missing.</p>`;
-                return;
-            }
-
-            const policyType = policyTypeSelector.value;
-            if (!policyType) {
-                resultsSection.classList.add('hidden');
-                return;
-            }
-            resultsSection.classList.remove('hidden');
-
-            let buildingPremium = 0;
-            let contentsPremium = 0;
+        function calculateCommercialPremium() {
+            const buildingSumInsured = getFloatValue('comm-building-sum-insured');
+            const fireRate = PROPERTY_RATES.commercial.fire;
+            const basePremium = (buildingSumInsured / 1000) * fireRate;
+            const taxAmount = basePremium * PROPERTY_RATES.tax.ipt;
+            
             let breakdownHTML = '';
-            let basePremium = 0;
-            let taxAmount = 0;
-            let totalPremium = 0;
-            
-            if (policyType === 'homeowners') {
-                const clientAge = getFloatValue('home-client-age');
-                const buildingSumInsured = getFloatValue('home-building-sum-insured');
-                const contentsSumInsured = getFloatValue('home-contents-sum-insured');
-                
-                let buildingRate, contentsRate;
-                let buildingPremiumLabel = "Building Premium";
-                let contentsPremiumLabel = "Contents Premium";
-
-                if (homeAdvancedCheck.checked) {
-                    buildingRate = getFloatValue('home-override-building-rate');
-                    contentsRate = getFloatValue('home-override-contents-rate');
-                    buildingPremiumLabel += " (Manual Rate)";
-                    contentsPremiumLabel += " (Manual Rate)";
-                } else {
-                    const planType = document.getElementById('home-plan-type').value;
-                    buildingRate = PROPERTY_RATES.homeowners.building[planType];
-                    contentsRate = PROPERTY_RATES.homeowners.contents;
-                }
-                
-                buildingPremium = (buildingSumInsured / 1000) * buildingRate;
-                contentsPremium = (contentsSumInsured / 1000) * contentsRate;
-
-                if (buildingPremium > 0) breakdownHTML += `<p>${buildingPremiumLabel}: <strong class="float-right">$${formatCurrency(buildingPremium)}</strong></p>`;
-                if (contentsPremium > 0) breakdownHTML += `<p>${contentsPremiumLabel}: <strong class="float-right">$${formatCurrency(contentsPremium)}</strong></p>`;
-
-                basePremium = buildingPremium + contentsPremium;
-                
-                const taxLabel = "Insurance Premium Tax (6%)";
-                let taxValue = "";
-                if (clientAge > 0 && clientAge >= 60) {
-                    taxAmount = 0;
-                    taxValue = `Exempt (Age &ge; 60)`;
-                } else {
-                    taxAmount = basePremium * PROPERTY_RATES.tax.ipt;
-                    taxValue = `$${formatCurrency(taxAmount)}`;
-                }
-                totalPremium = basePremium + taxAmount;
-
-                if (basePremium > 0) {
-                    breakdownHTML += `<p class="border-t border-[var(--border-color)] pt-2 mt-2">Base Premium: <strong class="float-right">$${formatCurrency(basePremium)}</strong></p>`;
-                    breakdownHTML += `<p>${taxLabel}: <strong class="float-right">${taxValue}</strong></p>`;
-                }
-
-            } else if (policyType === 'commercial') {
-                const buildingSumInsured = getFloatValue('comm-building-sum-insured');
-                let fireRate;
-                let commPremiumLabel = "Commercial Fire Premium";
-
-                if (commAdvancedCheck.checked) {
-                    fireRate = getFloatValue('comm-override-building-rate');
-                    commPremiumLabel += " (Manual Rate)";
-                } else {
-                    fireRate = PROPERTY_RATES.commercial.fire;
-                }
-                
-                buildingPremium = (buildingSumInsured / 1000) * fireRate;
-                if (buildingPremium > 0) breakdownHTML += `<p>${commPremiumLabel}: <strong class="float-right">$${formatCurrency(buildingPremium)}</strong></p>`;
-                
-                basePremium = buildingPremium;
-                taxAmount = basePremium * PROPERTY_RATES.tax.ipt;
-                totalPremium = basePremium + taxAmount;
-                
-                if (basePremium > 0) {
-                    breakdownHTML += `<p class="border-t border-[var(--border-color)] pt-2 mt-2">Base Premium: <strong class="float-right">$${formatCurrency(basePremium)}</strong></p>`;
-                    breakdownHTML += `<p>Insurance Premium Tax (6%): <strong class="float-right">$${formatCurrency(taxAmount)}</strong></p>`;
-                }
+             if (basePremium > 0) {
+                breakdownHTML += `<p>Commercial Fire Premium: <strong class="float-right">$${formatCurrency(basePremium)}</strong></p>`;
+                breakdownHTML += `<p class="border-t border-[var(--border-color)] pt-2 mt-2">Base Premium: <strong class="float-right">$${formatCurrency(basePremium)}</strong></p>`;
+                breakdownHTML += `<p>Insurance Premium Tax (6%): <strong class="float-right">$${formatCurrency(taxAmount)}</strong></p>`;
             }
             
-            document.getElementById('total-premium').textContent = `$${formatCurrency(totalPremium)}`;
-            document.getElementById('premium-breakdown').innerHTML = breakdownHTML;
+            return { basePremium, taxAmount, breakdownHTML, buildingSumInsured };
         }
 
-        // --- QUOTE & PDF LOGIC ---
-        function generateFinalQuote() {
-            const breakdownEl = document.getElementById('premium-breakdown');
-            const breakdownLines = Array.from(breakdownEl.children).map(p => {
-                const label = p.childNodes[0].nodeValue?.trim() || '';
-                const value = p.querySelector('strong')?.innerText || '';
-                return { label, value };
-            });
+        function calculateAndDisplayFindersFee(basePremium) {
+            const feeSection = getElement('finders-fee-section');
+            if (basePremium <= 0 || !currentUserData || currentUserData.waivesAllFees) { 
+                feeSection.classList.add('hidden');
+                lastCalculatedData.findersFee = 0;
+                return; 
+            }
+            
+            const commissionSplit = (currentUserData.commissionSplit || 50) / 100;
+            const commission = basePremium * 0.25; // 25% commission for Property
+            const tax = commission * 0.25;
+            const net = commission - tax;
+            const fee = net * commissionSplit;
+            
+            lastCalculatedData.findersFee = fee;
+            getElement('finders-fee-breakdown').innerHTML = `
+                <div class="breakdown-row"><span>Total Commission (25%)</span><span class="float-right font-semibold">${formatCurrency(commission)}</span></div>
+                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span class="float-right">-${formatCurrency(tax)}</span></div>
+                <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission</span><span class="float-right">${formatCurrency(net)}</span></div>
+                <div class="breakdown-row text-green-600 mt-2 font-bold"><span class="breakdown-label">Your Estimated Fee (${commissionSplit*100}%)</span><span class="float-right">${formatCurrency(fee)}</span></div>`;
+            feeSection.classList.remove('hidden');
+        }
 
-            const total = document.getElementById('total-premium').innerText;
+        // --- Firebase Referral Submission ---
+        async function submitReferral() {
+            const clientName = getElement('client-name').value;
+            const propertyAddress = getElement('property-address').value;
+            const errorEl = getElement('client-modal-error');
 
-            quoteDataForPdf = {
-                clientName: document.getElementById('client-name').value || 'Valued Client',
-                propertyAddress: document.getElementById('property-address').value || 'N/A',
-                policyType: policyTypeSelector.options[policyTypeSelector.selectedIndex].text,
-                date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
-                breakdown: breakdownLines,
-                total: total
+            if (!clientName || !propertyAddress) {
+                errorEl.textContent = "Please fill out all client and property fields."; return;
+            }
+            errorEl.textContent = "";
+
+            const submitBtn = getElement('submit-referral-btn');
+            submitBtn.innerHTML = '<span class="loader !w-6 !h-6 !border-white/50 !border-b-transparent"></span>';
+            submitBtn.disabled = true;
+
+            const feeWaived = getElement('waive-fee-checkbox').checked;
+            
+            const referralData = { 
+                ...lastCalculatedData, 
+                clientName, 
+                propertyAddress,
+                feeWaived,
+                findersFee: feeWaived ? 0 : lastCalculatedData.findersFee,
+                commissionSplitAtTimeOfReferral: currentUserData.commissionSplit || 50,
             };
 
-            const fullQuoteText = generateQuoteTextForDisplay(quoteDataForPdf);
-            quoteOutput.textContent = fullQuoteText;
-
-            clientInfoModal.style.display = 'none';
-            finalQuoteModal.style.display = 'flex';
+            try {
+                if (editMode) {
+                    await updateDoc(doc(db, "referrals", referralIdToEdit), { ...referralData, status: 'Resubmitted', lastUpdatedAt: Timestamp.now() });
+                } else {
+                    await addDoc(collection(db, "referrals"), { ...referralData, referrerId: currentUserData.uid, referrerName: currentUserData.name, status: 'Pending', createdAt: Timestamp.now() });
+                }
+                getElement('client-info-modal').style.display = 'none';
+                getElement('success-modal').style.display = 'flex';
+            } catch (error) {
+                console.error("Error submitting referral:", error);
+                errorEl.textContent = "Could not submit referral. Please try again.";
+            } finally {
+                submitBtn.innerHTML = editMode ? 'Update Referral' : 'Submit Referral';
+                submitBtn.disabled = false;
+            }
         }
 
-        function generateQuoteTextForDisplay(data) {
-            let text = `
-=========================================
-   OFFICIAL PROPERTY INSURANCE QUOTATION
-=========================================
-Date: ${data.date}
-
-CLIENT & PROPERTY:
-------------------
-Client Name:      ${data.clientName}
-Property Address: ${data.propertyAddress}
-Policy Type:      ${data.policyType}
-
-PREMIUM SUMMARY:
-------------------
-`;
-            data.breakdown.forEach(row => {
-                text += `${row.label.padEnd(30, ' ')} ${row.value}\n`;
-            });
-
-            text += `
------------------------------------------
-TOTAL ANNUAL PREMIUM: ${data.total.padStart(20, ' ')}
-=========================================
-
-This quotation is valid for 30 days.
-Terms and conditions apply.
-`;
-            return text.trim();
+        // --- UTILITY ---
+        function setupTheme() {
+            const themeToggle = getElement('themeToggleCheckbox');
+            const themeToggleLabel = getElement('themeToggleLabel');
+            function applyTheme(isDark) {
+                document.documentElement.classList.toggle('dark-mode', isDark);
+                document.body.classList.toggle('dark-mode', isDark);
+                if(themeToggleLabel) themeToggleLabel.textContent = isDark ? 'DARK' : 'LIGHT';
+                if(themeToggle) themeToggle.checked = isDark;
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            }
+            themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
+            const savedTheme = localStorage.getItem('theme');
+            applyTheme(savedTheme === 'dark' || (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches));
         }
-
-        function generateAndDownloadPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const textToPrint = generateQuoteTextForDisplay(quoteDataForPdf);
-
-            doc.setFont("courier", "normal");
-            doc.setFontSize(10);
-            doc.text(textToPrint, 10, 10);
-            doc.save(`Property_Quote_For_${quoteDataForPdf.clientName.replace(/\s/g, '_')}.pdf`);
-        }
-
-        function copyQuoteToClipboard() {
-            const textToCopy = quoteOutput.innerText;
-            navigator.clipboard.writeText(textToCopy).then(() => {
-                copyQuoteBtn.textContent = 'Copied!';
-                setTimeout(() => { copyQuoteBtn.textContent = 'Copy Quote'; }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
-            });
-        }
-        
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
-        handlePolicyTypeChange();
-    });
     </script>
 </body>
 </html>
