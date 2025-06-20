@@ -101,6 +101,16 @@
         
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(29, 45, 53, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(5px); }
         .modal-content { background-color: var(--bg-card); margin: auto; padding: 2rem; border: 1px solid var(--border-color); width: 90%; max-width: 480px; border-radius: 0.75rem; position: relative; }
+        
+        /* Toggle Switch for Fees */
+        .toggle-switch-container { display: flex; align-items: center; justify-content: space-between; }
+        .toggle-switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 28px; }
+        .toggle-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .toggle-slider { background-color: var(--primary-accent); }
+        input:disabled + .toggle-slider { background-color: #e9ecef; cursor: not-allowed; }
+        input:checked + .toggle-slider:before { transform: translateX(22px); }
     </style>
 </head>
 <body class="min-h-screen">
@@ -163,6 +173,21 @@
                                 <label for="form-role" class="block text-sm font-medium text-[var(--text-muted)]">Your Role</label>
                                 <input type="text" id="form-role" class="form-input mt-1" disabled>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- NEW: Fee & Payout Preferences -->
+                    <div>
+                        <h3 class="text-xl font-bold border-b pb-2 mb-4">Fee & Payout Preferences</h3>
+                        <div class="toggle-switch-container">
+                            <div>
+                                <label for="form-waive-fees" class="text-sm font-medium text-[var(--text-primary)]">Waive All Finder's Fees</label>
+                                <p class="text-xs text-[var(--text-muted)]">If enabled, you will not receive a finder's fee for any referrals.</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="form-waive-fees" disabled>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
                     </div>
 
@@ -289,6 +314,7 @@
             document.getElementById('form-contact').value = data.contactNumber || '';
             document.getElementById('form-company').value = data.companyName || '';
             document.getElementById('form-role').value = data.roleInCompany || '';
+            document.getElementById('form-waive-fees').checked = data.waivesAllFees || false;
             
             const bankInfo = data.bankingInfo || {};
             document.getElementById('form-bank-name').value = bankInfo.bankName || '';
@@ -351,7 +377,7 @@
         }
 
         // --- Form Edit/Save Flow ---
-        const allInputs = document.querySelectorAll('.form-input');
+        const allInputs = document.querySelectorAll('.form-input, #form-waive-fees');
         const editBtn = document.getElementById('edit-profile-btn');
         const saveBtn = document.getElementById('save-profile-btn');
         const cancelBtn = document.getElementById('cancel-edit-btn');
@@ -359,7 +385,6 @@
         function setFormEditable(isEditable) {
             allInputs.forEach(input => input.disabled = !isEditable);
             
-            // Special handling for account number masking
             document.getElementById('account-number-masked').classList.toggle('hidden', isEditable);
             document.getElementById('form-account-number').classList.toggle('hidden', !isEditable);
 
@@ -431,6 +456,7 @@
                 contactNumber: document.getElementById('form-contact').value,
                 companyName: document.getElementById('form-company').value,
                 roleInCompany: document.getElementById('form-role').value,
+                waivesAllFees: document.getElementById('form-waive-fees').checked,
                 bankingInfo: {
                     bankName: document.getElementById('form-bank-name').value,
                     accountHolderName: document.getElementById('form-account-holder').value,
