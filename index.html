@@ -181,14 +181,18 @@
 
         <!-- Main App View (Dashboard) -->
         <div id="app-view" class="hidden">
-             <header class="flex justify-between items-center mb-10 md:mb-14">
+             <header class="flex flex-wrap justify-between items-center mb-10 md:mb-14 gap-4">
                 <div>
-                    <h1 class="page-title text-3xl sm:text-4xl md:text-5xl">
+                    <h1 id="dashboard-title" class="page-title text-3xl sm:text-4xl md:text-5xl">
                         Referrer Dashboard
                     </h1>
                     <p id="user-greeting" class="text-[var(--text-secondary)] text-lg"></p>
                 </div>
-                <button id="logout-btn" class="button-base bg-red-600 hover:bg-red-700 text-white text-sm py-2 px-4">Logout</button>
+                <!-- **** NEW: Container for Admin Link and Logout Button **** -->
+                <div id="nav-buttons" class="flex items-center space-x-4">
+                    <div id="admin-link-container"></div>
+                    <button id="logout-btn" class="button-base bg-red-600 hover:bg-red-700 text-white text-sm py-2 px-4 !px-4 !py-2">Logout</button>
+                </div>
             </header>
 
             <main class="space-y-12">
@@ -271,6 +275,7 @@
         import { 
             getFirestore, 
             doc, 
+            getDoc,
             setDoc,
             collection,
             query,
@@ -305,6 +310,7 @@
         const userGreeting = document.getElementById('user-greeting');
         const monthlyFindersFeeTotal = document.getElementById('monthly-finders-fee-total');
         const referralsTableBody = document.getElementById('referrals-table-body');
+        const adminLinkContainer = document.getElementById('admin-link-container');
         document.getElementById('currentYear').textContent = new Date().getFullYear();
 
         // --- AUTHENTICATION LOGIC ---
@@ -362,21 +368,38 @@
             signOut(auth);
         });
 
-        onAuthStateChanged(auth, user => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 authView.classList.add('hidden');
                 appView.classList.remove('hidden');
-                setupDashboard(user);
+                await setupDashboard(user);
             } else {
                 appView.classList.add('hidden');
                 authView.classList.remove('hidden');
+                adminLinkContainer.innerHTML = ''; // Clear admin link on logout
             }
         });
 
         // --- DASHBOARD LOGIC ---
-        function setupDashboard(user) {
+        async function setupDashboard(user) {
             userGreeting.textContent = `Hello, ${user.displayName || user.email}!`;
             loadReferrals(user.uid);
+
+            // **** NEW: Check for admin role and display link ****
+            const userDocRef = doc(db, "users", user.uid);
+            try {
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists() && userDoc.data().role === 'admin') {
+                    document.getElementById('dashboard-title').textContent = "Admin / Referrer Dashboard";
+                    adminLinkContainer.innerHTML = `<a href="./admin.html" class="button-base !px-4 !py-2 bg-[var(--secondary-accent)] text-white">Admin Panel</a>`;
+                } else {
+                     adminLinkContainer.innerHTML = '';
+                     document.getElementById('dashboard-title').textContent = "Referrer Dashboard";
+                }
+            } catch (error) {
+                console.error("Error checking user role:", error);
+                adminLinkContainer.innerHTML = '';
+            }
         }
 
         function loadReferrals(userId) {
