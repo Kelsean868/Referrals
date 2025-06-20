@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TATIL COVERCARE Premium Rater</title>
+    <title>TATIL COVERCARE Premium Rater & Referral Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -18,33 +19,72 @@
             --primary-accent: #005f73; 
             --primary-accent-darker: #003d4d;
             --secondary-accent: #ae8625; 
+            --secondary-accent-darker: #8c6c1d;
+            --shadow-soft: 0 3px 6px rgba(0,0,0,0.04);
+            --shadow-medium: 0 5px 15px rgba(0,0,0,0.06);
+            --shadow-strong: 0 8px 25px rgba(0,0,0,0.08);
+            --font-body: 'Montserrat', sans-serif;
+            --font-heading: 'Source Serif Pro', serif; 
         }
+
+        .dark-mode {
+            --bg-main: #1f2937; 
+            --bg-bento-box: #2b3c4d; 
+            --text-primary: #f0f4f8; 
+            --text-secondary: #d1d5db; 
+            --text-muted: #9ca3af;    
+            --border-color: #4b5f71; 
+            --primary-accent: #25a1af; 
+            --primary-accent-darker: #1e838f;
+            --secondary-accent: #daa520; 
+            --secondary-accent-darker: #b8860b;
+        }
+
         body {
             font-family: var(--font-body);
             background-color: var(--bg-main);
             color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
+        
         h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--primary-accent); }
         .bento-box {
             background-color: var(--bg-bento-box);
             border-radius: 0.75rem; 
             padding: 1.75rem; 
+            box-shadow: var(--shadow-medium);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
             border: 1px solid var(--border-color);
         }
+        .bento-box:hover { transform: translateY(-5px); box-shadow: var(--shadow-strong); }
+
         input, select {
             border: 1px solid var(--border-color); padding: 0.85rem 1.15rem; border-radius: 0.375rem; 
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, color 0.3s ease;
             background-color: var(--bg-main); color: var(--text-primary);
             font-weight: 500;
         }
         input:focus, select:focus {
             border-color: var(--primary-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 25%, transparent); 
-            outline: none;
+            outline: none; background-color: var(--bg-bento-box);
         }
+        
         .button-base {
             font-weight: 600; padding-top: 0.85rem; padding-bottom: 0.85rem; border-radius: 0.375rem;
-            text-transform: uppercase; letter-spacing: 0.025em; cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+            box-shadow: var(--shadow-soft); text-transform: uppercase; letter-spacing: 0.025em;
+            cursor: pointer;
         }
+        .button-base:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
+        
         .primary-btn { background-color: var(--primary-accent); color: white; }
+        .primary-btn:hover { background-color: var(--primary-accent-darker); }
+        .dark-mode .primary-btn { color: var(--bg-bento-box); }
+
+        .secondary-btn { background-color: var(--secondary-accent); color: white; }
+        .secondary-btn:hover { background-color: var(--secondary-accent-darker); }
+        
+        /* Modal */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(29, 45, 53, 0.7);
@@ -54,7 +94,25 @@
         .modal-content {
             background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color);
             width: 90%; max-width: 560px; border-radius: 0.75rem; position: relative;
+            box-shadow: var(--shadow-strong);
         }
+        
+        /* Toggle Switch */
+        .theme-switch-wrapper { display: flex; align-items: center; background-color: var(--bg-bento-box); padding: 0.5rem 0.75rem; border-radius: 999px; box-shadow: var(--shadow-medium); border: 1px solid var(--border-color); }
+        .theme-switch { position: relative; display: inline-block; width: 40px; height: 20px; } 
+        .theme-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .dark-mode .slider { background-color: var(--primary-accent); }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider:before { transform: translateX(20px); } 
+
+        /* Floating WhatsApp Button */
+        .whatsapp-float {
+            position: fixed; width: 60px; height: 60px; bottom: 40px; right: 40px; background-color: #25d366; color: #FFF; border-radius: 50px;
+            text-align: center; font-size: 30px; box-shadow: 2px 2px 6px rgba(0,0,0,0.25); z-index: 100;
+            display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease;
+        }
+        .whatsapp-float:hover { transform: scale(1.1); }
         .breakdown-row { display: flex; justify-content: space-between; flex-wrap: wrap; }
         .loader {
             width: 48px; height: 48px; border: 5px solid var(--primary-accent);
@@ -68,18 +126,33 @@
 <body class="min-h-screen p-4 md:p-6 lg:p-8">
 
     <div class="fixed top-4 right-4 z-[101] flex items-center space-x-4">
-        <a href="./index.html" class="text-sm font-semibold text-[var(--primary-accent)] hover:underline">&larr; Back to Dashboard</a>
+        <a href="./index.html" class="text-sm font-semibold text-[var(--primary-accent)] hover:underline">&larr; Back to Hub</a>
+        <div class="theme-switch-wrapper">
+            <span class="mr-2 text-xs font-semibold" id="themeToggleLabel">LIGHT</span>
+            <label class="theme-switch" for="themeToggleCheckbox">
+                <input type="checkbox" id="themeToggleCheckbox" />
+                <div class="slider round"></div>
+            </label>
+        </div>
+    </div>
+
+    <div id="auth-loader" class="text-center p-20">
+        <div class="loader mx-auto"></div>
+        <p class="mt-4 text-[var(--text-secondary)]">Authenticating...</p>
     </div>
 
     <div id="health-rater-app" class="w-full max-w-6xl mx-auto my-8 hidden">
         <header class="mb-10 text-center">
-            <h1 class="text-4xl sm:text-5xl font-bold mb-3">Health Insurance Referral Rater</h1>
+            <h1 class="text-4xl sm:text-5xl font-bold mb-3">TATIL COVERCARE Premium Rater</h1>
+            <p class="text-xl text-[var(--text-secondary)]">Health Insurance Plans, Simplified.</p>
         </header>
 
-        <main class="grid grid-cols-1 lg:grid-cols-5 gap-8">
-            <div class="lg:col-span-3 space-y-8">
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Inputs -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Step 1: Plan Selection -->
                 <div class="bento-box">
-                    <h2 class="text-2xl font-bold mb-4"><i class="fas fa-users mr-3 text-[var(--secondary-accent)]"></i>Insured Details</h2>
+                    <h2 class="text-2xl font-bold mb-4"><i class="fas fa-users mr-3 text-[var(--secondary-accent)]"></i>Select Insured Details</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="family-status" class="block text-sm font-medium text-[var(--text-muted)]">Family Status</label>
@@ -95,8 +168,10 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Step 2: Plan Options -->
                 <div class="bento-box">
-                    <h2 class="text-2xl font-bold mb-4"><i class="fas fa-clipboard-list mr-3 text-[var(--secondary-accent)]"></i>Plan Options</h2>
+                    <h2 class="text-2xl font-bold mb-4"><i class="fas fa-clipboard-list mr-3 text-[var(--secondary-accent)]"></i>Select Plan Options</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="plan-type" class="block text-sm font-medium text-[var(--text-muted)]">Plan Type</label>
@@ -126,31 +201,51 @@
                 </div>
             </div>
             
-            <div class="lg:col-span-2">
+            <!-- Right Column: Results -->
+            <div class="lg:col-span-1 space-y-8">
                  <div id="results-section" class="bento-box sticky top-8 text-center">
                     <h2 class="text-2xl font-bold mb-2"><i class="fas fa-receipt mr-3 text-[var(--secondary-accent)]"></i>Premium Summary</h2>
                     <p id="total-premium" class="text-4xl font-bold text-[var(--primary-accent)] mt-4">$0.00</p>
-                    <p id="total-premium-label" class="text-sm text-[var(--text-muted)]">(Total Premium)</p>
+                    <p id="total-premium-label" class="text-sm text-[var(--text-muted)]">(Total Annual Premium)</p>
                     <div id="premium-breakdown" class="text-left mt-6 pt-4 border-t border-[var(--border-color)] text-[var(--text-secondary)] text-sm space-y-1"></div>
-                    
+                     <div id="frequency-comparison" class="text-left mt-6 pt-4 border-t border-[var(--border-color)] text-[var(--text-secondary)] text-sm space-y-2"></div>
                     <div id="finders-fee-section" class="text-left mt-6 pt-4 border-t-2 border-dashed border-[var(--secondary-accent)]">
                         <h3 class="text-lg font-bold text-[var(--primary-accent)] mb-2">Initial Finder's Fee</h3>
                         <div id="finders-fee-breakdown" class="text-[var(--text-secondary)] text-sm space-y-1"></div>
                     </div>
-                     
-                    <button id="create-referral-btn" class="mt-6 w-full primary-btn button-base py-3">
-                        Create Referral
-                    </button>
+                    <div class="mt-6 space-y-3">
+                        <button id="generate-quote-btn" class="w-full secondary-btn button-base py-3">
+                            Generate Official Quote
+                        </button>
+                        <button id="create-referral-btn" class="w-full primary-btn button-base py-3">
+                            Create Referral
+                        </button>
+                    </div>
                 </div>
             </div>
         </main>
+
+        <footer class="text-center mt-12 text-xs text-[var(--text-muted)]">
+            <p>&copy; <span id="currentYear"></span> TATIL. Your Future, Secured.</p>
+        </footer>
     </div>
 
-    <div id="auth-loader" class="text-center p-20">
-        <div class="loader mx-auto"></div>
-        <p class="mt-4 text-[var(--text-secondary)]">Authenticating...</p>
+    <!-- Final Quote Modal -->
+    <div id="final-quote-modal" class="modal-overlay hidden">
+        <div class="modal-content max-w-2xl">
+            <h3 class="text-xl font-bold leading-6 mb-4">Official COVERCARE Quotation</h3>
+            <div id="quote-output-container" class="w-full h-96 overflow-y-auto bg-[var(--bg-main)] p-4 border border-[var(--border-color)] rounded-md">
+                <pre id="quote-output" class="whitespace-pre-wrap text-sm font-mono"></pre>
+            </div>
+            <div class="mt-6 flex flex-wrap justify-end gap-3">
+                <button id="close-quote-modal-btn" type="button" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Close</button>
+                <button id="download-pdf-btn" type="button" class="button-base secondary-btn py-2 px-4">Download PDF</button>
+                <button id="copy-quote-btn" type="button" class="button-base primary-btn py-2 px-4">Copy Quote</button>
+            </div>
+        </div>
     </div>
-
+    
+    <!-- Client Info Modal for Referral -->
     <div id="client-info-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 class="text-xl font-bold leading-6 mb-4">Client Information for Referral</h3>
@@ -161,12 +256,13 @@
             </div>
             <p id="client-modal-error" class="text-red-500 text-sm text-center mt-4"></p>
             <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" id="close-client-modal-btn" class="button-base bg-gray-200 text-gray-700">Cancel</button>
-                <button type="button" id="submit-referral-btn" class="button-base primary-btn">Submit Referral</button>
+                <button type="button" id="close-client-modal-btn" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Cancel</button>
+                <button type="button" id="submit-referral-btn" class="button-base primary-btn py-2 px-4">Submit Referral</button>
             </div>
         </div>
     </div>
-
+    
+    <!-- Success Modal -->
     <div id="success-modal" class="modal-overlay hidden">
         <div class="modal-content text-center">
             <i class="fas fa-check-circle text-5xl text-green-500 mx-auto mb-4"></i>
@@ -178,12 +274,20 @@
         </div>
     </div>
     
+    <!-- WhatsApp Floating Button -->
+    <a href="https://wa.me/18687981014" class="whatsapp-float" target="_blank" rel="noopener noreferrer">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
+            <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.1-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943s-.182-.133-.38-.232z"/>
+        </svg>
+    </a>
+    
     <script src="health_rater_data.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- Firebase Configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyC5hOOzqCPieEpg5ajCBhsScroaB-c1kYg",
             authDomain: "insurance-referrer-hub.firebaseapp.com",
@@ -193,78 +297,123 @@
             appId: "1:1007719344655:web:6e5565f2f957300e8fd17a",
             measurementId: "G-T9W94R7QJF"
         };
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // --- Global State ---
         let currentUser = null;
         let lastCalculatedData = {};
+        let fullQuoteText = '';
 
-        onAuthStateChanged(auth, (user) => {
-            const appEl = document.getElementById('health-rater-app');
-            const loaderEl = document.getElementById('auth-loader');
-            if (user) {
-                currentUser = user;
-                appEl.classList.remove('hidden');
-                loaderEl.classList.add('hidden');
-                populateDropdowns();
-                calculateAndDisplay();
-            } else {
-                loaderEl.innerHTML = `
-                     <div class="text-center bento-box max-w-lg mx-auto">
-                        <h3 class="text-xl font-bold leading-6 mb-2">Authentication Error</h3>
-                        <p class="text-[var(--text-secondary)]">You must be logged in to use the rater.</p>
-                        <div class="mt-6">
-                            <a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a>
-                        </div>
-                    </div>
-                `;
-                appEl.classList.add('hidden');
-                loaderEl.classList.remove('hidden');
-            }
-        });
-        
+        // --- DOM ELEMENTS ---
+        const getElement = (id) => document.getElementById(id);
         const allInputs = document.querySelectorAll('select');
-        const createReferralBtn = document.getElementById('create-referral-btn');
-        const clientInfoModal = document.getElementById('client-info-modal');
-        const closeModalBtn = document.getElementById('close-client-modal-btn');
-        const submitReferralBtn = document.getElementById('submit-referral-btn');
-        const successModal = document.getElementById('success-modal');
-        const findersFeeBreakdownEl = document.getElementById('finders-fee-breakdown');
-        
-        allInputs.forEach(input => input.addEventListener('change', calculateAndDisplay));
 
-        createReferralBtn.addEventListener('click', () => {
-            if (lastCalculatedData.totalPremium > 0) {
-                 clientInfoModal.style.display = 'flex';
-            } else {
-                alert("Please calculate a premium first.");
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for rate data
+            if (typeof RATES === 'undefined') {
+                document.body.innerHTML = '<div class="text-red-500 text-center p-8">Error: Could not load rate data. Please ensure health_rater_data.js is present.</div>';
+                return;
             }
+
+            // Authentication Listener
+            onAuthStateChanged(auth, (user) => {
+                const appEl = getElement('health-rater-app');
+                const loaderEl = getElement('auth-loader');
+                if (user) {
+                    currentUser = user;
+                    appEl.classList.remove('hidden');
+                    loaderEl.classList.add('hidden');
+                    initializeRater();
+                } else {
+                    loaderEl.innerHTML = `
+                        <div class="text-center bento-box max-w-lg mx-auto">
+                           <h3 class="text-xl font-bold leading-6 mb-2">Authentication Error</h3>
+                           <p class="text-[var(--text-secondary)]">You must be logged in to use the rater.</p>
+                           <div class="mt-6">
+                               <a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a>
+                           </div>
+                       </div>`;
+                    appEl.classList.add('hidden');
+                    loaderEl.classList.remove('hidden');
+                }
+            });
+
+            // Theme Toggle
+            const themeToggle = getElement('themeToggleCheckbox');
+            const themeToggleLabel = getElement('themeToggleLabel');
+            function applyTheme(isDark) {
+                document.documentElement.classList.toggle('dark-mode', isDark);
+                document.body.classList.toggle('dark-mode', isDark);
+                if(themeToggleLabel) themeToggleLabel.textContent = isDark ? 'DARK' : 'LIGHT';
+                if(themeToggle) themeToggle.checked = isDark;
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            }
+            themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
+            const savedTheme = localStorage.getItem('theme');
+            applyTheme(savedTheme === 'dark' || (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches));
+
+            // Set current year in footer
+            getElement('currentYear').textContent = new Date().getFullYear();
         });
+        
+        function initializeRater() {
+            populateDropdowns();
+            setupEventListeners();
+            calculateAndDisplay();
+        }
 
-        closeModalBtn.addEventListener('click', () => clientInfoModal.style.display = 'none');
-        submitReferralBtn.addEventListener('click', submitReferral);
-
+        // --- DROPDOWN POPULATION ---
         function populateDropdowns() {
             const options = {
                 'family-status': {'Single Male': 'single_male', 'Single Female': 'single_female', 'Husband & Wife': 'husband_wife'},
                 'age-band': {'Under 40': 'under_40', '40-49': '40_49', '50-59': '50_59', '60-65': '60_65', '66-67': '66_67', '68-70': '68_70'},
                 'children-count': {'0 Children': '0', '1 Child': '1', '2 or More': '2+'},
-                'plan-type': {'Base Plan + Major Medical': 'base_and_mm', 'Base Plan Only': 'base_only', 'Major Medical Only': 'mm_only'},
+                'plan-type': {'Base Plan + Major Medical': 'base_and_mm', 'COVERCARE Base Plan Only': 'base_only', 'Major Medical Only': 'mm_only'},
                 'payment-frequency': {'Annual': 'annual', 'Semi-Annual': 'semi', 'Quarterly': 'quarterly'},
                 'dental-vision': {'No': 'no', 'Yes': 'yes'},
                 'maternity': {'No': 'no', 'Yes': 'yes'},
                 'major-medical-amount': {'$50,000': '50000', '$100,000': '100000', '$200,000': '200000', '$300,000': '300000', '$500,000': '500000'}
             };
             for(const id in options) {
-                const select = document.getElementById(id);
+                const select = getElement(id);
                 select.innerHTML = Object.entries(options[id]).map(([text, value]) => `<option value="${value}">${text}</option>`).join('');
             }
         }
-
-        function getElement(id) { return document.getElementById(id); }
         
+        // --- EVENT LISTENERS ---
+        function setupEventListeners() {
+            allInputs.forEach(input => input.addEventListener('change', calculateAndDisplay));
+
+            // Quote Modal Buttons
+            getElement('generate-quote-btn').addEventListener('click', () => {
+                generateFinalQuoteText();
+                getElement('final-quote-modal').style.display = 'flex';
+            });
+            getElement('close-quote-modal-btn').addEventListener('click', () => getElement('final-quote-modal').style.display = 'none');
+            getElement('copy-quote-btn').addEventListener('click', () => {
+                navigator.clipboard.writeText(getElement('quote-output').innerText).then(() => {
+                    getElement('copy-quote-btn').textContent = 'Copied!';
+                    setTimeout(() => { getElement('copy-quote-btn').textContent = 'Copy Quote'; }, 2000);
+                });
+            });
+            getElement('download-pdf-btn').addEventListener('click', generateAndDownloadPDF);
+
+            // Referral Modal Buttons
+            getElement('create-referral-btn').addEventListener('click', () => {
+                if (lastCalculatedData.totalPremium > 0) {
+                     getElement('client-info-modal').style.display = 'flex';
+                } else {
+                    alert("Please calculate a premium first."); // Consider replacing with a styled modal
+                }
+            });
+            getElement('close-client-modal-btn').addEventListener('click', () => getElement('client-info-modal').style.display = 'none');
+            getElement('submit-referral-btn').addEventListener('click', submitReferral);
+        }
+
+        // --- UI & HELPER FUNCTIONS ---
         function formatCurrency(value) {
             if (typeof value !== 'number' || isNaN(value)) { return 'N/A'; }
             return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -291,11 +440,8 @@
             }
         }
 
+        // --- CALCULATION ENGINE ---
         function calculateAndDisplay() {
-            if(typeof RATES === 'undefined') {
-                document.body.innerHTML = 'Error: Rate data not found.';
-                return;
-            }
             handleUIChanges();
 
             const planType = getElement('plan-type').value;
@@ -307,37 +453,77 @@
             const mmAmount = getElement('major-medical-amount').value;
             const frequency = getElement('payment-frequency').value;
 
+            // 1. Get Rate Sets
             let baseRateSet = {annual:0, semi:0, quarterly:0};
             if (planType !== 'mm_only') {
-                let baseRateKey = familyStatus + ((familyStatus === 'single_female' || familyStatus === 'husband_wife') ? ((maternity === 'yes' && !getElement('maternity').disabled) ? '_with_maternity' : '_no_maternity') : '');
-                baseRateSet = (withDV ? RATES.base.with_dv : RATES.base.standard)[baseRateKey]?.[ageBand]?.[childrenCount] || baseRateSet;
+                let baseRateKey = familyStatus;
+                if (familyStatus === 'single_female' || familyStatus === 'husband_wife') {
+                    baseRateKey += (maternity === 'yes' && !getElement('maternity').disabled) ? '_with_maternity' : '_no_maternity';
+                }
+                const baseRateTable = withDV ? RATES.base.with_dv : RATES.base.standard;
+                baseRateSet = baseRateTable[baseRateKey]?.[ageBand]?.[childrenCount] || baseRateSet;
             }
 
             let mmRateSet = {annual:0, semi:0, quarterly:0};
             if (planType !== 'base_only') {
-                let mmRateKey = familyStatus.startsWith('single_female') ? 'single_female' : familyStatus;
-                mmRateSet = RATES.major_medical[mmAmount]?.[mmRateKey]?.[ageBand]?.[childrenCount === '0' ? '0' : '1+'] || mmRateSet;
+                let mmRateKey = familyStatus;
+                if (familyStatus.startsWith('single_female')) mmRateKey = 'single_female';
+                const mmChildrenKey = (childrenCount === '0') ? '0' : '1+';
+                mmRateSet = RATES.major_medical[mmAmount]?.[mmRateKey]?.[ageBand]?.[mmChildrenKey] || mmRateSet;
             }
 
+            // 2. Calculate Premiums for Selected Frequency
             const basePremium = baseRateSet[frequency] || 0;
             const mmPremium = mmRateSet[frequency] || 0;
-            const totalPremium = basePremium + mmPremium; // This is the premium for the selected frequency
-            
+            const totalPremium = basePremium + mmPremium;
+
+            // 3. Display Main Results
             getElement('total-premium').textContent = formatCurrency(totalPremium);
-            getElement('total-premium-label').textContent = `(Total ${frequency.charAt(0).toUpperCase() + frequency.slice(1)} Premium)`;
+            const frequencyLabel = frequency.charAt(0).toUpperCase() + frequency.slice(1);
+            getElement('total-premium-label').textContent = `(Total ${frequencyLabel} Premium)`;
             
-            let breakdownHTML = ``;
-            if (planType !== 'mm_only') breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(basePremium)}</strong></p>`;
-            if (planType !== 'base_only') breakdownHTML += `<p class="breakdown-row"><span>Major Medical:</span> <strong>${formatCurrency(mmPremium)}</strong></p>`;
-            breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t border-[var(--border-color)] pt-2 mt-2"><span>Total Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
+            let breakdownHTML = '';
+            if (planType !== 'mm_only') {
+                breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(basePremium)}</strong></p>`;
+            }
+            if (planType !== 'base_only') {
+                breakdownHTML += `<p class="breakdown-row"><span>Major Medical:</span> <strong>${formatCurrency(mmPremium)}</strong></p>`;
+            }
+            breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t border-[var(--border-color)] pt-2 mt-2"><span>Total ${frequencyLabel} Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
             getElement('premium-breakdown').innerHTML = breakdownHTML;
             
+            // 4. Display Frequency Comparison
+            let comparisonHTML = `<h4 class="font-bold text-md text-[var(--text-primary)]">Payment Options</h4>`;
+            comparisonHTML += `<table class="w-full mt-2 text-xs"><thead><tr class="text-left"><th class="font-semibold pb-1">Frequency</th><th class="font-semibold pb-1 text-right">Premium</th><th class="font-semibold pb-1 text-right">Saving vs. Annual</th></tr></thead><tbody>`;
+            const annualTotal = (baseRateSet.annual || 0) + (mmRateSet.annual || 0);
+
+            ['annual', 'semi', 'quarterly'].forEach(freq => {
+                const freqPremium = (baseRateSet[freq] || 0) + (mmRateSet[freq] || 0);
+                const multiplier = { annual: 1, semi: 2, quarterly: 4}[freq];
+                const effectiveAnnualCost = freqPremium * multiplier;
+                const saving = annualTotal - effectiveAnnualCost;
+                const isSelected = freq === frequency ? 'font-bold text-[var(--primary-accent)]' : '';
+                
+                comparisonHTML += `<tr class="${isSelected}">
+                    <td>${freq.charAt(0).toUpperCase() + freq.slice(1)}</td>
+                    <td class="text-right">${formatCurrency(freqPremium)}</td>
+                    <td class="text-right">${formatCurrency(saving)}</td>
+                </tr>`;
+            });
+            comparisonHTML += `</tbody></table>`;
+            getElement('frequency-comparison').innerHTML = comparisonHTML;
+
+            // 5. Calculate and Display Finder's Fee
+            calculateAndDisplayFindersFee(totalPremium, frequency);
+            
+            // 6. Store data for referral
             lastCalculatedData = {
                 insuranceType: 'Health',
                 totalPremium: totalPremium,
-                premiumBeforeTax: totalPremium // For health, the fee is based on the quoted premium frequency
+                premiumFrequency: frequency,
+                basePremium: basePremium,
+                mmPremium: mmPremium,
             };
-            calculateAndDisplayFindersFee(totalPremium, frequency);
         }
 
         function calculateAndDisplayFindersFee(premium, frequency) {
@@ -345,9 +531,10 @@
             const incomeTax = totalCommission * 0.25;
             const netCommission = totalCommission - incomeTax;
             const findersFee = netCommission * 0.50;
+            
             lastCalculatedData.findersFee = findersFee;
 
-            findersFeeBreakdownEl.innerHTML = `
+            getElement('finders-fee-breakdown').innerHTML = `
                 <div class="breakdown-row"><span>Premium for Fee Calc. (${frequency})</span><span class="font-semibold">${formatCurrency(premium)}</span></div>
                 <div class="breakdown-row mt-2"><span>Total Commission (25%)</span><span class="font-semibold">${formatCurrency(totalCommission)}</span></div>
                 <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span>-${formatCurrency(incomeTax)}</span></div>
@@ -355,34 +542,118 @@
                 <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (50%)</span><span class="font-bold">${formatCurrency(findersFee)}</span></div>
             `;
         }
+        
+        // --- QUOTE & PDF GENERATION ---
+        function generateFinalQuoteText() {
+            const planTypeText = getElement('plan-type').options[getElement('plan-type').selectedIndex].text;
+            const familyStatusText = getElement('family-status').options[getElement('family-status').selectedIndex].text;
+            const ageBandText = getElement('age-band').options[getElement('age-band').selectedIndex].text;
+            const childrenCountText = getElement('children-count').options[getElement('children-count').selectedIndex].text;
+            
+            let quoteDetails = `
+Plan Type:          ${planTypeText}
+Family Status:      ${familyStatusText}
+Age Band:           ${ageBandText}
+Number of Children: ${childrenCountText}
+`;
+            const planType = getElement('plan-type').value;
+            if (planType !== 'mm_only') {
+                const withDVText = getElement('dental-vision').value === 'yes' ? 'Yes' : 'No';
+                const maternityText = getElement('maternity').disabled ? 'N/A' : (getElement('maternity').value === 'yes' ? 'Yes' : 'No');
+                quoteDetails += `Dental & Vision:    ${withDVText}\nMaternity Included: ${maternityText}\n`;
+            }
+            if (planType !== 'base_only') {
+                 const mmAmountText = formatCurrency(parseInt(getElement('major-medical-amount').value));
+                 quoteDetails += `MM Coverage:        ${mmAmountText}\n`;
+            }
 
+            const breakdownText = getElement('premium-breakdown').innerText;
+            const comparisonText = getElement('frequency-comparison').innerText.replace('Payment Options', '\nPAYMENT OPTIONS:\n--------------');
+
+            fullQuoteText = `
+=========================================
+    OFFICIAL COVERCARE INSURANCE QUOTATION
+=========================================
+Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+
+CLIENT & PLAN DETAILS:
+----------------------
+${quoteDetails.trim()}
+
+PREMIUM SUMMARY:
+-----------------
+${breakdownText}
+
+${comparisonText}
+=========================================
+
+This quotation is valid for 30 days.
+Terms and conditions apply.
+`;
+            getElement('quote-output').textContent = fullQuoteText.trim();
+        }
+
+        function generateAndDownloadPDF() {
+            const clientName = prompt("Enter Client's Name for PDF:", "Valued Client");
+            if(clientName === null) return; // User cancelled
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            generateFinalQuoteText();
+
+            doc.setFont("courier", "normal");
+            doc.setFontSize(10);
+            doc.text(fullQuoteText.trim(), 10, 20);
+            doc.save(`COVERCARE_Quote_for_${clientName.replace(/\s/g, '_')}.pdf`);
+        }
+
+        // --- FIREBASE REFERRAL SUBMISSION ---
         async function submitReferral() {
-            const clientName = document.getElementById('client-name').value;
-            const clientEmail = document.getElementById('client-email').value;
-            const clientContact = document.getElementById('client-contact').value;
+            const clientName = getElement('client-name').value;
+            const clientEmail = getElement('client-email').value;
+            const clientContact = getElement('client-contact').value;
+            const errorEl = getElement('client-modal-error');
             if (!clientName || !clientEmail || !clientContact) {
-                document.getElementById('client-modal-error').textContent = "Please fill out all client fields.";
+                errorEl.textContent = "Please fill out all client fields.";
                 return;
             }
-            submitReferralBtn.innerHTML = '<span class="loader !w-6 !h-6"></span>';
-            submitReferralBtn.disabled = true;
+            errorEl.textContent = "";
+
+            const submitBtn = getElement('submit-referral-btn');
+            submitBtn.innerHTML = '<span class="loader !w-6 !h-6 !border-white/50 !border-b-transparent"></span>';
+            submitBtn.disabled = true;
+
+            const selectedOptions = {
+                planType: getElement('plan-type').options[getElement('plan-type').selectedIndex].text,
+                familyStatus: getElement('family-status').options[getElement('family-status').selectedIndex].text,
+                ageBand: getElement('age-band').options[getElement('age-band').selectedIndex].text,
+                childrenCount: getElement('children-count').options[getElement('children-count').selectedIndex].text,
+                dentalVision: getElement('dental-vision').value === 'yes' ? 'Yes' : 'No',
+                maternity: getElement('maternity').disabled ? 'N/A' : (getElement('maternity').value === 'yes' ? 'Yes' : 'No'),
+                mmAmount: formatCurrency(parseInt(getElement('major-medical-amount').value)),
+            };
 
             try {
                 await addDoc(collection(db, "referrals"), {
                     ...lastCalculatedData,
+                    ...selectedOptions,
                     referrerId: currentUser.uid,
-                    referrerName: currentUser.displayName,
-                    clientName, clientEmail, clientContact,
+                    referrerName: currentUser.displayName || 'N/A',
+                    clientName, 
+                    clientEmail, 
+                    clientContact,
                     status: 'Pending',
                     createdAt: Timestamp.now()
                 });
-                clientInfoModal.style.display = 'none';
-                successModal.style.display = 'flex';
+                getElement('client-info-modal').style.display = 'none';
+                getElement('success-modal').style.display = 'flex';
             } catch (error) {
-                document.getElementById('client-modal-error').textContent = "Could not submit referral.";
+                console.error("Error submitting referral: ", error);
+                errorEl.textContent = "Could not submit referral. Please try again.";
             } finally {
-                submitReferralBtn.innerHTML = 'Submit Referral';
-                submitReferralBtn.disabled = false;
+                submitBtn.innerHTML = 'Submit Referral';
+                submitBtn.disabled = false;
             }
         }
     </script>
