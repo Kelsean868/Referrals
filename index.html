@@ -611,21 +611,29 @@
             
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-            const thisMonthReferrals = referrals.filter(r => r.createdAt.toDate() >= startOfMonth);
+            const wonThisMonth = referrals.filter(r => {
+                const wonDate = r.wonAt ? r.wonAt.toDate() : null;
+                return (r.status === 'Won' || r.status === 'Paid') && !r.feeWaived && wonDate && wonDate >= startOfMonth && wonDate <= endOfMonth;
+            });
+            
+            const submittedThisMonth = referrals.filter(r => {
+                const createdAt = r.createdAt.toDate();
+                return createdAt >= startOfMonth && createdAt <= endOfMonth;
+            });
 
-            const potentialFees = thisMonthReferrals
+            const potentialFees = submittedThisMonth
                 .filter(r => !r.feeWaived)
                 .reduce((sum, r) => sum + (r.findersFee || 0), 0);
 
-            const wonFees = thisMonthReferrals
-                .filter(r => (r.status === 'Won' || r.status === 'Paid') && !r.feeWaived)
+            const wonFees = wonThisMonth
                 .reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee || 0), 0);
             
             const pendingOrLostFees = Math.max(0, potentialFees - wonFees);
 
             const data = {
-                labels: ['Won Fees', 'Pending/Lost Fees'],
+                labels: ['Won Fees This Month', 'Other Submitted Fees This Month'],
                 datasets: [{
                     data: [wonFees, pendingOrLostFees],
                     backgroundColor: ['#16a34a', '#d1d5db'],
