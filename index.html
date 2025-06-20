@@ -761,29 +761,28 @@
             
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-            const wonThisMonth = referrals.filter(r => {
-                const wonDate = r.wonAt ? r.wonAt.toDate() : null;
-                return (r.status === 'Won' || r.status === 'Paid') && !r.feeWaived && wonDate && wonDate >= startOfMonth && wonDate <= endOfMonth;
-            });
-            
+            // Base the chart on referrals *submitted* this month for consistency.
             const submittedThisMonth = referrals.filter(r => {
                 const createdAt = r.createdAt.toDate();
-                return createdAt >= startOfMonth && createdAt <= endOfMonth;
+                return createdAt >= startOfMonth;
             });
 
+            // From this month's submissions, find the total potential fees.
             const potentialFees = submittedThisMonth
                 .filter(r => !r.feeWaived)
                 .reduce((sum, r) => sum + (r.findersFee || 0), 0);
 
-            const wonFees = wonThisMonth
+            // From this month's submissions, find the fees that have been won.
+            const wonFees = submittedThisMonth
+                .filter(r => (r.status === 'Won' || r.status === 'Paid') && !r.feeWaived)
                 .reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee || 0), 0);
             
+            // The remainder represents pending or lost fees from this month's submissions.
             const pendingOrLostFees = Math.max(0, potentialFees - wonFees);
 
             const data = {
-                labels: ['Won Fees This Month', 'Other Submitted Fees This Month'],
+                labels: ['Won Fees From This Month\'s Submissions', 'Other Fees From This Month\'s Submissions'],
                 datasets: [{
                     data: [wonFees, pendingOrLostFees],
                     backgroundColor: ['#16a34a', '#d1d5db'],
