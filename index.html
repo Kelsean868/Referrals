@@ -422,7 +422,13 @@
         
         let userReferrals = [];
         let performanceChart = null;
-        let commissionTiers = [];
+        
+        // Hardcoded tier settings to prevent permission errors for non-admins
+        const commissionTiers = [
+            { name: "Bronze", minReferrals: 0, split: 50, bonusPercentage: 0 },
+            { name: "Silver", minReferrals: 10, split: 70, bonusPercentage: 0 },
+            { name: "Gold", minReferrals: 20, split: 95, bonusPercentage: 25 }
+        ];
 
         const authLoader = document.getElementById('auth-loader');
         const authView = document.getElementById('auth-view');
@@ -493,11 +499,7 @@
         async function setupDashboard(user) {
             userGreeting.textContent = `Hello, ${user.displayName || user.email}!`;
             
-            const settingsDoc = await getDoc(doc(db, "settings", "commissionTiers"));
-            if (settingsDoc.exists()) {
-                commissionTiers = settingsDoc.data().tiers.sort((a,b) => a.minReferrals - b.minReferrals);
-            }
-            
+            // Listen for user-specific data
             onSnapshot(doc(db, "users", user.uid), (userDoc) => {
                 const userData = userDoc.data();
                 if (userData.role === 'admin') {
@@ -523,10 +525,18 @@
                 updatePerformanceChart(userReferrals);
             });
             
-            onSnapshot(collection(db, "payments"), (snapshot) => {
-                const allPayments = snapshot.docs.map(p => p.data());
-                displayPaymentHistory(allPayments, userId);
-            });
+            try {
+                onSnapshot(collection(db, "payments"), (snapshot) => {
+                    const allPayments = snapshot.docs.map(p => p.data());
+                    displayPaymentHistory(allPayments, userId);
+                }, (error) => {
+                     console.error("Could not load payment history due to permissions:", error.message);
+                     paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Could not load payment history.</td></tr>`;
+                });
+            } catch (error) {
+                 console.error("Error setting up payment listener:", error);
+                 paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Error loading payment history.</td></tr>`;
+            }
         }
         
         function displayTierProgress(userData) {
