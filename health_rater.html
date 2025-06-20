@@ -336,11 +336,6 @@
             if (urlParams.has('edit')) {
                 editMode = true;
                 referralIdToEdit = urlParams.get('edit');
-                getElement('main-header').textContent = "Edit Health Referral";
-                getElement('proceed-to-quote-btn').textContent = "Update Referral & Quote";
-                getElement('modal-header').textContent = "Update Referral & Official Quotation";
-                getElement('submit-referral-btn').textContent = "Update Referral";
-                getElement('success-header').textContent = "Referral Updated!";
             }
 
             onAuthStateChanged(auth, async (user) => {
@@ -364,13 +359,18 @@
                 }
             });
 
-            const themeToggle = getElement('themeToggleCheckbox');
-            themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
-            applyTheme(localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches));
+            setupTheme();
             getElement('currentYear').textContent = new Date().getFullYear();
         });
         
         function initializeRater() {
+            if(editMode){
+                getElement('main-header').textContent = "Edit Health Referral";
+                getElement('proceed-to-quote-btn').textContent = "Update Referral & Quote";
+                getElement('modal-header').textContent = "Update Referral & Official Quotation";
+                getElement('submit-referral-btn').textContent = "Update Referral";
+                getElement('success-header').textContent = "Referral Updated!";
+            }
             populateDropdowns();
             setupEventListeners();
             calculateAndDisplay();
@@ -469,7 +469,6 @@
             document.querySelectorAll('#health-rater-app select').forEach(input => input.addEventListener('change', calculateAndDisplay));
             getElement('proceed-to-quote-btn').addEventListener('click', () => {
                 if (lastCalculatedData.totalPremium > 0) {
-                    // Set waiver checkbox based on user's profile default
                     getElement('waive-fee-checkbox').checked = currentUserData.waivesAllFees || false;
                     generateFinalQuoteText();
                     getElement('quote-referral-modal').style.display = 'flex';
@@ -487,7 +486,21 @@
         }
 
         // --- UI & HELPER FUNCTIONS ---
-        function applyTheme(isDark) { document.documentElement.classList.toggle('dark-mode', isDark); document.body.classList.toggle('dark-mode', isDark); getElement('themeToggleLabel').textContent = isDark ? 'DARK' : 'LIGHT'; getElement('themeToggleCheckbox').checked = isDark; localStorage.setItem('theme', isDark ? 'dark' : 'light'); }
+        function setupTheme() {
+            const themeToggle = getElement('themeToggleCheckbox');
+            const themeToggleLabel = getElement('themeToggleLabel');
+            function applyTheme(isDark) {
+                document.documentElement.classList.toggle('dark-mode', isDark);
+                document.body.classList.toggle('dark-mode', isDark);
+                if(themeToggleLabel) themeToggleLabel.textContent = isDark ? 'DARK' : 'LIGHT';
+                if(themeToggle) themeToggle.checked = isDark;
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            }
+            themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
+            const savedTheme = localStorage.getItem('theme');
+            applyTheme(savedTheme === 'dark' || (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches));
+        }
+
         function formatCurrency(value) { return (typeof value !== 'number' || isNaN(value)) ? 'N/A' : value.toLocaleString('en-US', { style: 'currency', currency: 'USD' }); }
         
         function handleUIChanges() {
@@ -664,6 +677,7 @@ Number of Children: ${getSelectedText('children-count')}
                 ...lastCalculatedData,
                 feeWaived: feeWaived,
                 findersFee: feeWaived ? 0 : lastCalculatedData.findersFee,
+                commissionSplitAtTimeOfReferral: currentUserData.commissionSplit || 50,
                 planType: selectedOptions.plan_type,
                 familyStatus: selectedOptions.family_status,
                 ageBand: selectedOptions.age_band,
