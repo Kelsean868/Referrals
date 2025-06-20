@@ -274,10 +274,10 @@
                 
                 <section>
                     <h2 class="text-2xl md:text-3xl font-bold text-center mb-8 text-[var(--primary-accent)]">Create a New Referral</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <div class="bento-box text-center">
                             <i class="fas fa-car-side text-5xl text-[var(--primary-accent)] mx-auto mb-4"></i>
-                            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Motor Insurance Rater</h3>
+                            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Motor Insurance</h3>
                             <p class="text-[var(--text-secondary)] text-sm mb-6 flex-grow">
                                 Get a premium estimate for a private or commercial vehicle.
                             </p>
@@ -285,11 +285,19 @@
                         </div>
                         <div class="bento-box text-center">
                             <i class="fas fa-heart-pulse text-5xl text-[var(--primary-accent)] mx-auto mb-4"></i>
-                            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">COVERCARE Health Rater</h3>
+                            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Health Insurance</h3>
                             <p class="text-[var(--text-secondary)] text-sm mb-6 flex-grow">
                                Calculate premiums for individual or family health plans.
                             </p>
                             <a href="./health_rater.html" class="main-action-button button-base mt-4">Open Health Rater</a>
+                        </div>
+                        <div class="bento-box text-center">
+                            <i class="fas fa-home text-5xl text-[var(--primary-accent)] mx-auto mb-4"></i>
+                            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Property Insurance</h3>
+                            <p class="text-[var(--text-secondary)] text-sm mb-6 flex-grow">
+                               Quote Homeowners and Commercial Property policies.
+                            </p>
+                            <a href="./property_rater.html" class="main-action-button button-base mt-4">Open Property Rater</a>
                         </div>
                     </div>
                 </section>
@@ -341,7 +349,7 @@
         <div class="modal-content">
             <div class="flex justify-between items-start mb-4">
                 <h3 class="text-2xl font-bold text-[var(--primary-accent)]">Referral Details</h3>
-                <button id="close-details-modal-btn" class="text-2xl text-[var(--text-muted)] hover:text-[var(--text-primary)]">&times;</button>
+                <button id="close-details-modal-btn" class="text-2xl text-[var(--text-muted)] hover:text-[var(--primary-accent)]">&times;</button>
             </div>
             <div id="details-modal-content" class="text-sm space-y-2 text-[var(--text-secondary)] max-h-[60vh] overflow-y-auto pr-2">
                 <!-- Details will be injected here -->
@@ -435,7 +443,7 @@
             if (logoutBtn) {
                  logoutBtn.addEventListener('click', () => {
                     signOut(auth).then(() => {
-                        window.location.href = './index.html';
+                        window.location.reload();
                     }).catch(error => console.error('Logout error:', error));
                 });
             }
