@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Insurance Referral Hub</title>
+    
+    <!-- PWA Manifest & Meta Tags -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#005f73">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Referral Hub Admin">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/005f73/FFFFFF?text=Hub">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet">
@@ -124,14 +133,12 @@
                 </div>
             </section>
             
-            <!-- NEW: Commission Tier Management -->
             <section>
                  <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold">Commission Tier Management</h2>
                     <button id="save-tiers-btn" class="button-base primary-btn">Save Tier Settings</button>
                 </div>
                 <div id="tier-settings-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Tiers will be dynamically inserted here -->
                 </div>
             </section>
 
@@ -175,7 +182,6 @@
                 </div>
             </section>
             
-             <!-- NEW: Bonus Payouts Section -->
              <section>
                 <h2 class="text-2xl font-bold mb-6">Bonus Payouts Owed</h2>
                  <div class="bento-box overflow-x-auto">
@@ -302,7 +308,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let allReferrers = []; // Cache for referrers
+        let allReferrers = []; 
         let commissionTiers = [];
         let performanceChart = null; 
 
@@ -379,7 +385,7 @@
             const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
             const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59);
             
-            payoutPeriodLabel.textContent = `For business won in ${lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
+            document.getElementById('payout-period-label').textContent = `For business won in ${lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
 
             const referralsToPay = referrals.filter(r => {
                 const wonDate = r.wonAt ? r.wonAt.toDate() : null;
@@ -876,17 +882,17 @@
         }
     </script>
     <script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(registration => {
-                    console.log('Service Worker registered with scope:', registration.scope);
-                })
-                .catch(err => {
-                    console.log('Service Worker registration failed:', err);
-                });
-        });
-    }
-</script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('Service Worker registration failed:', err);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
