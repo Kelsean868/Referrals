@@ -39,6 +39,7 @@
         }
         .primary-btn { background-color: var(--primary-accent); color: white; }
         .primary-btn:hover { background-color: #003d4d; }
+        .primary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         
         .status-select, .approved-premium-input, .modal-input, .modal-select, .commission-split-input {
             padding: 0.5rem;
@@ -54,8 +55,8 @@
             display: inline-block; box-sizing: border-box;
             animation: rotation 1s linear infinite;
         }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(29, 45, 53, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(5px); }
-        .modal-content { background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color); width: 90%; max-width: 560px; border-radius: 0.75rem; position: relative; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(29, 45, 53, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(5px); overflow-y: auto; }
+        .modal-content { background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color); width: 90%; max-width: 720px; border-radius: 0.75rem; position: relative; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* Style for resubmitted rows */
@@ -78,7 +79,8 @@
         </header>
 
         <main class="space-y-12">
-            <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Stats and Payout Sections remain the same -->
+             <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bento-box">
                     <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Pending Referrals</h2>
                     <p id="pending-referrals-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
@@ -92,8 +94,7 @@
                     <p id="total-referrers-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
                 </div>
             </section>
-
-             <section id="payout-section" class="bento-box">
+            <section id="payout-section" class="bento-box">
                 <div class="flex flex-wrap justify-between items-center gap-4">
                     <div>
                         <h2 class="text-xl font-bold">Process Payouts</h2>
@@ -105,7 +106,7 @@
                     </div>
                 </div>
             </section>
-            
+
             <section>
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold">All Referrals</h2>
@@ -127,7 +128,7 @@
                 </div>
             </section>
 
-            <!-- NEW: Referrer Management Section -->
+            <!-- Referrer Management Section -->
             <section>
                 <h2 class="text-2xl font-bold mb-6">Manage Referrers</h2>
                 <div class="bento-box overflow-x-auto">
@@ -137,6 +138,7 @@
                                 <th class="p-4 text-sm font-semibold">Referrer Name</th>
                                 <th class="p-4 text-sm font-semibold">Email</th>
                                 <th class="p-4 text-sm font-semibold text-right">Commission Split (%)</th>
+                                <th class="p-4 text-sm font-semibold text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="referrers-management-table-body"></tbody>
@@ -167,7 +169,7 @@
         <p class="mt-4 text-[var(--text-secondary)]">Verifying Admin Access...</p>
     </div>
     
-    <!-- Manual Entry Modal -->
+    <!-- Manual Entry Modal remains the same -->
     <div id="manual-entry-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 class="text-xl font-bold mb-4">Manually Add Won Referral</h3>
@@ -199,6 +201,42 @@
             </form>
         </div>
     </div>
+    
+    <!-- NEW: Admin Edit Profile Modal -->
+    <div id="admin-edit-profile-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+             <div class="flex justify-between items-start mb-6">
+                <h3 class="text-2xl font-bold">Edit Referrer Profile</h3>
+                <button id="close-edit-profile-modal-btn" class="text-2xl text-[var(--text-muted)] hover:text-[var(--text-primary)]">&times;</button>
+            </div>
+             <form id="admin-profile-form" class="space-y-6">
+                <input type="hidden" id="edit-user-id">
+                 <!-- Personal & Company Information -->
+                <div>
+                    <h4 class="text-lg font-bold border-b pb-2 mb-4">Personal & Company Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label for="admin-form-name" class="block text-sm font-medium text-[var(--text-muted)]">Full Name</label><input type="text" id="admin-form-name" class="modal-input mt-1" required></div>
+                        <div><label for="admin-form-contact" class="block text-sm font-medium text-[var(--text-muted)]">Contact Number</label><input type="tel" id="admin-form-contact" class="modal-input mt-1"></div>
+                        <div><label for="admin-form-company" class="block text-sm font-medium text-[var(--text-muted)]">Company Name</label><input type="text" id="admin-form-company" class="modal-input mt-1"></div>
+                        <div><label for="admin-form-role" class="block text-sm font-medium text-[var(--text-muted)]">Role</label><input type="text" id="admin-form-role" class="modal-input mt-1"></div>
+                    </div>
+                </div>
+                <!-- Banking Information -->
+                <div>
+                    <h4 class="text-lg font-bold border-b pb-2 mb-4">Banking Information</h4>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label for="admin-form-bank-name" class="block text-sm font-medium text-[var(--text-muted)]">Bank Name</label><input type="text" id="admin-form-bank-name" class="modal-input mt-1"></div>
+                        <div><label for="admin-form-account-holder" class="block text-sm font-medium text-[var(--text-muted)]">Account Holder Name</label><input type="text" id="admin-form-account-holder" class="modal-input mt-1"></div>
+                        <div class="md:col-span-2"><label for="admin-form-account-number" class="block text-sm font-medium text-[var(--text-muted)]">Account Number</label><input type="text" id="admin-form-account-number" class="modal-input mt-1"></div>
+                    </div>
+                </div>
+                <div class="text-right pt-4 border-t">
+                    <button type="submit" id="save-admin-profile-btn" class="button-base primary-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -268,7 +306,7 @@
         }
 
         function updateSummaryCards(referrals) {
-            document.getElementById('pending-referrals-count').textContent = referrals.filter(r => r.status === 'Pending').length;
+            document.getElementById('pending-referrals-count').textContent = referrals.filter(r => ['Pending', 'Resubmitted'].includes(r.status)).length;
             const totalOwed = referrals.filter(r => r.status === 'Won').reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
             document.getElementById('finders-fee-owed-total').textContent = formatCurrency(totalOwed);
         }
@@ -336,12 +374,14 @@
                     <td class="p-2 text-right">
                         <input type="number" class="commission-split-input w-24" data-id="${user.id}" value="${user.commissionSplit || 50}" min="0" max="100">
                     </td>
+                    <td class="p-4 text-center">
+                        <button class="button-base !py-1 !px-3 text-xs bg-[var(--secondary-accent)] text-white manage-profile-btn" data-id="${user.id}">Manage Profile</button>
+                    </td>
                 </tr>
             `).join('');
             
-            tableBody.querySelectorAll('.commission-split-input').forEach(el => {
-                el.addEventListener('change', handleCommissionSplitChange);
-            });
+            tableBody.querySelectorAll('.commission-split-input').forEach(el => el.addEventListener('change', handleCommissionSplitChange));
+            tableBody.querySelectorAll('.manage-profile-btn').forEach(el => el.addEventListener('click', handleManageProfileClick));
         }
 
         function displayPaymentHistory(payments) {
@@ -409,6 +449,64 @@
                 alert("Failed to update commission split.");
             }
         }
+        
+        // --- Admin Profile Management ---
+        function handleManageProfileClick(event) {
+            const userId = event.target.dataset.id;
+            const user = allReferrers.find(r => r.id === userId);
+            if (!user) return;
+            
+            document.getElementById('edit-user-id').value = userId;
+            document.getElementById('admin-form-name').value = user.name || '';
+            document.getElementById('admin-form-contact').value = user.contactNumber || '';
+            document.getElementById('admin-form-company').value = user.companyName || '';
+            document.getElementById('admin-form-role').value = user.roleInCompany || '';
+
+            if (user.bankingInfo) {
+                document.getElementById('admin-form-bank-name').value = user.bankingInfo.bankName || '';
+                document.getElementById('admin-form-account-holder').value = user.bankingInfo.accountHolderName || '';
+                document.getElementById('admin-form-account-number').value = user.bankingInfo.accountNumber || '';
+            }
+
+            document.getElementById('admin-edit-profile-modal').classList.remove('hidden');
+        }
+        
+        document.getElementById('close-edit-profile-modal-btn').addEventListener('click', () => {
+             document.getElementById('admin-edit-profile-modal').classList.add('hidden');
+        });
+
+        document.getElementById('admin-profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userId = document.getElementById('edit-user-id').value;
+            if (!userId) return;
+            
+            const dataToSave = {
+                name: document.getElementById('admin-form-name').value,
+                contactNumber: document.getElementById('admin-form-contact').value,
+                companyName: document.getElementById('admin-form-company').value,
+                roleInCompany: document.getElementById('admin-form-role').value,
+                bankingInfo: {
+                    bankName: document.getElementById('admin-form-bank-name').value,
+                    accountHolderName: document.getElementById('admin-form-account-holder').value,
+                    accountNumber: document.getElementById('admin-form-account-number').value,
+                }
+            };
+
+            const saveBtn = document.getElementById('save-admin-profile-btn');
+            saveBtn.disabled = true;
+
+            try {
+                const userDocRef = doc(db, "users", userId);
+                await updateDoc(userDocRef, dataToSave);
+                document.getElementById('admin-edit-profile-modal').classList.add('hidden');
+                alert('Profile updated successfully!');
+            } catch (error) {
+                console.error("Admin failed to update profile:", error);
+                alert('An error occurred. Please check console.');
+            } finally {
+                saveBtn.disabled = false;
+            }
+        });
 
 
         // --- Manual Entry ---
