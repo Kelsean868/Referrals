@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TATIL Motor Insurance Premium Rater</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-main: #f4f6f9; 
+            --bg-bento-box: #ffffff;
+            --text-primary: #1d2d35; 
+            --text-secondary: #4a5568; 
+            --text-muted: #718096;    
+            --border-color: #dce1e7; 
+            --primary-accent: #005f73; 
+            --primary-accent-darker: #003d4d;
+            --secondary-accent: #ae8625; 
+            --secondary-accent-darker: #8c6c1d;
+            --shadow-soft: 0 3px 6px rgba(0,0,0,0.04);
+            --shadow-medium: 0 5px 15px rgba(0,0,0,0.06);
+            --shadow-strong: 0 8px 25px rgba(0,0,0,0.08);
+            --font-body: 'Montserrat', sans-serif;
+            --font-heading: 'Source Serif Pro', serif; 
+        }
+
+        .dark-mode {
+            --bg-main: #1f2937; 
+            --bg-bento-box: #2b3c4d; 
+            --text-primary: #f0f4f8; 
+            --text-secondary: #d1d5db; 
+            --text-muted: #9ca3af;    
+            --border-color: #4b5f71; 
+            --primary-accent: #25a1af; 
+            --primary-accent-darker: #1e838f;
+            --secondary-accent: #daa520; 
+            --secondary-accent-darker: #b8860b;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--primary-accent); }
+        .bento-box {
+            background-color: var(--bg-bento-box);
+            border-radius: 0.75rem; 
+            padding: 1.75rem; 
+            box-shadow: var(--shadow-medium);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.25s ease;
+            border: 1px solid var(--border-color);
+        }
+        .bento-box:hover { transform: translateY(-5px); box-shadow: var(--shadow-strong); }
+
+        input, select {
+            border: 1px solid var(--border-color); padding: 0.85rem 1.15rem; border-radius: 0.375rem; 
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, color 0.3s ease;
+            background-color: var(--bg-main); color: var(--text-primary);
+            font-weight: 500;
+        }
+        input:focus, select:focus {
+            border-color: var(--primary-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 25%, transparent); 
+            outline: none; background-color: var(--bg-bento-box);
+        }
+        
+        .breakdown-row { display: flex; justify-content: space-between; flex-wrap: wrap; }
+        
+        .form-section { display: none; }
+        .form-section.active { display: block; }
+        
+        .button-base { font-weight: 600; padding-top: 0.85rem; padding-bottom: 0.85rem; border-radius: 0.375rem; transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease; box-shadow: var(--shadow-soft); text-transform: uppercase; letter-spacing: 0.025em; cursor: pointer; }
+        .button-base:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
+        .primary-btn { background-color: var(--primary-accent); color: white; }
+        .primary-btn:hover { background-color: var(--primary-accent-darker); }
+        .dark-mode .primary-btn { color: var(--bg-bento-box); }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(29, 45, 53, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(5px); }
+        .modal-content { background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color); width: 90%; max-width: 560px; border-radius: 0.75rem; position: relative; box-shadow: var(--shadow-strong); }
+        
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid var(--primary-accent);
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6 lg:p-8">
+
+    <div class="fixed top-4 right-4 z-[101] flex items-center space-x-4">
+        <a href="./index.html" class="text-sm font-semibold text-[var(--primary-accent)] hover:underline">&larr; Back to Dashboard</a>
+    </div>
+
+    <div id="motor-rater-app" class="w-full max-w-6xl mx-auto my-8 hidden">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl sm:text-5xl font-bold mb-3">Motor Insurance Referral Rater</h1>
+            <p class="text-xl text-[var(--text-secondary)]">Calculate premiums and submit referrals quickly.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <div class="lg:col-span-3 space-y-8">
+                 <div class="bento-box">
+                    <h2 class="text-2xl font-bold mb-4">
+                        <i class="fas fa-car-side mr-3 text-[var(--secondary-accent)]"></i>Vehicle Type
+                    </h2>
+                    <select id="vehicle-type-selector" class="w-full text-lg p-3">
+                        <option value="">-- Please select --</option>
+                        <option value="private">Private Car</option>
+                        <option value="platinum">Platinum Drive (Luxury Private Car)</option>
+                        <option value="commercial">Commercial Vehicle / Pick-up</option>
+                    </select>
+                </div>
+
+                <div id="calculators">
+                    <div id="private-calculator" class="form-section bento-box space-y-6">
+                         <h3 class="text-lg font-bold text-[var(--text-secondary)]">Vehicle Information</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div id="p-sum-insured-container">
+                                <label for="p-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Sum Insured ($)</label>
+                                <input type="text" inputmode="numeric" id="p-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 80,000">
+                            </div>
+                            <div>
+                                <label for="p-coverage-type" class="block text-sm font-medium text-[var(--text-muted)]">Coverage Type</label>
+                                <select id="p-coverage-type" class="mt-1 w-full p-2.5">
+                                    <option value="comprehensive">Comprehensive</option>
+                                    <option value="third-party">Third Party Only</option>
+                                </select>
+                            </div>
+                        </div>
+                        <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6 mt-6">Driver Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <div>
+                                <label for="p-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label>
+                                <input type="number" id="p-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35">
+                            </div>
+                            <div>
+                                <label for="p-driving-exp" class="block text-sm font-medium text-[var(--text-muted)]">Driving Experience (Years)</label>
+                                <input type="number" id="p-driving-exp" class="mt-1 w-full p-2.5" placeholder="e.g., 10">
+                            </div>
+                        </div>
+                         <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6 mt-6">Discounts</h3>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1">
+                                <div>
+                                    <label for="p-ncd" class="block text-sm font-medium text-[var(--text-muted)]">No Claim Discount</label>
+                                    <select id="p-ncd" class="mt-1 w-full p-2.5">
+                                        <option value="0">0 Years</option>
+                                        <option value="1">1 Year</option>
+                                        <option value="2">2 Years</option>
+                                        <option value="3">3 Years</option>
+                                        <option value="4">4+ Years (Max)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div id="results-section" class="bento-box sticky top-8 text-center hidden">
+                    <h2 class="text-2xl font-bold mb-2">
+                        <i class="fas fa-receipt mr-3 text-[var(--secondary-accent)]"></i>Premium Summary
+                    </h2>
+                    <p id="total-premium" class="text-4xl font-bold text-[var(--primary-accent)] mt-4">$0.00</p>
+                    <p class="text-sm text-[var(--text-muted)]">(Grand Total)</p>
+                    <div id="premium-breakdown" class="text-left mt-6 pt-4 border-t border-[var(--border-color)] text-[var(--text-secondary)] text-sm space-y-1"></div>
+                    
+                    <div id="finders-fee-section" class="text-left mt-6 pt-4 border-t-2 border-dashed border-[var(--secondary-accent)]">
+                        <h3 class="text-lg font-bold text-[var(--primary-accent)] mb-2">Initial Finder's Fee</h3>
+                        <div id="finders-fee-breakdown" class="text-[var(--text-secondary)] text-sm space-y-1">
+                        </div>
+                    </div>
+
+                    <button id="create-referral-btn" class="mt-8 w-full primary-btn button-base py-3">
+                        Create Referral
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="auth-loader" class="text-center p-20">
+        <div class="loader mx-auto"></div>
+        <p class="mt-4 text-[var(--text-secondary)]">Authenticating...</p>
+    </div>
+
+    <div id="client-info-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold leading-6 mb-4">Client Information for Referral</h3>
+            <div class="space-y-4">
+                <input type="text" id="client-name" placeholder="Client's Full Name" class="w-full" required>
+                <input type="email" id="client-email" placeholder="Client's Email" class="w-full" required>
+                <input type="text" id="client-contact" placeholder="Client's Contact Number" class="w-full" required>
+            </div>
+            <p id="client-modal-error" class="text-red-500 text-sm text-center mt-4"></p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="close-client-modal-btn" type="button" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Cancel</button>
+                <button id="submit-referral-btn" type="button" class="button-base primary-btn py-2 px-4">Submit Referral</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="success-modal" class="modal-overlay hidden">
+        <div class="modal-content text-center">
+            <i class="fas fa-check-circle text-5xl text-green-500 mx-auto mb-4"></i>
+            <h3 class="text-xl font-bold leading-6 mb-2">Referral Submitted!</h3>
+            <p class="text-[var(--text-secondary)]">Your referral has been sent for approval. You can track its status on your dashboard.</p>
+            <div class="mt-6">
+                 <a href="./index.html" class="button-base primary-btn py-2 px-4">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="./motor_rater_data.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5hOOzqCPieEpg5ajCBhsScroaB-c1kYg",
+            authDomain: "insurance-referrer-hub.firebaseapp.com",
+            projectId: "insurance-referrer-hub",
+            storageBucket: "insurance-referrer-hub.appspot.com",
+            messagingSenderId: "1007719344655",
+            appId: "1:1007719344655:web:6e5565f2f957300e8fd17a",
+            measurementId: "G-T9W94R7QJF"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let lastCalculatedData = {};
+
+        onAuthStateChanged(auth, (user) => {
+            const appEl = document.getElementById('motor-rater-app');
+            const loaderEl = document.getElementById('auth-loader');
+            if (user) {
+                currentUser = user;
+                appEl.classList.remove('hidden');
+                loaderEl.classList.add('hidden');
+            } else {
+                loaderEl.innerHTML = `
+                    <div class="text-center bento-box max-w-lg mx-auto">
+                        <h3 class="text-xl font-bold leading-6 mb-2">Authentication Error</h3>
+                        <p class="text-[var(--text-secondary)]">You must be logged in to use the rater.</p>
+                        <div class="mt-6">
+                            <a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a>
+                        </div>
+                    </div>
+                `;
+                appEl.classList.add('hidden');
+                loaderEl.classList.remove('hidden');
+            }
+        });
+
+        const vehicleTypeSelector = document.getElementById('vehicle-type-selector');
+        const calculators = { private: document.getElementById('private-calculator') };
+        const resultsSection = document.getElementById('results-section');
+        const totalPremiumEl = document.getElementById('total-premium');
+        const premiumBreakdownEl = document.getElementById('premium-breakdown');
+        const findersFeeBreakdownEl = document.getElementById('finders-fee-breakdown');
+        const createReferralBtn = document.getElementById('create-referral-btn');
+        const clientInfoModal = document.getElementById('client-info-modal');
+        const closeModalBtn = document.getElementById('close-client-modal-btn');
+        const submitReferralBtn = document.getElementById('submit-referral-btn');
+        const successModal = document.getElementById('success-modal');
+        const allInputs = document.querySelectorAll('input, select');
+            
+        vehicleTypeSelector.addEventListener('change', () => {
+            const selectedType = vehicleTypeSelector.value;
+            Object.values(calculators).forEach(calc => calc.classList.remove('active'));
+            resultsSection.classList.add('hidden');
+            if (selectedType && calculators[selectedType]) {
+                calculators[selectedType].classList.add('active');
+                calculatePremium();
+            }
+        });
+
+        allInputs.forEach(input => {
+            input.addEventListener('input', calculatePremium);
+            input.addEventListener('change', calculatePremium);
+        });
+        
+        createReferralBtn.addEventListener('click', () => {
+            if (lastCalculatedData.totalPremium > 0) {
+                 clientInfoModal.style.display = 'flex';
+            } else {
+                alert("Please calculate a premium first.");
+            }
+        });
+
+        closeModalBtn.addEventListener('click', () => clientInfoModal.style.display = 'none');
+        submitReferralBtn.addEventListener('click', submitReferral);
+
+        function getFloatValue(id) {
+            const element = document.getElementById(id);
+            if (!element) return 0;
+            const value = element.value || '';
+            const cleanValue = value.replace(/,/g, '');
+            return parseFloat(cleanValue) || 0;
+        }
+
+        function formatCurrency(value) {
+            if (isNaN(value)) return '0.00';
+            return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function calculatePremium() {
+            const selectedType = vehicleTypeSelector.value;
+            if (!selectedType) return;
+            
+            resultsSection.classList.remove('hidden');
+
+            const sumInsured = getFloatValue('p-sum-insured');
+            const coverage = document.getElementById('p-coverage-type').value;
+            const driverAge = getFloatValue('p-driver-age');
+            const ncdYears = parseInt(document.getElementById('p-ncd').value, 10);
+            
+            let basePremium = 0;
+            if (coverage === 'comprehensive') {
+                basePremium = (sumInsured * 0.08) + 1700;
+            } else {
+                basePremium = 1700;
+            }
+
+            let ageLoading = 0;
+            if (driverAge > 0 && driverAge < 25) {
+                ageLoading = basePremium * 0.20;
+            }
+            
+            const premiumAfterLoading = basePremium + ageLoading;
+
+            const ncdRate = NCD_RATES.private[coverage][ncdYears] || 0;
+            const ncdAmount = premiumAfterLoading * ncdRate;
+
+            const premiumBeforeTax = premiumAfterLoading - ncdAmount;
+            
+            let taxAmount = 0;
+            if (driverAge > 0 && driverAge <= 60) {
+                taxAmount = premiumBeforeTax * 0.06;
+            }
+
+            const finalTotal = premiumBeforeTax + taxAmount;
+
+            lastCalculatedData = {
+                insuranceType: 'Motor',
+                premiumBeforeTax,
+                totalPremium: finalTotal,
+            };
+
+            totalPremiumEl.textContent = `$${formatCurrency(finalTotal)}`;
+            let breakdownHTML = `
+                <div class="breakdown-row"><span class="breakdown-label">Base Premium</span><span class="breakdown-value">$${formatCurrency(basePremium)}</span></div>
+                ${ageLoading > 0 ? `<div class="breakdown-row"><span class="breakdown-label">Age Loading (20%)</span><span class="breakdown-value">$${formatCurrency(ageLoading)}</span></div>` : ''}
+                ${ncdAmount > 0 ? `<div class="breakdown-row text-green-600"><span class="breakdown-label">NCD (${ncdRate * 100}%)</span><span class="breakdown-value">-$${formatCurrency(ncdAmount)}</span></div>` : ''}
+                <div class="breakdown-row font-semibold border-t border-[var(--border-color)] pt-1 mt-1"><span class="breakdown-label">Premium Before Tax</span><span class="breakdown-value">$${formatCurrency(premiumBeforeTax)}</span></div>
+                 <div class="breakdown-row"><span class="breakdown-label">Tax (6%)</span><span class="breakdown-value">$${formatCurrency(taxAmount)}</span></div>
+            `;
+            premiumBreakdownEl.innerHTML = breakdownHTML;
+
+            calculateAndDisplayFindersFee(premiumBeforeTax);
+        }
+
+        function calculateAndDisplayFindersFee(preTaxPremium) {
+            const totalCommission = preTaxPremium * 0.10;
+            const incomeTax = totalCommission * 0.25;
+            const netCommission = totalCommission - incomeTax;
+            const findersFee = netCommission * 0.50;
+
+            lastCalculatedData.findersFee = findersFee;
+
+            findersFeeBreakdownEl.innerHTML = `
+                <div class="breakdown-row"><span>Total Commission (10%)</span><span class="font-semibold">$${formatCurrency(totalCommission)}</span></div>
+                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span>-$${formatCurrency(incomeTax)}</span></div>
+                <div class="breakdown-row font-semibold border-t border-[var(--border-color)] pt-1 mt-1"><span>Net Commission</span><span>$${formatCurrency(netCommission)}</span></div>
+                <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (50%)</span><span class="font-bold">$${formatCurrency(findersFee)}</span></div>
+            `;
+        }
+
+        async function submitReferral() {
+            const clientName = document.getElementById('client-name').value;
+            const clientEmail = document.getElementById('client-email').value;
+            const clientContact = document.getElementById('client-contact').value;
+            const errorEl = document.getElementById('client-modal-error');
+            
+            if (!clientName || !clientEmail || !clientContact) {
+                errorEl.textContent = "Please fill out all client fields.";
+                return;
+            }
+             errorEl.textContent = "";
+
+            submitReferralBtn.innerHTML = '<span class="loader !w-6 !h-6"></span>';
+            submitReferralBtn.disabled = true;
+
+            try {
+                const referralData = {
+                    ...lastCalculatedData,
+                    referrerId: currentUser.uid,
+                    referrerName: currentUser.displayName,
+                    clientName,
+                    clientEmail,
+                    clientContact,
+                    status: 'Pending',
+                    createdAt: Timestamp.now()
+                };
+
+                await addDoc(collection(db, "referrals"), referralData);
+                
+                clientInfoModal.style.display = 'none';
+                successModal.style.display = 'flex';
+
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                errorEl.textContent = "Could not submit referral. Please try again.";
+            } finally {
+                submitReferralBtn.innerHTML = 'Submit Referral';
+                submitReferralBtn.disabled = false;
+            }
+        }
+        
+    </script>
+</body>
+</html>
