@@ -21,15 +21,11 @@
             --secondary-accent: #ae8625; 
             --shadow-soft: 0 3px 6px rgba(0,0,0,0.04);
             --shadow-medium: 0 5px 15px rgba(0,0,0,0.06);
-            --shadow-strong: 0 8px 25px rgba(0,0,0,0.08);
-            --font-body: 'Montserrat', sans-serif;
-            --font-heading: 'Source Serif Pro', serif; 
         }
         body {
             font-family: var(--font-body);
             background-color: var(--bg-main);
             color: var(--text-primary);
-            transition: background-color 0.3s ease, color 0.3s ease;
         }
         h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--primary-accent); }
         .bento-box {
@@ -37,38 +33,28 @@
             border-radius: 0.75rem; 
             padding: 1.75rem; 
             box-shadow: var(--shadow-medium);
-            transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.25s ease;
             border: 1px solid var(--border-color);
         }
-        .bento-box:hover { transform: translateY(-5px); box-shadow: var(--shadow-strong); }
         input, select {
             border: 1px solid var(--border-color); padding: 0.85rem 1.15rem; border-radius: 0.375rem; 
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, color 0.3s ease;
             background-color: var(--bg-main); color: var(--text-primary);
             font-weight: 500;
         }
         input:focus, select:focus {
             border-color: var(--primary-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 25%, transparent); 
-            outline: none; background-color: var(--bg-bento-box);
+            outline: none;
         }
         .breakdown-row { display: flex; justify-content: space-between; flex-wrap: wrap; }
         .form-section { display: none; }
         .form-section.active { display: block; }
         
-        .button-base { font-weight: 600; padding-top: 0.85rem; padding-bottom: 0.85rem; border-radius: 0.375rem; transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease; box-shadow: var(--shadow-soft); text-transform: uppercase; letter-spacing: 0.025em; cursor: pointer; }
-        .button-base:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
+        .button-base { font-weight: 600; padding-top: 0.85rem; padding-bottom: 0.85rem; border-radius: 0.375rem; text-transform: uppercase; letter-spacing: 0.025em; cursor: pointer; }
         .primary-btn { background-color: var(--primary-accent); color: white; }
-        .primary-btn:hover { background-color: var(--primary-accent-darker); }
         
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(29, 45, 53, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(5px); }
-        .modal-content { background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color); width: 90%; max-width: 560px; border-radius: 0.75rem; position: relative; box-shadow: var(--shadow-strong); }
+        .modal-content { background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color); width: 90%; max-width: 560px; border-radius: 0.75rem; position: relative; }
         
-        .loader {
-            width: 48px; height: 48px; border: 5px solid var(--primary-accent);
-            border-bottom-color: transparent; border-radius: 50%;
-            display: inline-block; box-sizing: border-box;
-            animation: rotation 1s linear infinite;
-        }
+        .loader { width: 48px; height: 48px; border: 5px solid var(--primary-accent); border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -81,7 +67,6 @@
     <div id="motor-rater-app" class="w-full max-w-6xl mx-auto my-8 hidden">
         <header class="mb-10 text-center">
             <h1 class="text-4xl sm:text-5xl font-bold mb-3">Motor Insurance Referral Rater</h1>
-            <p class="text-xl text-[var(--text-secondary)]">Calculate premiums and submit referrals quickly.</p>
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -91,88 +76,32 @@
                     <select id="vehicle-type-selector" class="w-full text-lg p-3">
                         <option value="">-- Please select --</option>
                         <option value="private">Private Car</option>
-                        <option value="platinum">Platinum Drive (Luxury Private Car)</option>
-                        <option value="commercial">Commercial Vehicle / Pick-up</option>
+                        <option value="platinum">Platinum Drive</option>
+                        <option value="commercial">Commercial Vehicle</option>
                     </select>
                 </div>
 
                 <div id="calculators">
-                    <!-- Private Car Calculator -->
-                    <div id="private-calculator" class="form-section bento-box space-y-6">
-                        <h2 class="text-2xl font-bold">Private Car Details</h2>
-                        <h3 class="text-lg font-bold text-[var(--text-secondary)] -mt-2">Vehicle Information</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <div id="p-sum-insured-container">
-                                <label for="p-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Sum Insured ($)</label>
-                                <input type="text" inputmode="numeric" id="p-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 80,000">
-                            </div>
-                             <div>
-                                <label for="p-vehicle-age" class="block text-sm font-medium text-[var(--text-muted)]">Vehicle Age (Years)</label>
-                                <input type="number" id="p-vehicle-age" class="mt-1 w-full p-2.5" placeholder="e.g., 5">
-                            </div>
-                            <div>
-                                <label for="p-coverage-type" class="block text-sm font-medium text-[var(--text-muted)]">Coverage Type</label>
-                                <select id="p-coverage-type" class="mt-1 w-full p-2.5">
-                                    <option value="comprehensive">Comprehensive</option>
-                                    <option value="third-party">Third Party Only</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="p-engine-cc" class="block text-sm font-medium text-[var(--text-muted)]">Engine Capacity</label>
-                                <select id="p-engine-cc" class="mt-1 w-full p-2.5">
-                                    <option value="under-2000">Under 2000cc</option>
-                                    <option value="over-2000">Over 2000cc</option>
-                                </select>
-                            </div>
-                        </div>
-                        <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6">Driver Details</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <div>
-                                <label for="p-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label>
-                                <input type="number" id="p-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35">
-                            </div>
-                            <div>
-                                <label for="p-driving-exp" class="block text-sm font-medium text-[var(--text-muted)]">Driving Experience (Years)</label>
-                                <input type="number" id="p-driving-exp" class="mt-1 w-full p-2.5" placeholder="e.g., 10">
-                            </div>
-                        </div>
-                        <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6">Discounts</h3>
-                        <div class="grid grid-cols-1">
-                            <div>
-                                <label for="p-ncd" class="block text-sm font-medium text-[var(--text-muted)]">No Claim Discount</label>
-                                <select id="p-ncd" class="mt-1 w-full p-2.5">
-                                    <option value="0">0 Years (0%)</option>
-                                    <option value="1">1 Year</option>
-                                    <option value="2">2 Years</option>
-                                    <option value="3">3 Years</option>
-                                    <option value="4">4+ Years (Max)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Other calculator divs will go here -->
+                    <!-- Private Car -->
+                    <div id="private-calculator" class="form-section bento-box space-y-6"></div>
+                    <!-- Platinum Drive -->
+                    <div id="platinum-calculator" class="form-section bento-box space-y-6"></div>
+                    <!-- Commercial -->
+                    <div id="commercial-calculator" class="form-section bento-box space-y-6"></div>
                 </div>
             </div>
 
             <div class="lg:col-span-2">
                 <div id="results-section" class="bento-box sticky top-8 text-center hidden">
-                    <h2 class="text-2xl font-bold mb-2">
-                        <i class="fas fa-receipt mr-3 text-[var(--secondary-accent)]"></i>Premium Summary
-                    </h2>
+                    <h2 class="text-2xl font-bold mb-2"><i class="fas fa-receipt mr-3 text-[var(--secondary-accent)]"></i>Premium Summary</h2>
                     <p id="total-premium" class="text-4xl font-bold text-[var(--primary-accent)] mt-4">$0.00</p>
                     <p class="text-sm text-[var(--text-muted)]">(Grand Total)</p>
                     <div id="premium-breakdown" class="text-left mt-6 pt-4 border-t border-[var(--border-color)] text-[var(--text-secondary)] text-sm space-y-1"></div>
-                    
                     <div id="finders-fee-section" class="text-left mt-6 pt-4 border-t-2 border-dashed border-[var(--secondary-accent)]">
                         <h3 class="text-lg font-bold text-[var(--primary-accent)] mb-2">Initial Finder's Fee</h3>
-                        <div id="finders-fee-breakdown" class="text-[var(--text-secondary)] text-sm space-y-1">
-                        </div>
+                        <div id="finders-fee-breakdown" class="text-[var(--text-secondary)] text-sm space-y-1"></div>
                     </div>
-
-                    <button id="create-referral-btn" class="mt-8 w-full primary-btn button-base py-3">
-                        Create Referral
-                    </button>
+                    <button id="create-referral-btn" class="mt-8 w-full primary-btn button-base py-3">Create Referral</button>
                 </div>
             </div>
         </main>
@@ -185,7 +114,7 @@
 
     <div id="client-info-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h3 class="text-xl font-bold leading-6 mb-4">Client Information for Referral</h3>
+            <h3 class="text-xl font-bold leading-6 mb-4">Client Information</h3>
             <div class="space-y-4">
                 <input type="text" id="client-name" placeholder="Client's Full Name" class="w-full" required>
                 <input type="email" id="client-email" placeholder="Client's Email" class="w-full" required>
@@ -203,16 +132,14 @@
         <div class="modal-content text-center">
             <i class="fas fa-check-circle text-5xl text-green-500 mx-auto mb-4"></i>
             <h3 class="text-xl font-bold leading-6 mb-2">Referral Submitted!</h3>
-            <p class="text-[var(--text-secondary)]">Your referral has been sent for approval. You can track its status on your dashboard.</p>
+            <p class="text-[var(--text-secondary)]">You can track its status on your dashboard.</p>
             <div class="mt-6">
                  <a href="./index.html" class="button-base primary-btn py-2 px-4">Back to Dashboard</a>
             </div>
         </div>
     </div>
 
-
     <script src="./motor_rater_data.js"></script>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -234,6 +161,57 @@
 
         let currentUser = null;
         let lastCalculatedData = {};
+        
+        // --- Full Calculator UI Templates ---
+        const calculatorTemplates = {
+            private: `
+                <h2 class="text-2xl font-bold">Private Car Details</h2>
+                <div class="space-y-6">
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)]">Vehicle Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label for="p-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Sum Insured ($)</label><input type="text" inputmode="numeric" id="p-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 80,000"></div>
+                        <div><label for="p-vehicle-age" class="block text-sm font-medium text-[var(--text-muted)]">Vehicle Age</label><input type="number" id="p-vehicle-age" class="mt-1 w-full p-2.5" placeholder="e.g., 5"></div>
+                        <div><label for="p-coverage-type" class="block text-sm font-medium text-[var(--text-muted)]">Coverage Type</label><select id="p-coverage-type" class="mt-1 w-full p-2.5"><option value="comprehensive">Comprehensive</option><option value="third-party">Third Party Only</option></select></div>
+                        <div><label for="p-engine-cc" class="block text-sm font-medium text-[var(--text-muted)]">Engine Capacity</label><select id="p-engine-cc" class="mt-1 w-full p-2.5"><option value="under-2000">Under 2000cc</option><option value="over-2000">Over 2000cc</option></select></div>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6">Driver Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label for="p-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="p-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35"></div>
+                        <div><label for="p-driving-exp" class="block text-sm font-medium text-[var(--text-muted)]">Driving Experience</label><input type="number" id="p-driving-exp" class="mt-1 w-full p-2.5" placeholder="e.g., 10"></div>
+                    </div>
+                     <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6">Discounts</h3>
+                    <div><label for="p-ncd" class="block text-sm font-medium text-[var(--text-muted)]">No Claim Discount</label><select id="p-ncd" class="mt-1 w-full p-2.5"><option value="0">0 Years</option><option value="1">1 Year</option><option value="2">2 Years</option><option value="3">3 Years</option><option value="4">4+ Years (Max)</option></select></div>
+                </div>`,
+            platinum: `
+                 <h2 class="text-2xl font-bold">Platinum Drive Details</h2>
+                 <p class="text-sm -mt-4 text-[var(--text-muted)]">For luxury vehicles valued over $650,000.</p>
+                 <div class="space-y-6">
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)]">Vehicle Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label for="pl-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Sum Insured ($)</label><input type="text" inputmode="numeric" id="pl-sum-insured" class="mt-1 w-full p-2.5" placeholder="Min 650,000"></div>
+                        <div><label for="pl-vehicle-age" class="block text-sm font-medium text-[var(--text-muted)]">Vehicle Age</label><input type="number" id="pl-vehicle-age" class="mt-1 w-full p-2.5" placeholder="Max 2" max="2"></div>
+                    </div>
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6">Driver Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div><label for="pl-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="pl-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35"></div>
+                         <div><label for="pl-driving-exp" class="block text-sm font-medium text-[var(--text-muted)]">Driving Experience</label><input type="number" id="pl-driving-exp" class="mt-1 w-full p-2.5" placeholder="e.g., 10"></div>
+                    </div>
+                </div>`,
+            commercial: `
+                 <h2 class="text-2xl font-bold">Commercial Vehicle Details</h2>
+                 <div class="space-y-6">
+                    <h3 class="text-lg font-bold text-[var(--text-secondary)]">Vehicle Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label for="c-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Sum Insured ($)</label><input type="text" inputmode="numeric" id="c-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 90,000"></div>
+                        <div><label for="c-coverage-type" class="block text-sm font-medium text-[var(--text-muted)]">Coverage Type</label><select id="c-coverage-type" class="mt-1 w-full p-2.5"><option value="comprehensive">Comprehensive</option><option value="third-party">Third Party Only</option></select></div>
+                        <div id="c-usage-container" class="md:col-span-2"><label for="c-usage" class="block text-sm font-medium text-[var(--text-muted)]">Vehicle Usage</label><select id="c-usage" class="mt-1 w-full p-2.5"><option value="private-pickup">Private Use Pick-up</option><option value="own-goods">Own Goods</option><option value="other">All Other Usages</option></select></div>
+                        <div id="c-hp-container" class="hidden md:col-span-2"><label for="c-hp" class="block text-sm font-medium text-[var(--text-muted)]">Horsepower (HP)</label><select id="c-hp" class="mt-1 w-full p-2.5"><option value="upto-30">Up to 30 HP</option><option value="31-50">31 - 50 HP</option><option value="over-50">Over 50 HP</option></select></div>
+                    </div>
+                     <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t border-[var(--border-color)] pt-6">Discounts</h3>
+                    <div><label for="c-ncd" class="block text-sm font-medium text-[var(--text-muted)]">No Claim Discount</label><select id="c-ncd" class="mt-1 w-full p-2.5"><option value="0">0 Years</option><option value="1">1 Year</option><option value="2">2 Years</option><option value="3">3 Years</option><option value="4">4+ Years (Max)</option></select></div>
+                </div>`
+        };
+
 
         onAuthStateChanged(auth, (user) => {
             const appEl = document.getElementById('motor-rater-app');
@@ -243,15 +221,7 @@
                 appEl.classList.remove('hidden');
                 loaderEl.classList.add('hidden');
             } else {
-                loaderEl.innerHTML = `
-                    <div class="text-center bento-box max-w-lg mx-auto">
-                        <h3 class="text-xl font-bold leading-6 mb-2">Authentication Error</h3>
-                        <p class="text-[var(--text-secondary)]">You must be logged in to use the rater.</p>
-                        <div class="mt-6">
-                            <a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a>
-                        </div>
-                    </div>
-                `;
+                loaderEl.innerHTML = `<div class="text-center bento-box max-w-lg mx-auto"><h3 class="text-xl font-bold leading-6 mb-2">Authentication Error</h3><p class="text-[var(--text-secondary)]">You must be logged in to use the rater.</p><div class="mt-6"><a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a></div></div>`;
                 appEl.classList.add('hidden');
                 loaderEl.classList.remove('hidden');
             }
@@ -260,9 +230,8 @@
         const vehicleTypeSelector = document.getElementById('vehicle-type-selector');
         const calculators = { 
             private: document.getElementById('private-calculator'),
-            // Stubs for other calculators to be re-added if needed
-            platinum: document.createElement('div'), 
-            commercial: document.createElement('div'),
+            platinum: document.getElementById('platinum-calculator'), 
+            commercial: document.getElementById('commercial-calculator'),
         };
         const resultsSection = document.getElementById('results-section');
         const totalPremiumEl = document.getElementById('total-premium');
@@ -273,23 +242,29 @@
         const closeModalBtn = document.getElementById('close-client-modal-btn');
         const submitReferralBtn = document.getElementById('submit-referral-btn');
         const successModal = document.getElementById('success-modal');
-        const allInputs = document.querySelectorAll('#calculators input, #calculators select');
             
         vehicleTypeSelector.addEventListener('change', () => {
             const selectedType = vehicleTypeSelector.value;
-            Object.values(calculators).forEach(calc => calc.classList.remove('active'));
+            Object.entries(calculators).forEach(([key, calc]) => {
+                if (key === selectedType) {
+                    calc.innerHTML = calculatorTemplates[key];
+                    calc.classList.add('active');
+                    // Re-add event listeners to the new inputs
+                    document.querySelectorAll(`#${key}-calculator input, #${key}-calculator select`).forEach(input => {
+                        input.addEventListener('input', calculatePremium);
+                        input.addEventListener('change', calculatePremium);
+                    });
+                } else {
+                    calc.innerHTML = '';
+                    calc.classList.remove('active');
+                }
+            });
             resultsSection.classList.add('hidden');
-            if (selectedType && calculators[selectedType]) {
-                calculators[selectedType].classList.add('active');
+            if (selectedType) {
                 calculatePremium();
             }
         });
 
-        allInputs.forEach(input => {
-            input.addEventListener('input', calculatePremium);
-            input.addEventListener('change', calculatePremium);
-        });
-        
         createReferralBtn.addEventListener('click', () => {
             if (lastCalculatedData.totalPremium > 0) {
                  clientInfoModal.style.display = 'flex';
@@ -304,9 +279,7 @@
         function getFloatValue(id) {
             const element = document.getElementById(id);
             if (!element) return 0;
-            const value = element.value || '';
-            const cleanValue = value.replace(/,/g, '');
-            return parseFloat(cleanValue) || 0;
+            return parseFloat((element.value || '').replace(/,/g, '')) || 0;
         }
 
         function formatCurrency(value) {
@@ -314,71 +287,26 @@
             return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
         
-        // This is a simplified calculation logic based on your original file's private car section
         function calculatePremium() {
             const selectedType = vehicleTypeSelector.value;
             if (!selectedType) return;
             
             resultsSection.classList.remove('hidden');
             
-            let corePremium = 0, premiumBeforeTax = 0, finalTotal = 0;
-            let breakdownHTML = '';
-            
-            // We'll focus on the private calculation as it's the only one in the restored HTML
-            if(selectedType === 'private') {
-                const sumInsured = getFloatValue('p-sum-insured');
-                const coverage = document.getElementById('p-coverage-type').value;
-                const driverAge = getFloatValue('p-driver-age');
-                const engine = document.getElementById('p-engine-cc').value;
-                const ncdYears = parseInt(document.getElementById('p-ncd').value, 10);
-                
-                let basePremium = 0;
-                let standardBase = engine === 'under-2000' ? 1700 : 2000;
-                
-                if (coverage === 'comprehensive') {
-                    basePremium = (sumInsured * 0.08) + standardBase;
-                } else { // Third Party
-                    basePremium = standardBase;
-                }
-
-                let ageLoading = 0;
-                let ageLoadingRate = (driverAge > 0 && driverAge <= 24) ? 0.20 : 0;
-                if(ageLoadingRate > 0) {
-                     ageLoading = basePremium * ageLoadingRate;
-                }
-               
-                const premiumAfterLoading = basePremium + ageLoading;
-
-                const ncdRateData = (NCD_RATES[selectedType] || {})[coverage] || [0,0,0,0,0];
-                const ncdRate = ncdRateData[ncdYears] || 0;
-                const ncdAmount = premiumAfterLoading * ncdRate;
-
-                premiumBeforeTax = premiumAfterLoading - ncdAmount;
-                
-                let taxAmount = (driverAge > 0 && driverAge <= 60) ? premiumBeforeTax * 0.06 : 0;
-                finalTotal = premiumBeforeTax + taxAmount;
-                
-                // Build breakdown
-                breakdownHTML = `
-                    <div class="breakdown-row"><span class="breakdown-label">Base Premium</span><span class="breakdown-value">$${formatCurrency(basePremium)}</span></div>
-                    ${ageLoading > 0 ? `<div class="breakdown-row"><span class="breakdown-label">Age Loading (${ageLoadingRate*100}%)</span><span class="breakdown-value">$${formatCurrency(ageLoading)}</span></div>` : ''}
-                    ${ncdAmount > 0 ? `<div class="breakdown-row text-green-600"><span class="breakdown-label">NCD (${ncdRate * 100}%)</span><span class="breakdown-value">-$${formatCurrency(ncdAmount)}</span></div>` : ''}
-                    <div class="breakdown-row font-semibold border-t border-[var(--border-color)] pt-1 mt-1"><span class="breakdown-label">Premium Before Tax</span><span class="breakdown-value">$${formatCurrency(premiumBeforeTax)}</span></div>
-                    <div class="breakdown-row"><span class="breakdown-label">Tax (6%)</span><span class="breakdown-value">$${formatCurrency(taxAmount)}</span></div>
-                `;
-            }
-             // Stubs for other vehicle types can be added here
-            else {
-                 premiumBeforeTax = 0;
-                 finalTotal = 0;
-                 breakdownHTML = `<p class="text-center text-[var(--text-muted)]">Calculations for this vehicle type are not yet implemented in this version.</p>`;
-            }
+            let premiumData = {};
+            if(selectedType === 'private') premiumData = calculatePrivatePremium();
+            else if (selectedType === 'platinum') premiumData = calculatePlatinumPremium();
+            else if (selectedType === 'commercial') premiumData = calculateCommercialPremium();
+            else { premiumData = { finalTotal: 0, breakdownHTML: '', premiumBeforeTax: 0 }; }
+           
+            const { finalTotal, breakdownHTML, premiumBeforeTax } = premiumData;
 
             totalPremiumEl.textContent = `$${formatCurrency(finalTotal)}`;
             premiumBreakdownEl.innerHTML = breakdownHTML;
             
             lastCalculatedData = {
                 insuranceType: 'Motor',
+                vehicleType: selectedType,
                 premiumBeforeTax,
                 totalPremium: finalTotal,
             };
@@ -386,63 +314,113 @@
             calculateAndDisplayFindersFee(premiumBeforeTax);
         }
 
+        function calculatePrivatePremium() {
+            const sumInsured = getFloatValue('p-sum-insured');
+            const coverage = document.getElementById('p-coverage-type').value;
+            const driverAge = getFloatValue('p-driver-age');
+            const engine = document.getElementById('p-engine-cc').value;
+            const ncdYears = parseInt(document.getElementById('p-ncd').value, 10);
+            
+            let basePremium = (engine === 'under-2000' ? 1700 : 2000);
+            if (coverage === 'comprehensive') basePremium += (sumInsured * 0.08);
+
+            let ageLoading = (driverAge > 0 && driverAge <= 24) ? basePremium * 0.20 : 0;
+            const premiumAfterLoading = basePremium + ageLoading;
+
+            const ncdRate = (NCD_RATES.private[coverage] || [])[ncdYears] || 0;
+            const ncdAmount = premiumAfterLoading * ncdRate;
+            const premiumBeforeTax = premiumAfterLoading - ncdAmount;
+            
+            let taxAmount = (driverAge > 0 && driverAge <= 60) ? premiumBeforeTax * 0.06 : 0;
+            const finalTotal = premiumBeforeTax + taxAmount;
+
+            const breakdownHTML = `
+                <div class="breakdown-row"><span class="breakdown-label">Base Premium</span><span class="breakdown-value">$${formatCurrency(basePremium)}</span></div>
+                ${ageLoading > 0 ? `<div class="breakdown-row"><span class="breakdown-label">Age Loading</span><span class="breakdown-value">$${formatCurrency(ageLoading)}</span></div>` : ''}
+                ${ncdAmount > 0 ? `<div class="breakdown-row text-green-600"><span class="breakdown-label">NCD (${ncdRate * 100}%)</span><span class="breakdown-value">-$${formatCurrency(ncdAmount)}</span></div>` : ''}
+                <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span class="breakdown-label">Premium Before Tax</span><span class="breakdown-value">$${formatCurrency(premiumBeforeTax)}</span></div>
+                <div class="breakdown-row"><span class="breakdown-label">Tax (6%)</span><span class="breakdown-value">$${formatCurrency(taxAmount)}</span></div>
+            `;
+            return { finalTotal, breakdownHTML, premiumBeforeTax };
+        }
+
+         function calculatePlatinumPremium() {
+            const sumInsured = getFloatValue('pl-sum-insured');
+            const driverAge = getFloatValue('pl-driver-age');
+            const basePremium = (sumInsured * 0.035) + 3000; // Simplified
+            const premiumBeforeTax = basePremium;
+            const taxAmount = (driverAge > 0 && driverAge <= 60) ? premiumBeforeTax * 0.06 : 0;
+            const finalTotal = premiumBeforeTax + taxAmount;
+            const breakdownHTML = `<div class="breakdown-row font-semibold"><span class="breakdown-label">Premium Before Tax</span><span class="breakdown-value">$${formatCurrency(premiumBeforeTax)}</span></div> <div class="breakdown-row"><span class="breakdown-label">Tax (6%)</span><span class="breakdown-value">$${formatCurrency(taxAmount)}</span></div>`;
+            return { finalTotal, breakdownHTML, premiumBeforeTax };
+        }
+
+        function calculateCommercialPremium() {
+            const sumInsured = getFloatValue('c-sum-insured');
+            const coverage = document.getElementById('c-coverage-type').value;
+            const usage = document.getElementById('c-usage')?.value;
+            const ncdYears = parseInt(document.getElementById('c-ncd')?.value || 0, 10);
+            
+            let rate = 0.10, base = 3500;
+            if(usage === 'own-goods') { rate = 0.085; base = 2200; }
+            if(usage === 'private-pickup') { rate = 0.08; base = 1700; }
+            
+            let basePremium = (coverage === 'comprehensive') ? (sumInsured * rate) + base : base;
+            
+            const ncdRate = (NCD_RATES.commercial[coverage] || [])[ncdYears] || 0;
+            const ncdAmount = basePremium * ncdRate;
+            const premiumBeforeTax = basePremium - ncdAmount;
+            const taxAmount = premiumBeforeTax * 0.06;
+            const finalTotal = premiumBeforeTax + taxAmount;
+
+            const breakdownHTML = `
+                <div class="breakdown-row"><span class="breakdown-label">Base Premium</span><span class="breakdown-value">$${formatCurrency(basePremium)}</span></div>
+                ${ncdAmount > 0 ? `<div class="breakdown-row text-green-600"><span class="breakdown-label">NCD (${ncdRate * 100}%)</span><span class="breakdown-value">-$${formatCurrency(ncdAmount)}</span></div>` : ''}
+                <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span class="breakdown-label">Premium Before Tax</span><span class="breakdown-value">$${formatCurrency(premiumBeforeTax)}</span></div>
+                <div class="breakdown-row"><span class="breakdown-label">Tax (6%)</span><span class="breakdown-value">$${formatCurrency(taxAmount)}</span></div>`;
+            return { finalTotal, breakdownHTML, premiumBeforeTax };
+        }
+
         function calculateAndDisplayFindersFee(preTaxPremium) {
             const totalCommission = preTaxPremium * 0.10;
             const incomeTax = totalCommission * 0.25;
             const netCommission = totalCommission - incomeTax;
             const findersFee = netCommission * 0.50;
-
             lastCalculatedData.findersFee = findersFee;
-
             findersFeeBreakdownEl.innerHTML = `
                 <div class="breakdown-row"><span>Total Commission (10%)</span><span class="font-semibold">$${formatCurrency(totalCommission)}</span></div>
                 <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span>-$${formatCurrency(incomeTax)}</span></div>
-                <div class="breakdown-row font-semibold border-t border-[var(--border-color)] pt-1 mt-1"><span>Net Commission</span><span>$${formatCurrency(netCommission)}</span></div>
-                <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (50%)</span><span class="font-bold">$${formatCurrency(findersFee)}</span></div>
-            `;
+                <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission</span><span>$${formatCurrency(netCommission)}</span></div>
+                <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (50%)</span><span class="font-bold">$${formatCurrency(findersFee)}</span></div>`;
         }
 
         async function submitReferral() {
             const clientName = document.getElementById('client-name').value;
             const clientEmail = document.getElementById('client-email').value;
             const clientContact = document.getElementById('client-contact').value;
-            const errorEl = document.getElementById('client-modal-error');
-            
             if (!clientName || !clientEmail || !clientContact) {
-                errorEl.textContent = "Please fill out all client fields.";
+                document.getElementById('client-modal-error').textContent = "Please fill out all client fields.";
                 return;
             }
-             errorEl.textContent = "";
-
             submitReferralBtn.innerHTML = '<span class="loader !w-6 !h-6"></span>';
             submitReferralBtn.disabled = true;
 
             try {
-                const referralData = {
+                await addDoc(collection(db, "referrals"), {
                     ...lastCalculatedData,
-                    referrerId: currentUser.uid,
-                    referrerName: currentUser.displayName,
-                    clientName,
-                    clientEmail,
-                    clientContact,
-                    status: 'Pending',
-                    createdAt: Timestamp.now()
-                };
-
-                await addDoc(collection(db, "referrals"), referralData);
-                
+                    referrerId: currentUser.uid, referrerName: currentUser.displayName,
+                    clientName, clientEmail, clientContact,
+                    status: 'Pending', createdAt: Timestamp.now()
+                });
                 clientInfoModal.style.display = 'none';
                 successModal.style.display = 'flex';
-
             } catch (error) {
-                console.error("Error adding document: ", error);
-                errorEl.textContent = "Could not submit referral. Please try again.";
+                document.getElementById('client-modal-error').textContent = "Could not submit referral.";
             } finally {
                 submitReferralBtn.innerHTML = 'Submit Referral';
                 submitReferralBtn.disabled = false;
             }
         }
-        
     </script>
 </body>
 </html>
