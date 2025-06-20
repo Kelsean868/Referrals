@@ -103,6 +103,7 @@
                     <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Total Referrers</h2>
                     <p id="total-referrers-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
                 </div>
+                <!-- NEW: Monthly Performance Chart -->
                 <div class="bento-box md:col-span-2 lg:col-span-1">
                      <h2 class="text-lg font-semibold text-center text-[var(--text-secondary)]">This Month's Performance</h2>
                      <div class="relative h-48 w-48 mx-auto mt-4">
@@ -301,31 +302,37 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let allReferrers = [];
+        let allReferrers = []; // Cache for referrers
         let commissionTiers = [];
-        let performanceChart = null; 
+        let performanceChart = null; // Chart instance
 
-        onAuthStateChanged(auth, async (user) => {
-            const adminApp = document.getElementById('admin-app');
-            const loaderEl = document.getElementById('auth-loader');
-            if (user) {
-                const userDocRef = doc(db, "users", user.uid);
-                const userDoc = await getDoc(userDocRef);
-                if (userDoc.exists() && userDoc.data().role === 'admin') {
-                    document.getElementById('admin-greeting').textContent = `Welcome, ${user.displayName || user.email}!`;
-                    adminApp.classList.remove('hidden');
-                    loaderEl.classList.add('hidden');
-                    loadAdminData();
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                signOut(auth).then(() => {
+                    window.location.href = './index.html';
+                }).catch(error => console.error('Logout error:', error));
+            });
+
+            onAuthStateChanged(auth, async (user) => {
+                const adminApp = document.getElementById('admin-app');
+                const loaderEl = document.getElementById('auth-loader');
+                if (user) {
+                    const userDocRef = doc(db, "users", user.uid);
+                    const userDoc = await getDoc(userDocRef);
+                    if (userDoc.exists() && userDoc.data().role === 'admin') {
+                        document.getElementById('admin-greeting').textContent = `Welcome, ${user.displayName || user.email}!`;
+                        adminApp.classList.remove('hidden');
+                        loaderEl.classList.add('hidden');
+                        loadAdminData();
+                    } else { showAccessDenied(loaderEl); }
                 } else { showAccessDenied(loaderEl); }
-            } else { showAccessDenied(loaderEl); }
+            });
         });
         
         function showAccessDenied(loaderEl) {
             loaderEl.innerHTML = `<div class="text-center"><i class="fas fa-gavel text-5xl text-red-500 mx-auto mb-4"></i><h3 class="text-xl font-bold leading-6 mb-2">Access Denied</h3><p class="text-[var(--text-secondary)]">You do not have permission to view this page.</p><div class="mt-6"><a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a></div></div>`;
         }
-
-        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
-
+        
         function loadAdminData() {
             onSnapshot(collection(db, "referrals"), snapshot => {
                 const referrals = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
