@@ -172,6 +172,10 @@
                 <input type="text" id="client-contact" placeholder="Client's Contact Number" class="w-full">
                 <input type="text" id="vehicle-license" placeholder="Vehicle License Plate #" class="w-full">
             </div>
+             <div class="flex items-center space-x-3 mt-4 pt-4 border-t border-[var(--border-color)]">
+                <input type="checkbox" id="waive-fee-checkbox" class="h-4 w-4">
+                <label for="waive-fee-checkbox" class="text-sm font-medium text-[var(--text-secondary)]">Waive finder's fee for this referral</label>
+            </div>
             <p id="client-modal-error" class="text-red-500 text-sm text-center mt-4"></p>
             <div class="mt-6 flex justify-end space-x-3">
                 <button id="close-client-modal-btn" type="button" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Cancel</button>
@@ -356,11 +360,12 @@
                 }
             }
             
-            // Populate client info
+            // Populate client info and fee waiver checkbox
             getElement('client-name').value = data.clientName || '';
             getElement('client-email').value = data.clientEmail || '';
             getElement('client-contact').value = data.clientContact || '';
             getElement('vehicle-license').value = data.licensePlate || '';
+            getElement('waive-fee-checkbox').checked = data.feeWaived || false;
             
             // Re-run calculation with populated data
             calculatePremium();
@@ -400,6 +405,8 @@
 
         function handleCreateReferralClick() {
             if (currentUserData && lastCalculatedData.totalPremium > 0) {
+                // Set waiver checkbox based on user's profile default
+                getElement('waive-fee-checkbox').checked = currentUserData.waivesAllFees || false;
                 getElement('client-info-modal').style.display = 'flex';
             } else if (!currentUserData) {
                 alert("Error: No user is logged in.");
@@ -421,12 +428,14 @@
             submitBtn.disabled = true;
 
             const prefix = lastCalculatedData.typePrefix;
-            
-            // Gather all form data for saving/updating
+            const feeWaived = getElement('waive-fee-checkbox').checked;
+
             const referralData = { 
                 ...lastCalculatedData, 
                 clientName, clientEmail, clientContact, licensePlate,
-                // Specific fields from the active form
+                feeWaived: feeWaived,
+                // If fee is waived, finder's fee should be 0
+                findersFee: feeWaived ? 0 : lastCalculatedData.findersFee,
                 sumInsured: getFloatValue(`${prefix}-sum-insured`),
                 vehicleAge: getFloatValue(`${prefix}-vehicle-age`),
                 coverageType: getElementValue(`${prefix}-coverage-type`),
@@ -451,7 +460,6 @@
                 tpl: getElement(`${prefix}-tpl-check`)?.checked,
             };
             
-            // Add special discounts dynamically
             Object.values(SPECIAL_DISCOUNTS).forEach(id => {
                 referralData[`${id}Check`] = getElement(`${prefix}-${id}-check`)?.checked;
                 referralData[`${id}Value`] = getFloatValue(`${prefix}-${id}-value`);
@@ -589,7 +597,11 @@
 
         function calculateAndDisplayFindersFee(preTaxPremium) {
             const feeSection = getElement('finders-fee-section');
-            if (preTaxPremium <= 0 || !currentUserData) { feeSection.classList.add('hidden'); return; }
+            if (preTaxPremium <= 0 || !currentUserData || currentUserData.waivesAllFees) { 
+                feeSection.classList.add('hidden'); 
+                lastCalculatedData.findersFee = 0;
+                return; 
+            }
             const commissionSplit = (currentUserData.commissionSplit || 50) / 100;
             const commission = preTaxPremium * 0.10;
             const tax = commission * 0.25;
