@@ -429,13 +429,13 @@
 
             const prefix = lastCalculatedData.typePrefix;
             const feeWaived = getElement('waive-fee-checkbox').checked;
-
+            
             const referralData = { 
                 ...lastCalculatedData, 
                 clientName, clientEmail, clientContact, licensePlate,
                 feeWaived: feeWaived,
-                // If fee is waived, finder's fee should be 0
                 findersFee: feeWaived ? 0 : lastCalculatedData.findersFee,
+                commissionSplitAtTimeOfReferral: currentUserData.commissionSplit || 50, // Lock in split
                 sumInsured: getFloatValue(`${prefix}-sum-insured`),
                 vehicleAge: getFloatValue(`${prefix}-vehicle-age`),
                 coverageType: getElementValue(`${prefix}-coverage-type`),
