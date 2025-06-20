@@ -18,46 +18,33 @@
             --primary-accent: #005f73; 
             --primary-accent-darker: #003d4d;
             --secondary-accent: #ae8625; 
-            --shadow-soft: 0 3px 6px rgba(0,0,0,0.04);
-            --shadow-medium: 0 5px 15px rgba(0,0,0,0.06);
-            --shadow-strong: 0 8px 25px rgba(0,0,0,0.08);
-            --font-body: 'Montserrat', sans-serif;
-            --font-heading: 'Source Serif Pro', serif; 
         }
         body {
             font-family: var(--font-body);
             background-color: var(--bg-main);
             color: var(--text-primary);
-            transition: background-color 0.3s ease, color 0.3s ease;
         }
         h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--primary-accent); }
         .bento-box {
             background-color: var(--bg-bento-box);
             border-radius: 0.75rem; 
             padding: 1.75rem; 
-            box-shadow: var(--shadow-medium);
-            transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
             border: 1px solid var(--border-color);
         }
-        .bento-box:hover { transform: translateY(-5px); box-shadow: var(--shadow-strong); }
         input, select {
             border: 1px solid var(--border-color); padding: 0.85rem 1.15rem; border-radius: 0.375rem; 
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, color 0.3s ease;
             background-color: var(--bg-main); color: var(--text-primary);
             font-weight: 500;
         }
         input:focus, select:focus {
             border-color: var(--primary-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 25%, transparent); 
-            outline: none; background-color: var(--bg-bento-box);
+            outline: none;
         }
         .button-base {
             font-weight: 600; padding-top: 0.85rem; padding-bottom: 0.85rem; border-radius: 0.375rem;
-            transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
-            box-shadow: var(--shadow-soft); text-transform: uppercase; letter-spacing: 0.025em; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 0.025em; cursor: pointer;
         }
-        .button-base:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
         .primary-btn { background-color: var(--primary-accent); color: white; }
-        .primary-btn:hover { background-color: var(--primary-accent-darker); }
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(29, 45, 53, 0.7);
@@ -67,7 +54,6 @@
         .modal-content {
             background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color);
             width: 90%; max-width: 560px; border-radius: 0.75rem; position: relative;
-            box-shadow: var(--shadow-strong);
         }
         .breakdown-row { display: flex; justify-content: space-between; flex-wrap: wrap; }
         .loader {
@@ -88,7 +74,6 @@
     <div id="health-rater-app" class="w-full max-w-6xl mx-auto my-8 hidden">
         <header class="mb-10 text-center">
             <h1 class="text-4xl sm:text-5xl font-bold mb-3">Health Insurance Referral Rater</h1>
-            <p class="text-xl text-[var(--text-secondary)]">Health Insurance Plans, Simplified.</p>
         </header>
 
         <main class="grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -145,7 +130,7 @@
                  <div id="results-section" class="bento-box sticky top-8 text-center">
                     <h2 class="text-2xl font-bold mb-2"><i class="fas fa-receipt mr-3 text-[var(--secondary-accent)]"></i>Premium Summary</h2>
                     <p id="total-premium" class="text-4xl font-bold text-[var(--primary-accent)] mt-4">$0.00</p>
-                    <p id="total-premium-label" class="text-sm text-[var(--text-muted)]">(Total Annual Premium)</p>
+                    <p id="total-premium-label" class="text-sm text-[var(--text-muted)]">(Total Premium)</p>
                     <div id="premium-breakdown" class="text-left mt-6 pt-4 border-t border-[var(--border-color)] text-[var(--text-secondary)] text-sm space-y-1"></div>
                     
                     <div id="finders-fee-section" class="text-left mt-6 pt-4 border-t-2 border-dashed border-[var(--secondary-accent)]">
@@ -186,7 +171,7 @@
         <div class="modal-content text-center">
             <i class="fas fa-check-circle text-5xl text-green-500 mx-auto mb-4"></i>
             <h3 class="text-xl font-bold leading-6 mb-2">Referral Submitted!</h3>
-            <p class="text-[var(--text-secondary)]">Your referral has been sent for approval. You can track its status on your dashboard.</p>
+            <p class="text-[var(--text-secondary)]">You can track its status on your dashboard.</p>
             <div class="mt-6">
                  <a href="./index.html" class="button-base primary-btn py-2 px-4">Back to Dashboard</a>
             </div>
@@ -194,7 +179,6 @@
     </div>
     
     <script src="health_rater_data.js"></script>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -249,9 +233,7 @@
         const successModal = document.getElementById('success-modal');
         const findersFeeBreakdownEl = document.getElementById('finders-fee-breakdown');
         
-        allInputs.forEach(input => {
-            input.addEventListener('change', calculateAndDisplay);
-        });
+        allInputs.forEach(input => input.addEventListener('change', calculateAndDisplay));
 
         createReferralBtn.addEventListener('click', () => {
             if (lastCalculatedData.totalPremium > 0) {
@@ -337,38 +319,39 @@
                 mmRateSet = RATES.major_medical[mmAmount]?.[mmRateKey]?.[ageBand]?.[childrenCount === '0' ? '0' : '1+'] || mmRateSet;
             }
 
-            const totalPremium = (baseRateSet[frequency] || 0) + (mmRateSet[frequency] || 0);
+            const basePremium = baseRateSet[frequency] || 0;
+            const mmPremium = mmRateSet[frequency] || 0;
+            const totalPremium = basePremium + mmPremium; // This is the premium for the selected frequency
+            
             getElement('total-premium').textContent = formatCurrency(totalPremium);
             getElement('total-premium-label').textContent = `(Total ${frequency.charAt(0).toUpperCase() + frequency.slice(1)} Premium)`;
             
             let breakdownHTML = ``;
-            if (planType !== 'mm_only') breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(baseRateSet[frequency])}</strong></p>`;
-            if (planType !== 'base_only') breakdownHTML += `<p class="breakdown-row"><span>Major Medical:</span> <strong>${formatCurrency(mmRateSet[frequency])}</strong></p>`;
+            if (planType !== 'mm_only') breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(basePremium)}</strong></p>`;
+            if (planType !== 'base_only') breakdownHTML += `<p class="breakdown-row"><span>Major Medical:</span> <strong>${formatCurrency(mmPremium)}</strong></p>`;
             breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t border-[var(--border-color)] pt-2 mt-2"><span>Total Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
             getElement('premium-breakdown').innerHTML = breakdownHTML;
             
-            const annualPremium = (baseRateSet.annual || 0) + (mmRateSet.annual || 0);
-
             lastCalculatedData = {
                 insuranceType: 'Health',
                 totalPremium: totalPremium,
-                premiumBeforeTax: annualPremium 
+                premiumBeforeTax: totalPremium // For health, the fee is based on the quoted premium frequency
             };
-            calculateAndDisplayFindersFee(annualPremium);
+            calculateAndDisplayFindersFee(totalPremium, frequency);
         }
 
-        function calculateAndDisplayFindersFee(preTaxPremium) {
-            const totalCommission = preTaxPremium * 0.25;
+        function calculateAndDisplayFindersFee(premium, frequency) {
+            const totalCommission = premium * 0.25;
             const incomeTax = totalCommission * 0.25;
             const netCommission = totalCommission - incomeTax;
             const findersFee = netCommission * 0.50;
             lastCalculatedData.findersFee = findersFee;
 
             findersFeeBreakdownEl.innerHTML = `
-                <div class="breakdown-row"><span>Pre-Tax Annual Premium</span><span class="font-semibold">${formatCurrency(preTaxPremium)}</span></div>
+                <div class="breakdown-row"><span>Premium for Fee Calc. (${frequency})</span><span class="font-semibold">${formatCurrency(premium)}</span></div>
                 <div class="breakdown-row mt-2"><span>Total Commission (25%)</span><span class="font-semibold">${formatCurrency(totalCommission)}</span></div>
                 <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span>-${formatCurrency(incomeTax)}</span></div>
-                <div class="breakdown-row font-semibold border-t border-[var(--border-color)] pt-1 mt-1"><span>Net Commission Payable</span><span>${formatCurrency(netCommission)}</span></div>
+                <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission Payable</span><span>${formatCurrency(netCommission)}</span></div>
                 <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (50%)</span><span class="font-bold">${formatCurrency(findersFee)}</span></div>
             `;
         }
@@ -377,14 +360,10 @@
             const clientName = document.getElementById('client-name').value;
             const clientEmail = document.getElementById('client-email').value;
             const clientContact = document.getElementById('client-contact').value;
-            const errorEl = document.getElementById('client-modal-error');
-            
             if (!clientName || !clientEmail || !clientContact) {
-                errorEl.textContent = "Please fill out all client fields.";
+                document.getElementById('client-modal-error').textContent = "Please fill out all client fields.";
                 return;
             }
-            errorEl.textContent = "";
-
             submitReferralBtn.innerHTML = '<span class="loader !w-6 !h-6"></span>';
             submitReferralBtn.disabled = true;
 
@@ -400,8 +379,7 @@
                 clientInfoModal.style.display = 'none';
                 successModal.style.display = 'flex';
             } catch (error) {
-                console.error("Error adding document: ", error);
-                errorEl.textContent = "Could not submit referral. Please try again.";
+                document.getElementById('client-modal-error').textContent = "Could not submit referral.";
             } finally {
                 submitReferralBtn.innerHTML = 'Submit Referral';
                 submitReferralBtn.disabled = false;
