@@ -146,7 +146,7 @@
 
     <div id="health-rater-app" class="w-full max-w-6xl mx-auto my-8 hidden">
         <header class="mb-10 text-center">
-            <h1 class="text-4xl sm:text-5xl font-bold mb-3">TATIL COVERCARE Premium Rater</h1>
+            <h1 id="main-header" class="text-4xl sm:text-5xl font-bold mb-3">TATIL COVERCARE Premium Rater</h1>
             <p class="text-xl text-[var(--text-secondary)]">Health Insurance Plans, Simplified.</p>
         </header>
 
@@ -233,7 +233,7 @@
     <!-- Combined Quote & Referral Modal -->
     <div id="quote-referral-modal" class="modal-overlay hidden">
         <div class="modal-content max-w-4xl">
-            <h3 class="text-2xl font-bold leading-6 mb-6 text-center">Referral & Official Quotation</h3>
+            <h3 id="modal-header" class="text-2xl font-bold leading-6 mb-6 text-center">Referral & Official Quotation</h3>
 
             <div class="grid md:grid-cols-2 gap-8">
                 <!-- Left side: Client Info for Referral -->
@@ -274,7 +274,7 @@
     <div id="success-modal" class="modal-overlay hidden">
         <div class="modal-content text-center">
             <i class="fas fa-check-circle text-5xl text-green-500 mx-auto mb-4"></i>
-            <h3 class="text-xl font-bold leading-6 mb-2">Referral Submitted!</h3>
+            <h3 id="success-header" class="text-xl font-bold leading-6 mb-2">Referral Submitted!</h3>
             <p class="text-[var(--text-secondary)]">You can track its status on your dashboard.</p>
             <div class="mt-6">
                  <a href="./index.html" class="button-base primary-btn py-2 px-4">Back to Dashboard</a>
@@ -293,7 +293,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, getDoc, addDoc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration ---
         const firebaseConfig = {
@@ -310,66 +310,132 @@
         const db = getFirestore(app);
 
         // --- Global State ---
-        let currentUser = null;
+        let currentUserData = null;
         let lastCalculatedData = {};
         let fullQuoteText = '';
+        let editMode = false;
+        let referralIdToEdit = null;
 
         // --- DOM ELEMENTS ---
         const getElement = (id) => document.getElementById(id);
-        const allInputs = document.querySelectorAll('select');
+        const allInputs = () => document.querySelectorAll('select');
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Check for rate data
             if (typeof RATES === 'undefined') {
                 document.body.innerHTML = '<div class="text-red-500 text-center p-8">Error: Could not load rate data. Please ensure health_rater_data.js is present.</div>';
                 return;
             }
 
-            // Authentication Listener
-            onAuthStateChanged(auth, (user) => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('edit')) {
+                editMode = true;
+                referralIdToEdit = urlParams.get('edit');
+                getElement('main-header').textContent = "Edit Health Referral";
+                getElement('proceed-to-quote-btn').textContent = "Update Referral & Quote";
+                getElement('modal-header').textContent = "Update Referral & Official Quotation";
+                getElement('submit-referral-btn').textContent = "Update Referral";
+                getElement('success-header').textContent = "Referral Updated!";
+            }
+
+            onAuthStateChanged(auth, async (user) => {
                 const appEl = getElement('health-rater-app');
                 const loaderEl = getElement('auth-loader');
                 if (user) {
-                    currentUser = user;
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    currentUserData = userDoc.exists() ? { uid: user.uid, ...userDoc.data() } : null;
+                    
                     appEl.classList.remove('hidden');
                     loaderEl.classList.add('hidden');
-                    initializeRater();
+                    if (editMode && referralIdToEdit) {
+                        await initializeRaterForEdit();
+                    } else {
+                        initializeRater();
+                    }
                 } else {
-                    loaderEl.innerHTML = `
-                        <div class="text-center bento-box max-w-lg mx-auto">
-                           <h3 class="text-xl font-bold leading-6 mb-2">Authentication Error</h3>
-                           <p class="text-[var(--text-secondary)]">You must be logged in to use the rater.</p>
-                           <div class="mt-6">
-                               <a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a>
-                           </div>
-                       </div>`;
+                    loaderEl.innerHTML = `<div class="text-center bento-box max-w-lg mx-auto"><h3 class="text-xl font-bold leading-6 mb-2">Authentication Error</h3><p class="text-[var(--text-secondary)]">You must be logged in to use the rater.</p><div class="mt-6"><a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a></div></div>`;
                     appEl.classList.add('hidden');
                     loaderEl.classList.remove('hidden');
                 }
             });
 
-            // Theme Toggle
             const themeToggle = getElement('themeToggleCheckbox');
-            const themeToggleLabel = getElement('themeToggleLabel');
-            function applyTheme(isDark) {
-                document.documentElement.classList.toggle('dark-mode', isDark);
-                document.body.classList.toggle('dark-mode', isDark);
-                if(themeToggleLabel) themeToggleLabel.textContent = isDark ? 'DARK' : 'LIGHT';
-                if(themeToggle) themeToggle.checked = isDark;
-                localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            }
             themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
-            const savedTheme = localStorage.getItem('theme');
-            applyTheme(savedTheme === 'dark' || (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches));
-
-            // Set current year in footer
+            applyTheme(localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches));
             getElement('currentYear').textContent = new Date().getFullYear();
         });
         
         function initializeRater() {
             populateDropdowns();
             setupEventListeners();
+            calculateAndDisplay();
+        }
+
+        async function initializeRaterForEdit() {
+            const referralRef = doc(db, "referrals", referralIdToEdit);
+            const referralDoc = await getDoc(referralRef);
+            if (referralDoc.exists()) {
+                const data = referralDoc.data();
+                // Ensure the logged-in user is the owner of this referral
+                if(data.referrerId !== currentUserData.uid) {
+                    document.body.innerHTML = `<div class="text-red-500 text-center p-8">Error: You do not have permission to edit this referral.</div>`;
+                    return;
+                }
+                initializeRater(); // Init dropdowns and listeners first
+                populateFormWithData(data); // Then populate with data
+            } else {
+                 document.body.innerHTML = `<div class="text-red-500 text-center p-8">Error: Referral not found.</div>`;
+            }
+        }
+        
+        function populateFormWithData(data) {
+            // This function maps keys from the Firestore doc to select element IDs
+            const keyToIdMap = {
+                familyStatus: 'family-status',
+                ageBand: 'age-band',
+                childrenCount: 'children-count',
+                planType: 'plan-type',
+                premiumFrequency: 'payment-frequency',
+                dentalVision: 'dental-vision',
+                maternity: 'maternity',
+                mmAmount: 'major-medical-amount'
+            };
+            
+            // Map text values from DB back to value attributes in <select>
+            const textToValueMap = {
+                // familyStatus
+                'Single Male': 'single_male', 'Single Female': 'single_female', 'Husband & Wife': 'husband_wife',
+                // ageBand
+                'Under 40': 'under_40', '40-49': '40_49', '50-59': '50_59', '60-65': '60_65', '66-67': '66_67', '68-70': '68_70',
+                // childrenCount
+                '0 Children': '0', '1 Child': '1', '2 or More': '2+',
+                // planType
+                'Base Plan + Major Medical': 'base_and_mm', 'COVERCARE Base Plan Only': 'base_only', 'Major Medical Only': 'mm_only',
+                // premiumFrequency
+                'Annual': 'annual', 'Semi-Annual': 'semi', 'Quarterly': 'quarterly',
+                // dentalVision & maternity
+                'Yes': 'yes', 'No': 'no',
+                // mmAmount
+                '$50,000': '50000', '$100,000': '100000', '$200,000': '200000', '$300,000': '300000', '$500,000': '500000'
+            };
+
+            for(const key in keyToIdMap) {
+                const elementId = keyToIdMap[key];
+                const element = getElement(elementId);
+                if(element && data[key]) {
+                    const valueToSet = textToValueMap[data[key]];
+                    if(valueToSet) {
+                       element.value = valueToSet;
+                    }
+                }
+            }
+            
+            // Populate client info in modal
+            if(data.clientName) getElement('client-name').value = data.clientName;
+            if(data.clientEmail) getElement('client-email').value = data.clientEmail;
+            if(data.clientContact) getElement('client-contact').value = data.clientContact;
+
+            // Trigger calculation with populated data
             calculateAndDisplay();
         }
 
@@ -393,40 +459,27 @@
         
         // --- EVENT LISTENERS ---
         function setupEventListeners() {
-            allInputs.forEach(input => input.addEventListener('change', calculateAndDisplay));
-
-            // Combined Modal
+            document.querySelectorAll('#health-rater-app select').forEach(input => input.addEventListener('change', calculateAndDisplay));
             getElement('proceed-to-quote-btn').addEventListener('click', () => {
                 if (lastCalculatedData.totalPremium > 0) {
                     generateFinalQuoteText();
                     getElement('quote-referral-modal').style.display = 'flex';
-                } else {
-                    // This is a good place for a more styled notification
-                    alert("Please calculate a premium first."); 
-                }
+                } else { alert("Please calculate a premium first."); }
             });
-
-            getElement('close-modal-btn').addEventListener('click', () => {
-                getElement('quote-referral-modal').style.display = 'none';
-            });
-            
-            // Modal Action Buttons
+            getElement('close-modal-btn').addEventListener('click', () => getElement('quote-referral-modal').style.display = 'none');
             getElement('copy-quote-btn').addEventListener('click', () => {
                 navigator.clipboard.writeText(getElement('quote-output').innerText).then(() => {
                     getElement('copy-quote-btn').textContent = 'Copied!';
                     setTimeout(() => { getElement('copy-quote-btn').textContent = 'Copy Quote'; }, 2000);
                 });
             });
-
             getElement('download-pdf-btn').addEventListener('click', generateAndDownloadPDF);
             getElement('submit-referral-btn').addEventListener('click', submitReferral);
         }
 
         // --- UI & HELPER FUNCTIONS ---
-        function formatCurrency(value) {
-            if (typeof value !== 'number' || isNaN(value)) { return 'N/A'; }
-            return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-        }
+        function applyTheme(isDark) { document.documentElement.classList.toggle('dark-mode', isDark); document.body.classList.toggle('dark-mode', isDark); getElement('themeToggleLabel').textContent = isDark ? 'DARK' : 'LIGHT'; getElement('themeToggleCheckbox').checked = isDark; localStorage.setItem('theme', isDark ? 'dark' : 'light'); }
+        function formatCurrency(value) { return (typeof value !== 'number' || isNaN(value)) ? 'N/A' : value.toLocaleString('en-US', { style: 'currency', currency: 'USD' }); }
         
         function handleUIChanges() {
             const planType = getElement('plan-type').value;
@@ -462,7 +515,6 @@
             const mmAmount = getElement('major-medical-amount').value;
             const frequency = getElement('payment-frequency').value;
 
-            // 1. Get Rate Sets
             let baseRateSet = {annual:0, semi:0, quarterly:0};
             if (planType !== 'mm_only') {
                 let baseRateKey = familyStatus;
@@ -481,51 +533,35 @@
                 mmRateSet = RATES.major_medical[mmAmount]?.[mmRateKey]?.[ageBand]?.[mmChildrenKey] || mmRateSet;
             }
 
-            // 2. Calculate Premiums for Selected Frequency
             const basePremium = baseRateSet[frequency] || 0;
             const mmPremium = mmRateSet[frequency] || 0;
             const totalPremium = basePremium + mmPremium;
-
-            // 3. Display Main Results
-            getElement('total-premium').textContent = formatCurrency(totalPremium);
             const frequencyLabel = frequency.charAt(0).toUpperCase() + frequency.slice(1);
+            
+            getElement('total-premium').textContent = formatCurrency(totalPremium);
             getElement('total-premium-label').textContent = `(Total ${frequencyLabel} Premium)`;
             
             let breakdownHTML = '';
-            if (planType !== 'mm_only') {
-                breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(basePremium)}</strong></p>`;
-            }
-            if (planType !== 'base_only') {
-                breakdownHTML += `<p class="breakdown-row"><span>Major Medical:</span> <strong>${formatCurrency(mmPremium)}</strong></p>`;
-            }
+            if (planType !== 'mm_only') breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(basePremium)}</strong></p>`;
+            if (planType !== 'base_only') breakdownHTML += `<p class="breakdown-row"><span>Major Medical:</span> <strong>${formatCurrency(mmPremium)}</strong></p>`;
             breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t border-[var(--border-color)] pt-2 mt-2"><span>Total ${frequencyLabel} Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
             getElement('premium-breakdown').innerHTML = breakdownHTML;
             
-            // 4. Display Frequency Comparison
-            let comparisonHTML = `<h4 class="font-bold text-md text-[var(--text-primary)]">Payment Options</h4>`;
-            comparisonHTML += `<table class="w-full mt-2 text-xs"><thead><tr class="text-left"><th class="font-semibold pb-1">Frequency</th><th class="font-semibold pb-1 text-right">Premium</th><th class="font-semibold pb-1 text-right">Saving vs. Annual</th></tr></thead><tbody>`;
+            let comparisonHTML = `<h4 class="font-bold text-md text-[var(--text-primary)]">Payment Options</h4><table class="w-full mt-2 text-xs"><thead><tr class="text-left"><th class="font-semibold pb-1">Frequency</th><th class="font-semibold pb-1 text-right">Premium</th><th class="font-semibold pb-1 text-right">Saving vs. Annual</th></tr></thead><tbody>`;
             const annualTotal = (baseRateSet.annual || 0) + (mmRateSet.annual || 0);
-
             ['annual', 'semi', 'quarterly'].forEach(freq => {
                 const freqPremium = (baseRateSet[freq] || 0) + (mmRateSet[freq] || 0);
                 const multiplier = { annual: 1, semi: 2, quarterly: 4}[freq];
                 const effectiveAnnualCost = freqPremium * multiplier;
                 const saving = annualTotal - effectiveAnnualCost;
                 const isSelected = freq === frequency ? 'font-bold text-[var(--primary-accent)]' : '';
-                
-                comparisonHTML += `<tr class="${isSelected}">
-                    <td>${freq.charAt(0).toUpperCase() + freq.slice(1)}</td>
-                    <td class="text-right">${formatCurrency(freqPremium)}</td>
-                    <td class="text-right">${formatCurrency(saving)}</td>
-                </tr>`;
+                comparisonHTML += `<tr class="${isSelected}"><td>${freq.charAt(0).toUpperCase() + freq.slice(1)}</td><td class="text-right">${formatCurrency(freqPremium)}</td><td class="text-right">${formatCurrency(saving)}</td></tr>`;
             });
             comparisonHTML += `</tbody></table>`;
             getElement('frequency-comparison').innerHTML = comparisonHTML;
 
-            // 5. Calculate and Display Finder's Fee
             calculateAndDisplayFindersFee(totalPremium, frequency);
             
-            // 6. Store data for referral
             lastCalculatedData = {
                 insuranceType: 'Health',
                 totalPremium: totalPremium,
@@ -536,10 +572,13 @@
         }
 
         function calculateAndDisplayFindersFee(premium, frequency) {
+            if (!currentUserData) return; // Wait until user data is loaded
+            const commissionSplit = (currentUserData.commissionSplit || 50) / 100;
+
             const totalCommission = premium * 0.25;
             const incomeTax = totalCommission * 0.25;
             const netCommission = totalCommission - incomeTax;
-            const findersFee = netCommission * 0.50;
+            const findersFee = netCommission * commissionSplit;
             
             lastCalculatedData.findersFee = findersFee;
 
@@ -548,57 +587,28 @@
                 <div class="breakdown-row mt-2"><span>Total Commission (25%)</span><span class="font-semibold">${formatCurrency(totalCommission)}</span></div>
                 <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span>-${formatCurrency(incomeTax)}</span></div>
                 <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission Payable</span><span>${formatCurrency(netCommission)}</span></div>
-                <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (50%)</span><span class="font-bold">${formatCurrency(findersFee)}</span></div>
+                <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (${commissionSplit*100}%)</span><span class="font-bold">${formatCurrency(findersFee)}</span></div>
             `;
         }
         
         // --- QUOTE & PDF GENERATION ---
         function generateFinalQuoteText() {
-            const planTypeText = getElement('plan-type').options[getElement('plan-type').selectedIndex].text;
-            const familyStatusText = getElement('family-status').options[getElement('family-status').selectedIndex].text;
-            const ageBandText = getElement('age-band').options[getElement('age-band').selectedIndex].text;
-            const childrenCountText = getElement('children-count').options[getElement('children-count').selectedIndex].text;
-            
+            const getSelectedText = (id) => getElement(id).options[getElement(id).selectedIndex].text;
             let quoteDetails = `
-Plan Type:          ${planTypeText}
-Family Status:      ${familyStatusText}
-Age Band:           ${ageBandText}
-Number of Children: ${childrenCountText}
+Plan Type:          ${getSelectedText('plan-type')}
+Family Status:      ${getSelectedText('family-status')}
+Age Band:           ${getSelectedText('age-band')}
+Number of Children: ${getSelectedText('children-count')}
 `;
-            const planType = getElement('plan-type').value;
-            if (planType !== 'mm_only') {
-                const withDVText = getElement('dental-vision').value === 'yes' ? 'Yes' : 'No';
-                const maternityText = getElement('maternity').disabled ? 'N/A' : (getElement('maternity').value === 'yes' ? 'Yes' : 'No');
-                quoteDetails += `Dental & Vision:    ${withDVText}\nMaternity Included: ${maternityText}\n`;
+            if (getElement('plan-type').value !== 'mm_only') {
+                quoteDetails += `Dental & Vision:    ${getElement('dental-vision').value === 'yes' ? 'Yes' : 'No'}\nMaternity Included: ${getElement('maternity').disabled ? 'N/A' : (getElement('maternity').value === 'yes' ? 'Yes' : 'No')}\n`;
             }
-            if (planType !== 'base_only') {
-                 const mmAmountText = formatCurrency(parseInt(getElement('major-medical-amount').value));
-                 quoteDetails += `MM Coverage:        ${mmAmountText}\n`;
+            if (getElement('plan-type').value !== 'base_only') {
+                 quoteDetails += `MM Coverage:        ${formatCurrency(parseInt(getElement('major-medical-amount').value))}\n`;
             }
-
             const breakdownText = getElement('premium-breakdown').innerText;
             const comparisonText = getElement('frequency-comparison').innerText.replace('Payment Options', '\nPAYMENT OPTIONS:\n--------------');
-
-            fullQuoteText = `
-=========================================
-    OFFICIAL COVERCARE INSURANCE QUOTATION
-=========================================
-Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-
-CLIENT & PLAN DETAILS:
-----------------------
-${quoteDetails.trim()}
-
-PREMIUM SUMMARY:
------------------
-${breakdownText}
-
-${comparisonText}
-=========================================
-
-This quotation is valid for 30 days.
-Terms and conditions apply.
-`;
+            fullQuoteText = `=========================================\n    OFFICIAL COVERCARE INSURANCE QUOTATION\n=========================================\nDate: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}\n\nCLIENT & PLAN DETAILS:\n----------------------\n${quoteDetails.trim()}\n\nPREMIUM SUMMARY:\n-----------------\n${breakdownText}\n\n${comparisonText}\n=========================================\n\nThis quotation is valid for 30 days.\nTerms and conditions apply.`;
             getElement('quote-output').textContent = fullQuoteText.trim();
         }
 
@@ -606,9 +616,7 @@ Terms and conditions apply.
             const clientName = getElement('client-name').value || 'Valued Client';
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            
             generateFinalQuoteText();
-
             doc.setFont("courier", "normal");
             doc.setFontSize(10);
             doc.text(fullQuoteText.trim(), 10, 20);
@@ -617,13 +625,10 @@ Terms and conditions apply.
 
         // --- FIREBASE REFERRAL SUBMISSION ---
         async function submitReferral() {
-            const clientName = getElement('client-name').value;
-            const clientEmail = getElement('client-email').value;
-            const clientContact = getElement('client-contact').value;
+            const clientName = getElement('client-name').value, clientEmail = getElement('client-email').value, clientContact = getElement('client-contact').value;
             const errorEl = getElement('client-modal-error');
             if (!clientName || !clientEmail || !clientContact) {
-                errorEl.textContent = "Please fill out all client fields.";
-                return;
+                errorEl.textContent = "Please fill out all client fields."; return;
             }
             errorEl.textContent = "";
 
@@ -631,35 +636,51 @@ Terms and conditions apply.
             submitBtn.innerHTML = '<span class="loader !w-6 !h-6 !border-white/50 !border-b-transparent"></span>';
             submitBtn.disabled = true;
 
-            const selectedOptions = {
-                planType: getElement('plan-type').options[getElement('plan-type').selectedIndex].text,
-                familyStatus: getElement('family-status').options[getElement('family-status').selectedIndex].text,
-                ageBand: getElement('age-band').options[getElement('age-band').selectedIndex].text,
-                childrenCount: getElement('children-count').options[getElement('children-count').selectedIndex].text,
-                dentalVision: getElement('dental-vision').value === 'yes' ? 'Yes' : 'No',
-                maternity: getElement('maternity').disabled ? 'N/A' : (getElement('maternity').value === 'yes' ? 'Yes' : 'No'),
-                mmAmount: formatCurrency(parseInt(getElement('major-medical-amount').value)),
+            const selectedOptions = Object.fromEntries(
+                [...document.querySelectorAll('#health-rater-app select')].map(sel => [
+                    sel.id.replace(/-/g, '_'), // e.g., 'family-status' -> 'family_status'
+                    sel.options[sel.selectedIndex].text
+                ])
+            );
+            
+            // Re-map IDs to more readable keys for Firestore
+             const submissionData = {
+                ...lastCalculatedData,
+                planType: selectedOptions.plan_type,
+                familyStatus: selectedOptions.family_status,
+                ageBand: selectedOptions.age_band,
+                childrenCount: selectedOptions.children_count,
+                dentalVision: selectedOptions.dental_vision,
+                maternity: getElement('maternity').disabled ? 'N/A' : selectedOptions.maternity,
+                mmAmount: selectedOptions.major_medical_amount,
+                premiumFrequency: selectedOptions.payment_frequency,
+                clientName, clientEmail, clientContact,
             };
 
             try {
-                await addDoc(collection(db, "referrals"), {
-                    ...lastCalculatedData,
-                    ...selectedOptions,
-                    referrerId: currentUser.uid,
-                    referrerName: currentUser.displayName || 'N/A',
-                    clientName, 
-                    clientEmail, 
-                    clientContact,
-                    status: 'Pending',
-                    createdAt: Timestamp.now()
-                });
+                if (editMode) {
+                    const referralRef = doc(db, "referrals", referralIdToEdit);
+                    await updateDoc(referralRef, {
+                        ...submissionData,
+                        status: 'Resubmitted',
+                        lastUpdatedAt: Timestamp.now()
+                    });
+                } else {
+                    await addDoc(collection(db, "referrals"), {
+                        ...submissionData,
+                        referrerId: currentUserData.uid,
+                        referrerName: currentUserData.name || 'N/A',
+                        status: 'Pending',
+                        createdAt: Timestamp.now()
+                    });
+                }
                 getElement('quote-referral-modal').style.display = 'none';
                 getElement('success-modal').style.display = 'flex';
             } catch (error) {
                 console.error("Error submitting referral: ", error);
                 errorEl.textContent = "Could not submit referral. Please try again.";
             } finally {
-                submitBtn.innerHTML = 'Submit Referral';
+                submitBtn.innerHTML = editMode ? 'Update Referral' : 'Submit Referral';
                 submitBtn.disabled = false;
             }
         }
