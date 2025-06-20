@@ -238,6 +238,7 @@
                 <pre id="quote-output" class="whitespace-pre-wrap text-sm font-mono"></pre>
             </div>
             <div class="mt-6 flex flex-wrap justify-end gap-3">
+                <input type="text" id="pdf-client-name" placeholder="Enter Client's Name for PDF" class="w-full md:w-auto flex-grow p-2 rounded-md border border-[var(--border-color)] bg-[var(--bg-main)]">
                 <button id="close-quote-modal-btn" type="button" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Close</button>
                 <button id="download-pdf-btn" type="button" class="button-base secondary-btn py-2 px-4">Download PDF</button>
                 <button id="copy-quote-btn" type="button" class="button-base primary-btn py-2 px-4">Copy Quote</button>
@@ -594,9 +595,7 @@ Terms and conditions apply.
         }
 
         function generateAndDownloadPDF() {
-            const clientName = prompt("Enter Client's Name for PDF:", "Valued Client");
-            if(clientName === null) return; // User cancelled
-
+            const clientName = getElement('pdf-client-name').value || 'Valued Client';
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
