@@ -40,11 +40,12 @@
         .primary-btn { background-color: var(--primary-accent); color: white; }
         .primary-btn:hover { background-color: #003d4d; }
         
-        .status-select, .approved-premium-input {
-            padding: 0.25rem 0.5rem;
+        .status-select, .approved-premium-input, .modal-input, .modal-select {
+            padding: 0.5rem;
             border-radius: 0.375rem;
             border: 1px solid var(--border-color);
-            background-color: var(--bg-bento-box);
+            background-color: var(--bg-main);
+            width: 100%;
         }
         .loader {
             width: 48px; height: 48px; border: 5px solid var(--primary-accent);
@@ -52,6 +53,8 @@
             display: inline-block; box-sizing: border-box;
             animation: rotation 1s linear infinite;
         }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(29, 45, 53, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(5px); }
+        .modal-content { background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color); width: 90%; max-width: 560px; border-radius: 0.75rem; position: relative; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -62,7 +65,6 @@
                 <h1 class="text-3xl sm:text-4xl font-bold">Admin Dashboard</h1>
                 <p id="admin-greeting" class="text-lg text-[var(--text-secondary)]"></p>
             </div>
-            <!-- **** NEW: Navigation buttons container **** -->
             <div class="flex items-center space-x-4">
                 <a href="./index.html" class="button-base bg-[var(--secondary-accent)] text-white text-sm py-2 px-4 hover:bg-[#8c6c1d]">Referrer Hub</a>
                 <button id="logout-btn" class="button-base bg-red-600 hover:bg-red-700 text-white text-sm py-2 px-4">Logout</button>
@@ -76,7 +78,7 @@
                     <p id="pending-referrals-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
                 </div>
                 <div class="bento-box">
-                    <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Total Finder's Fees Owed (This Month)</h2>
+                    <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Current Unpaid Fees (All Time)</h2>
                     <p id="finders-fee-owed-total" class="text-4xl font-bold text-[var(--primary-accent)]">$0.00</p>
                 </div>
                 <div class="bento-box">
@@ -84,25 +86,53 @@
                     <p id="total-referrers-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
                 </div>
             </section>
+
+             <section id="payout-section" class="bento-box">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold">Process Payouts</h2>
+                        <p id="payout-period-label" class="text-[var(--text-secondary)]">For business won in the previous month.</p>
+                    </div>
+                    <div class="text-right">
+                         <p id="payout-total" class="text-2xl font-bold text-green-600">$0.00</p>
+                         <button id="process-payout-btn" class="button-base primary-btn mt-2" disabled>Finalize & Pay</button>
+                    </div>
+                </div>
+            </section>
             
             <section>
-                <h2 class="text-2xl font-bold mb-6">All Referrals</h2>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">All Referrals</h2>
+                    <button id="manual-entry-btn" class="button-base primary-btn">Add Referral</button>
+                </div>
                 <div class="bento-box overflow-x-auto">
                     <table class="w-full text-left">
                         <thead class="whitespace-nowrap">
                             <tr class="border-b border-[var(--border-color)]">
-                                <th class="p-4 text-sm font-semibold">Date</th>
                                 <th class="p-4 text-sm font-semibold">Referrer</th>
                                 <th class="p-4 text-sm font-semibold">Client</th>
-                                <th class="p-4 text-sm font-semibold">Type</th>
-                                <th class="p-4 text-sm font-semibold text-right">Original Fee</th>
                                 <th class="p-4 text-sm font-semibold text-right">Approved Premium</th>
                                 <th class="p-4 text-sm font-semibold text-right">Final Fee</th>
                                 <th class="p-4 text-sm font-semibold text-center">Status</th>
                             </tr>
                         </thead>
-                        <tbody id="admin-referrals-table-body">
-                            </tbody>
+                        <tbody id="admin-referrals-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <section>
+                <h2 class="text-2xl font-bold mb-6">Payment History</h2>
+                <div class="bento-box overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="whitespace-nowrap">
+                            <tr class="border-b border-[var(--border-color)]">
+                                <th class="p-4 text-sm font-semibold">Payout Date</th>
+                                <th class="p-4 text-sm font-semibold">Period Covered</th>
+                                <th class="p-4 text-sm font-semibold text-right">Total Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payment-history-table-body"></tbody>
                     </table>
                 </div>
             </section>
@@ -113,11 +143,44 @@
         <div class="loader mx-auto"></div>
         <p class="mt-4 text-[var(--text-secondary)]">Verifying Admin Access...</p>
     </div>
+    
+    <!-- Manual Entry Modal -->
+    <div id="manual-entry-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Manually Add Won Referral</h3>
+            <form id="manual-entry-form" class="space-y-4">
+                <div>
+                    <label for="manual-referrer" class="text-sm text-[var(--text-muted)]">Referrer</label>
+                    <select id="manual-referrer" class="modal-select" required></select>
+                </div>
+                 <div>
+                    <label for="manual-client" class="text-sm text-[var(--text-muted)]">Client Name</label>
+                    <input type="text" id="manual-client" class="modal-input" required>
+                </div>
+                 <div>
+                    <label for="manual-type" class="text-sm text-[var(--text-muted)]">Insurance Type</label>
+                    <select id="manual-type" class="modal-select" required>
+                        <option value="Motor">Motor</option>
+                        <option value="Health">Health</option>
+                    </select>
+                </div>
+                 <div>
+                    <label for="manual-premium" class="text-sm text-[var(--text-muted)]">Approved Premium</label>
+                    <input type="number" id="manual-premium" step="0.01" class="modal-input" required>
+                </div>
+                <p id="manual-entry-error" class="text-red-500 text-sm text-center"></p>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" id="close-manual-modal-btn" class="button-base bg-gray-200 text-gray-700">Cancel</button>
+                    <button type="submit" class="button-base primary-btn">Add Referral</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, writeBatch, where, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC5hOOzqCPieEpg5ajCBhsScroaB-c1kYg",
@@ -129,128 +192,127 @@
             measurementId: "G-T9W94R7QJF"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- AUTHENTICATION & AUTHORIZATION ---
+        let allReferrers = []; // Cache for referrers
+
         onAuthStateChanged(auth, async (user) => {
             const adminApp = document.getElementById('admin-app');
             const loaderEl = document.getElementById('auth-loader');
-
             if (user) {
                 const userDocRef = doc(db, "users", user.uid);
                 const userDoc = await getDoc(userDocRef);
-
                 if (userDoc.exists() && userDoc.data().role === 'admin') {
                     document.getElementById('admin-greeting').textContent = `Welcome, ${user.displayName || user.email}!`;
                     adminApp.classList.remove('hidden');
                     loaderEl.classList.add('hidden');
                     loadAdminData();
-                } else {
-                    showAccessDenied(loaderEl);
-                }
-            } else {
-                showAccessDenied(loaderEl);
-            }
+                } else { showAccessDenied(loaderEl); }
+            } else { showAccessDenied(loaderEl); }
         });
         
         function showAccessDenied(loaderEl) {
-            loaderEl.innerHTML = `
-                <div class="text-center">
-                    <i class="fas fa-gavel text-5xl text-red-500 mx-auto mb-4"></i>
-                    <h3 class="text-xl font-bold leading-6 mb-2">Access Denied</h3>
-                    <p class="text-[var(--text-secondary)]">You do not have permission to view this page.</p>
-                    <div class="mt-6">
-                        <a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a>
-                    </div>
-                </div>
-            `;
+            loaderEl.innerHTML = `<div class="text-center"><i class="fas fa-gavel text-5xl text-red-500 mx-auto mb-4"></i><h3 class="text-xl font-bold leading-6 mb-2">Access Denied</h3><p class="text-[var(--text-secondary)]">You do not have permission to view this page.</p><div class="mt-6"><a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a></div></div>`;
         }
 
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
-
-        // --- DASHBOARD DATA LOADING & DISPLAY ---
         function loadAdminData() {
             const referralsRef = collection(db, "referrals");
-            const usersRef = collection(db, "users");
+            const usersRef = query(collection(db, "users"), where("role", "==", "referrer"));
+            const paymentsRef = collection(db, "payments");
 
-            onSnapshot(referralsRef, (snapshot) => {
-                const referrals = [];
-                snapshot.forEach(doc => referrals.push({ id: doc.id, ...doc.data() }));
+            onSnapshot(referralsRef, snapshot => {
+                const referrals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 displayReferrals(referrals);
                 updateSummaryCards(referrals);
+                updatePayoutSection(referrals);
             });
             
-             onSnapshot(usersRef, (snapshot) => {
-                let referrerCount = 0;
-                snapshot.forEach(doc => {
-                    if(doc.data().role === 'referrer') referrerCount++;
-                });
-                document.getElementById('total-referrers-count').textContent = referrerCount;
+             onSnapshot(usersRef, snapshot => {
+                allReferrers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                document.getElementById('total-referrers-count').textContent = allReferrers.length;
+                populateReferrerDropdown();
+             });
+
+             onSnapshot(paymentsRef, snapshot => {
+                const payments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                displayPaymentHistory(payments);
              });
         }
 
         function updateSummaryCards(referrals) {
-            const pendingCount = referrals.filter(r => r.status === 'Pending').length;
-            document.getElementById('pending-referrals-count').textContent = pendingCount;
-            
+            document.getElementById('pending-referrals-count').textContent = referrals.filter(r => r.status === 'Pending').length;
+            const totalOwed = referrals.filter(r => r.status === 'Won').reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
+            document.getElementById('finders-fee-owed-total').textContent = formatCurrency(totalOwed);
+        }
+        
+        function updatePayoutSection(referrals) {
             const now = new Date();
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+            const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59);
             
-            const feeOwed = referrals
-                .filter(r => r.status === 'Won' && r.createdAt.toDate() >= startOfMonth)
-                .reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
+            const payoutPeriodLabel = document.getElementById('payout-period-label');
+            const payoutTotalEl = document.getElementById('payout-total');
+            const processPayoutBtn = document.getElementById('process-payout-btn');
             
-            document.getElementById('finders-fee-owed-total').textContent = formatCurrency(feeOwed);
+            payoutPeriodLabel.textContent = `For business won in ${lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
+
+            const referralsToPay = referrals.filter(r => {
+                const referralDate = r.createdAt.toDate();
+                return r.status === 'Won' && referralDate >= startOfLastMonth && referralDate <= endOfLastMonth;
+            });
+
+            const totalToPay = referralsToPay.reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee), 0);
+            
+            payoutTotalEl.textContent = formatCurrency(totalToPay);
+            processPayoutBtn.disabled = totalToPay <= 0;
         }
 
         function displayReferrals(referrals) {
             const tableBody = document.getElementById('admin-referrals-table-body');
-            if (referrals.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-[var(--text-muted)]">No referrals have been made yet.</td></tr>';
-                return;
-            }
-
             referrals.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
-
             tableBody.innerHTML = referrals.map(ref => {
-                const isApprovedOrWon = ref.status === 'Approved' || ref.status === 'Won';
-                const finalFee = ref.finalFindersFee || ref.findersFee;
+                const isEditable = !['Won', 'Paid', 'Lost', 'Rejected'].includes(ref.status);
+                const finalFee = ref.finalFindersFee || ref.findersFee || 0;
                 return `
-                    <tr class="border-b border-[var(--border-color)]">
-                        <td class="p-4">${ref.createdAt.toDate().toLocaleDateString()}</td>
+                    <tr class="border-b border-[var(--border-color)] ${ref.status === 'Paid' ? 'opacity-50' : ''}">
                         <td class="p-4">${ref.referrerName}</td>
                         <td class="p-4">${ref.clientName}</td>
-                        <td class="p-4">${ref.insuranceType}</td>
-                        <td class="p-4 text-right">${formatCurrency(ref.findersFee)}</td>
                         <td class="p-2 text-right">
-                            <input type="number" 
-                                class="approved-premium-input w-28 text-right" 
-                                data-id="${ref.id}" 
-                                value="${ref.approvedPremium || ''}"
-                                placeholder="0.00"
-                                ${!isApprovedOrWon ? 'disabled' : ''}>
+                            <input type="number" class="approved-premium-input w-28 text-right" data-id="${ref.id}" value="${ref.approvedPremium || ''}" placeholder="0.00" ${!isEditable ? 'disabled' : ''}>
                         </td>
                          <td class="p-4 text-right font-semibold text-green-600">${formatCurrency(finalFee)}</td>
                         <td class="p-4 text-center">
-                            <select class="status-select" data-id="${ref.id}">
-                                <option value="Pending" ${ref.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                                <option value="Approved" ${ref.status === 'Approved' ? 'selected' : ''}>Approved</option>
-                                <option value="Won" ${ref.status === 'Won' ? 'selected' : ''}>Won</option>
-                                <option value="Lost" ${ref.status === 'Lost' ? 'selected' : ''}>Lost</option>
-                                <option value="Rejected" ${ref.status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+                            <select class="status-select" data-id="${ref.id}" ${ref.status === 'Paid' ? 'disabled' : ''}>
+                                ${['Pending', 'Approved', 'Won', 'Lost', 'Rejected', 'Paid'].map(s => `<option value="${s}" ${ref.status === s ? 'selected' : ''} ${s === 'Paid' ? 'disabled' : ''}>${s}</option>`).join('')}
                             </select>
                         </td>
                     </tr>
                 `;
             }).join('');
             
-            // Add event listeners
             tableBody.querySelectorAll('.status-select').forEach(el => el.addEventListener('change', handleStatusChange));
             tableBody.querySelectorAll('.approved-premium-input').forEach(el => el.addEventListener('change', handlePremiumChange));
+        }
+
+        function displayPaymentHistory(payments) {
+            const tableBody = document.getElementById('payment-history-table-body');
+             payments.sort((a, b) => b.payoutDate.toDate() - a.payoutDate.toDate());
+            if(payments.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-[var(--text-muted)]">No payments have been processed.</td></tr>`;
+                return;
+            }
+            tableBody.innerHTML = payments.map(p => `
+                <tr class="border-b border-[var(--border-color)]">
+                    <td class="p-4">${p.payoutDate.toDate().toLocaleDateString()}</td>
+                    <td class="p-4">${p.periodCovered}</td>
+                    <td class="p-4 text-right font-semibold">${formatCurrency(p.totalPaid)}</td>
+                </tr>
+            `).join('');
         }
         
         function calculateNewFindersFee(approvedPremium, insuranceType) {
@@ -263,48 +325,125 @@
 
         async function handlePremiumChange(event) {
             const input = event.target;
-            const referralId = input.dataset.id;
+            const referralRef = doc(db, "referrals", input.dataset.id);
             const approvedPremium = parseFloat(input.value);
-
             if (isNaN(approvedPremium) || approvedPremium < 0) return;
-            
-            const referralRef = doc(db, "referrals", referralId);
-            
             try {
                 const referralDoc = await getDoc(referralRef);
-                if (!referralDoc.exists()) return;
-
                 const newFee = calculateNewFindersFee(approvedPremium, referralDoc.data().insuranceType);
-                
-                await updateDoc(referralRef, {
-                    approvedPremium: approvedPremium,
-                    finalFindersFee: newFee
-                });
-
-            } catch (error) {
-                console.error("Error updating premium: ", error);
-                alert("Could not update premium.");
-            }
+                await updateDoc(referralRef, { approvedPremium: approvedPremium, finalFindersFee: newFee });
+            } catch (error) { console.error("Error updating premium: ", error); alert("Could not update premium."); }
         }
         
         async function handleStatusChange(event) {
             const selectElement = event.target;
-            const referralId = selectElement.dataset.id;
-            const newStatus = selectElement.value;
-            
             selectElement.disabled = true;
-            const referralRef = doc(db, "referrals", referralId);
-            
             try {
-                await updateDoc(referralRef, { status: newStatus });
-            } catch (error) {
-                console.error("Error updating status: ", error);
-                alert("Could not update status. Please try again.");
-            } finally {
-                 selectElement.disabled = false;
-            }
+                await updateDoc(doc(db, "referrals", selectElement.dataset.id), { status: selectElement.value });
+            } catch (error) { console.error("Error updating status: ", error); alert("Could not update status.");
+            } finally { selectElement.disabled = false; }
         }
+
+        // --- Manual Entry ---
+        document.getElementById('manual-entry-btn').addEventListener('click', () => {
+            document.getElementById('manual-entry-modal').classList.remove('hidden');
+        });
+        document.getElementById('close-manual-modal-btn').addEventListener('click', () => {
+            document.getElementById('manual-entry-modal').classList.add('hidden');
+        });
         
+        function populateReferrerDropdown() {
+            const select = document.getElementById('manual-referrer');
+            select.innerHTML = '<option value="">Select a referrer...</option>' + allReferrers.map(r => `<option value="${r.id}" data-name="${r.name}">${r.name}</option>`).join('');
+        }
+
+        document.getElementById('manual-entry-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const referrerSelect = document.getElementById('manual-referrer');
+            const referrerId = referrerSelect.value;
+            const referrerName = referrerSelect.options[referrerSelect.selectedIndex].dataset.name;
+            const clientName = document.getElementById('manual-client').value;
+            const insuranceType = document.getElementById('manual-type').value;
+            const approvedPremium = parseFloat(document.getElementById('manual-premium').value);
+
+            const findersFee = calculateNewFindersFee(approvedPremium, insuranceType);
+            
+            const newReferral = {
+                referrerId, referrerName, clientName, insuranceType, approvedPremium, 
+                findersFee, finalFindersFee: findersFee,
+                status: 'Won', 
+                createdAt: Timestamp.now(),
+                isManualEntry: true,
+            };
+
+            try {
+                await addDoc(collection(db, "referrals"), newReferral);
+                document.getElementById('manual-entry-form').reset();
+                document.getElementById('manual-entry-modal').classList.add('hidden');
+            } catch (error) {
+                document.getElementById('manual-entry-error').textContent = "Error adding referral.";
+                console.error(error);
+            }
+        });
+
+        // --- Payout Logic ---
+        document.getElementById('process-payout-btn').addEventListener('click', async (e) => {
+            if (!confirm("Are you sure you want to process this payout? This action cannot be undone.")) return;
+
+            e.target.disabled = true;
+            e.target.textContent = "Processing...";
+
+            const now = new Date();
+            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const startOfLastMonth = Timestamp.fromDate(new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1));
+            const endOfLastMonth = Timestamp.fromDate(new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59));
+            
+            const q = query(collection(db, 'referrals'), 
+                where('status', '==', 'Won'), 
+                where('createdAt', '>=', startOfLastMonth),
+                where('createdAt', '<=', endOfLastMonth)
+            );
+
+            try {
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    alert("No 'Won' referrals found for the previous month to pay out.");
+                    return;
+                }
+
+                const batch = writeBatch(db);
+                let totalPaid = 0;
+                const paidReferralIds = [];
+
+                querySnapshot.forEach(doc => {
+                    const referral = doc.data();
+                    const fee = referral.finalFindersFee || referral.findersFee;
+                    totalPaid += fee;
+                    paidReferralIds.push(doc.id);
+                    batch.update(doc.ref, { status: 'Paid' });
+                });
+
+                const paymentDoc = {
+                    payoutDate: Timestamp.now(),
+                    periodCovered: lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' }),
+                    totalPaid,
+                    paidReferralIds
+                };
+
+                batch.set(doc(collection(db, 'payments')), paymentDoc);
+
+                await batch.commit();
+                alert(`Payout of ${formatCurrency(totalPaid)} successfully processed!`);
+
+            } catch(error) {
+                console.error("Error processing payout:", error);
+                alert("An error occurred during payout processing.");
+            } finally {
+                 e.target.disabled = false;
+                 e.target.textContent = "Finalize & Pay";
+            }
+        });
+
         function formatCurrency(value) {
             if (typeof value !== 'number' || isNaN(value)) return '$0.00';
             return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
