@@ -110,13 +110,12 @@
     <div id="motor-rater-app" class="w-full max-w-6xl mx-auto my-8 hidden">
          <header class="flex justify-between items-start mb-10">
             <div class="text-left">
-                 <h1 class="text-4xl sm:text-5xl font-bold mb-3">Motor Insurance Referral Rater</h1>
+                 <h1 id="main-header" class="text-4xl sm:text-5xl font-bold mb-3">Motor Insurance Referral Rater</h1>
                  <p class="text-xl text-[var(--text-secondary)]">Motor Vehicle Premiums, Simplified.</p>
             </div>
             <div id="auth-container" class="text-right">
                 <a href="./index.html" class="text-sm font-semibold text-[var(--primary-accent)] hover:underline block mb-2">&larr; Back to Dashboard</a>
                 <span id="user-display" class="block text-sm font-semibold text-[var(--text-primary)]"></span>
-                <button id="auth-btn" class="secondary-btn button-base !py-1 !px-3 !text-xs mt-2"></button>
             </div>
         </header>
 
@@ -166,7 +165,7 @@
     <!-- Modals -->
     <div id="client-info-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h3 class="text-xl font-bold leading-6 mb-4">Client & Vehicle Information for Referral</h3>
+            <h3 id="modal-header" class="text-xl font-bold leading-6 mb-4">Client & Vehicle Information for Referral</h3>
             <div class="space-y-4">
                 <input type="text" id="client-name" placeholder="Client's Full Name" class="w-full">
                 <input type="email" id="client-email" placeholder="Client's Email" class="w-full">
@@ -183,7 +182,7 @@
 
     <div id="success-modal" class="modal-overlay hidden">
         <div class="modal-content max-w-2xl">
-            <h3 class="text-xl font-bold leading-6 mb-2 text-green-600">Referral Submitted Successfully!</h3>
+            <h3 id="success-header" class="text-xl font-bold leading-6 mb-2 text-green-600">Referral Submitted Successfully!</h3>
             <p class="text-sm text-[var(--text-muted)] mb-4">You can track the status on your dashboard. You can also download or copy the quote details below.</p>
             <div id="quote-output-container" class="w-full h-96 overflow-y-auto bg-[var(--bg-main)] p-4 border border-[var(--border-color)] rounded-md">
                 <pre id="quote-output" class="whitespace-pre-wrap text-sm font-mono"></pre>
@@ -196,14 +195,13 @@
         </div>
     </div>
     
-    <!-- This file is required and should contain your rate data objects (NCD_RATES, SPECIAL_DISCOUNTS, etc.) -->
     <script src="./motor_rater_data.js"></script>
 
     <!-- Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, getDoc, addDoc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC5hOOzqCPieEpg5ajCBhsScroaB-c1kYg",
@@ -219,42 +217,55 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let currentUser = null;
+        let currentUserData = null;
         let lastCalculatedData = {};
         let quoteDataForActions = {};
-        // Correctly reference the jsPDF object from the global scope.
+        let editMode = false;
+        let referralIdToEdit = null;
         const { jsPDF } = jspdf;
 
-        // --- AUTHENTICATION ---
-        onAuthStateChanged(auth, (user) => {
-            const appEl = document.getElementById('motor-rater-app');
-            const loaderEl = document.getElementById('auth-loader');
-            if (user) {
-                currentUser = user;
-                document.getElementById('user-display').textContent = user.displayName || user.email;
-                const authBtn = document.getElementById('auth-btn');
-                authBtn.textContent = 'Logout';
-                authBtn.onclick = () => signOut(auth);
-                appEl.classList.remove('hidden');
-                loaderEl.classList.add('hidden');
-                initializeRater();
-            } else {
-                currentUser = null;
-                loaderEl.innerHTML = `<div class="text-center bento-box max-w-lg mx-auto"><h3 class="text-xl font-bold">Authentication Required</h3><p class="my-4 text-[var(--text-secondary)]">You must be logged in to use the referral rater.</p><div class="mt-6"><a href="./index.html" class="button-base primary-btn">Go to Login Page</a></div></div>`;
-                appEl.classList.add('hidden');
+        // --- AUTHENTICATION & INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('edit')) {
+                editMode = true;
+                referralIdToEdit = urlParams.get('edit');
+                getElement('main-header').textContent = "Edit Motor Referral";
+                getElement('create-referral-btn').textContent = "Update Referral";
+                getElement('modal-header').textContent = "Update Client & Vehicle Info";
+                getElement('submit-referral-btn').textContent = "Update Referral";
+                getElement('success-header').textContent = "Referral Updated Successfully!";
             }
+
+            onAuthStateChanged(auth, async (user) => {
+                const appEl = getElement('motor-rater-app');
+                const loaderEl = getElement('auth-loader');
+                if (user) {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    currentUserData = userDoc.exists() ? { uid: user.uid, ...userDoc.data() } : null;
+                    document.getElementById('user-display').textContent = currentUserData.name || user.email;
+
+                    appEl.classList.remove('hidden');
+                    loaderEl.classList.add('hidden');
+                    if (editMode && referralIdToEdit) {
+                        await initializeRaterForEdit();
+                    } else {
+                        initializeRater();
+                    }
+                } else {
+                    currentUserData = null;
+                    loaderEl.innerHTML = `<div class="text-center bento-box max-w-lg mx-auto"><h3 class="text-xl font-bold">Authentication Required</h3><p class="my-4 text-[var(--text-secondary)]">You must be logged in to use the referral rater.</p><div class="mt-6"><a href="./index.html" class="button-base primary-btn">Go to Login Page</a></div></div>`;
+                    appEl.classList.add('hidden');
+                }
+            });
         });
 
-        // --- INITIALIZATION ---
         function initializeRater() {
-            const calculatorsContainer = document.getElementById('calculators');
-            // Inject the full HTML for each calculator form
+            const calculatorsContainer = getElement('calculators');
             calculatorsContainer.innerHTML = getCalculatorHTML();
             
-            // Re-query for all inputs now that they are in the DOM
             const allInputs = document.querySelectorAll('input, select');
             
-            // Attach event listeners
             document.getElementById('vehicle-type-selector').addEventListener('change', handleVehicleTypeChange);
             allInputs.forEach(input => {
                 input.addEventListener('input', () => {
@@ -264,18 +275,95 @@
                 input.addEventListener('change', calculatePremium);
             });
 
-            document.getElementById('create-referral-btn').addEventListener('click', handleCreateReferralClick);
-            document.getElementById('close-client-modal-btn').addEventListener('click', () => document.getElementById('client-info-modal').style.display = 'none');
-            document.getElementById('submit-referral-btn').addEventListener('click', handleReferralSubmission);
-            document.getElementById('copy-quote-btn').addEventListener('click', copyQuoteToClipboard);
-            document.getElementById('download-pdf-btn').addEventListener('click', generateAndDownloadPDF);
-            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            getElement('create-referral-btn').addEventListener('click', handleCreateReferralClick);
+            getElement('close-client-modal-btn').addEventListener('click', () => document.getElementById('client-info-modal').style.display = 'none');
+            getElement('submit-referral-btn').addEventListener('click', handleReferralSubmission);
+            getElement('copy-quote-btn').addEventListener('click', copyQuoteToClipboard);
+            getElement('download-pdf-btn').addEventListener('click', generateAndDownloadPDF);
+            getElement('currentYear').textContent = new Date().getFullYear();
 
-            // Setup specific UI interactions
             setupUITriggers();
-
-            // Initial calculation
             handleVehicleTypeChange();
+        }
+        
+        async function initializeRaterForEdit() {
+            const referralDoc = await getDoc(doc(db, "referrals", referralIdToEdit));
+            if (referralDoc.exists()) {
+                const data = referralDoc.data();
+                if(data.referrerId !== currentUserData.uid) {
+                    document.body.innerHTML = `<div class="text-red-500 text-center p-8">Error: You do not have permission to edit this referral.</div>`;
+                    return;
+                }
+                initializeRater(); // Init forms and listeners first
+                populateFormWithData(data); // Then populate form
+            } else {
+                 document.body.innerHTML = `<div class="text-red-500 text-center p-8">Error: Referral not found.</div>`;
+            }
+        }
+        
+        function populateFormWithData(data) {
+            // Set vehicle type and trigger change to show the correct form
+            getElement('vehicle-type-selector').value = data.vehicleType;
+            handleVehicleTypeChange();
+
+            // Populate the form fields based on the type prefix
+            const prefix = data.typePrefix;
+            const fieldsToPopulate = {
+                // Inputs
+                [`${prefix}-sum-insured`]: data.sumInsured,
+                [`${prefix}-vehicle-age`]: data.vehicleAge,
+                [`${prefix}-driver-age`]: data.driverAge,
+                [`${prefix}-driving-exp`]: data.drivingExp,
+                [`${prefix}-override-rate`]: data.overrideRate,
+                // Selects
+                [`${prefix}-coverage-type`]: data.coverageType,
+                [`${prefix}-engine-cc`]: data.engineCC,
+                [`${prefix}-vehicle-model`]: data.vehicleModel,
+                [`${prefix}-occupation`]: data.occupation,
+                [`${prefix}-ncd`]: data.ncd,
+                // Checkboxes
+                [`${prefix}-advanced-mode-check`]: data.isAdvanced,
+                [`${prefix}-adv-inc-base`]: data.advIncludesBase,
+                [`${prefix}-adv-inc-ncd`]: data.advIncludesNCD,
+                [`${prefix}-adv-inc-age-exp`]: data.advIncludesAgeExp,
+                [`${prefix}-ansa-staff-check`]: data.ansaStaff,
+                [`${prefix}-other-motor-check`]: data.otherMotor,
+                [`${prefix}-multi-client-check`]: data.multiClient,
+                [`${prefix}-windscreen-check`]: data.windscreen,
+                [`${prefix}-woe-check`]: data.woe,
+                [`${prefix}-lou-check`]: data.lou,
+                [`${prefix}-pa-check`]: data.pa,
+                [`${prefix}-tpl-check`]: data.tpl,
+                 // Special discount checkboxes and values
+                ...Object.fromEntries(
+                    Object.values(SPECIAL_DISCOUNTS).flatMap(id => [
+                        [`${prefix}-${id}-check`, data[`${id}Check`]],
+                        [`${prefix}-${id}-value`, data[`${id}Value`]]
+                    ])
+                )
+            };
+
+            for (const [id, value] of Object.entries(fieldsToPopulate)) {
+                const el = getElement(id);
+                if (el) {
+                    if (el.type === 'checkbox') {
+                        el.checked = !!value;
+                    } else {
+                        el.value = value || '';
+                    }
+                    // Trigger change event for dependent UI
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+            
+            // Populate client info
+            getElement('client-name').value = data.clientName || '';
+            getElement('client-email').value = data.clientEmail || '';
+            getElement('client-contact').value = data.clientContact || '';
+            getElement('vehicle-license').value = data.licensePlate || '';
+            
+            // Re-run calculation with populated data
+            calculatePremium();
         }
 
         function setupUITriggers() {
@@ -311,9 +399,9 @@
         }
 
         function handleCreateReferralClick() {
-            if (currentUser && lastCalculatedData.totalPremium > 0) {
+            if (currentUserData && lastCalculatedData.totalPremium > 0) {
                 getElement('client-info-modal').style.display = 'flex';
-            } else if (!currentUser) {
+            } else if (!currentUserData) {
                 alert("Error: No user is logged in.");
             } else {
                 alert("Please calculate a valid premium first.");
@@ -321,10 +409,7 @@
         }
 
         async function handleReferralSubmission() {
-            const clientName = getElement('client-name').value;
-            const clientEmail = getElement('client-email').value;
-            const clientContact = getElement('client-contact').value;
-            const licensePlate = getElement('vehicle-license').value;
+            const clientName = getElement('client-name').value, clientEmail = getElement('client-email').value, clientContact = getElement('client-contact').value, licensePlate = getElement('vehicle-license').value;
             const errorEl = getElement('client-modal-error');
             const submitBtn = getElement('submit-referral-btn');
 
@@ -335,111 +420,83 @@
             submitBtn.innerHTML = '<span class="loader !w-6 !h-6 !border-white"></span>';
             submitBtn.disabled = true;
 
-            const referralData = { ...lastCalculatedData, referrerId: currentUser.uid, referrerName: currentUser.displayName || currentUser.email, clientName, clientEmail, clientContact, licensePlate, status: 'Pending', createdAt: Timestamp.now() };
-
+            const prefix = lastCalculatedData.typePrefix;
+            
+            // Gather all form data for saving/updating
+            const referralData = { 
+                ...lastCalculatedData, 
+                clientName, clientEmail, clientContact, licensePlate,
+                // Specific fields from the active form
+                sumInsured: getFloatValue(`${prefix}-sum-insured`),
+                vehicleAge: getFloatValue(`${prefix}-vehicle-age`),
+                coverageType: getElementValue(`${prefix}-coverage-type`),
+                engineCC: getElementValue(`${prefix}-engine-cc`),
+                vehicleModel: getElementValue(`${prefix}-vehicle-model`),
+                driverAge: getFloatValue(`${prefix}-driver-age`),
+                drivingExp: getFloatValue(`${prefix}-driving-exp`),
+                occupation: getElementValue(`${prefix}-occupation`),
+                ncd: getElementValue(`${prefix}-ncd`),
+                isAdvanced: getElement(`${prefix}-advanced-mode-check`)?.checked,
+                overrideRate: getFloatValue(`${prefix}-override-rate`),
+                advIncludesBase: getElement(`${prefix}-adv-inc-base`)?.checked,
+                advIncludesNCD: getElement(`${prefix}-adv-inc-ncd`)?.checked,
+                advIncludesAgeExp: getElement(`${prefix}-adv-inc-age-exp`)?.checked,
+                ansaStaff: getElement(`${prefix}-ansa-staff-check`)?.checked,
+                otherMotor: getElement(`${prefix}-other-motor-check`)?.checked,
+                multiClient: getElement(`${prefix}-multi-client-check`)?.checked,
+                windscreen: getElement(`${prefix}-windscreen-check`)?.checked,
+                woe: getElement(`${prefix}-woe-check`)?.checked,
+                lou: getElement(`${prefix}-lou-check`)?.checked,
+                pa: getElement(`${prefix}-pa-check`)?.checked,
+                tpl: getElement(`${prefix}-tpl-check`)?.checked,
+            };
+            
+            // Add special discounts dynamically
+            Object.values(SPECIAL_DISCOUNTS).forEach(id => {
+                referralData[`${id}Check`] = getElement(`${prefix}-${id}-check`)?.checked;
+                referralData[`${id}Value`] = getFloatValue(`${prefix}-${id}-value`);
+            });
+            
             try {
-                await addDoc(collection(db, "referrals"), referralData);
-                
-                quoteDataForActions = {
-                    client: { name: clientName, email: clientEmail, contact: clientContact, age: getFloatValue(`${lastCalculatedData.typePrefix}-driver-age`), exp: getFloatValue(`${lastCalculatedData.typePrefix}-driving-exp`) },
-                    vehicle: { license: licensePlate, value: getFloatValue(`${lastCalculatedData.typePrefix}-sum-insured`), age: getFloatValue(`${lastCalculatedData.typePrefix}-vehicle-age`) },
-                    breakdown: Array.from(getElement('premium-breakdown').querySelectorAll('.breakdown-row')).map(row => ({
-                        label: row.children[0].innerText, value: row.children[1].innerText
-                    })),
-                    total: getElement('total-premium').innerText,
-                    date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
-                };
+                if (editMode) {
+                    const referralRef = doc(db, "referrals", referralIdToEdit);
+                    await updateDoc(referralRef, { ...referralData, status: 'Resubmitted', lastUpdatedAt: Timestamp.now() });
+                } else {
+                    await addDoc(collection(db, "referrals"), { ...referralData, referrerId: currentUserData.uid, referrerName: currentUserData.name, status: 'Pending', createdAt: Timestamp.now() });
+                }
+
+                quoteDataForActions = { client: { name: clientName, email: clientEmail, contact: clientContact, age: referralData.driverAge, exp: referralData.drivingExp }, vehicle: { license: licensePlate, value: referralData.sumInsured, age: referralData.vehicleAge }, breakdown: Array.from(getElement('premium-breakdown').querySelectorAll('.breakdown-row')).map(row => ({ label: row.children[0].innerText, value: row.children[1].innerText })), total: getElement('total-premium').innerText, date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) };
 
                 getElement('client-info-modal').style.display = 'none';
                 getElement('quote-output').textContent = generateQuoteTextForDisplay(quoteDataForActions);
                 getElement('success-modal').style.display = 'flex';
             } catch (error) {
-                console.error("Error adding document: ", error);
+                console.error("Error submitting referral: ", error);
                 errorEl.textContent = `Could not submit referral: ${error.message}`;
             } finally {
-                submitBtn.innerHTML = 'Submit Referral';
+                submitBtn.innerHTML = editMode ? 'Update Referral' : 'Submit Referral';
                 submitBtn.disabled = false;
             }
         }
         
         // --- HELPER & UI FUNCTIONS ---
         function getElement(id) { return document.getElementById(id); }
-        function getFloatValue(id) { return parseFloat(getElement(id)?.value.replace(/,/g, '')) || 0; }
+        function getFloatValue(id) { const el = getElement(id); return el ? parseFloat(el.value.replace(/,/g, '')) || 0 : 0; }
+        function getElementValue(id) { const el = getElement(id); return el ? el.value : null; }
         function formatCurrency(value) { return isNaN(value) ? '0.00' : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-        function addExtraLoading(prefix) {
-            const container = getElement(`${prefix}-extra-loadings-container`);
-            const loadingRow = document.createElement('div');
-            loadingRow.className = 'grid grid-cols-3 gap-2 items-center extra-loading-row';
-            loadingRow.innerHTML = `<input type="text" placeholder="Loading Name" class="col-span-2 p-2 loading-name"><input type="number" placeholder="%" class="p-2 loading-percent">`;
-            container.appendChild(loadingRow);
-            loadingRow.querySelectorAll('input').forEach(input => input.addEventListener('input', calculatePremium));
-        }
-        
-        function setupDiscountToggle(prefix, id) {
-            const check = getElement(`${prefix}-${id}-check`);
-            if(!check) return;
-            check.addEventListener('change', e => {
-                const valueInput = getElement(`${prefix}-${id}-value`);
-                valueInput.disabled = !e.target.checked;
-                if (!e.target.checked) valueInput.value = '';
-                calculatePremium();
-            });
-        }
-        
-        function setupCheckboxToggle(checkboxId, inputId) {
-            const checkbox = getElement(checkboxId);
-            if (!checkbox) return;
-            checkbox.addEventListener('change', (e) => {
-                const input = getElement(inputId);
-                input.disabled = !e.target.checked;
-                if (!e.target.checked) input.value = '';
-                calculatePremium();
-            });
-        }
-        
-        function handlePrivateCoverageChange() {
-            const isComp = getElement('p-coverage-type').value === 'comprehensive';
-            getElement('p-sum-insured-container').style.display = isComp ? 'block' : 'none';
-            getElement('p-woe-container').style.display = isComp ? 'flex' : 'none';
-            getElement('p-lou-container').style.display = isComp ? 'flex' : 'none';
-            getElement('p-pa-label').textContent = isComp ? "Personal Accident ($200k)" : "Personal Accident ($100k)";
-            if (!isComp) {
-                getElement('p-woe-check').checked = false;
-                getElement('p-lou-check').checked = false;
-            }
-        }
-        
-        function handleCommercialCoverageChange() {
-            const isComp = getElement('c-coverage-type').value === 'comprehensive';
-            getElement('c-sum-insured-container').style.display = isComp ? 'block' : 'none';
-            getElement('c-usage-container').style.display = isComp ? 'block' : 'none';
-            getElement('c-hp-container').style.display = isComp ? 'none' : 'block';
-        }
-
-        function handleCommercialUsageChange() {
-            const isPrivatePickup = getElement('c-usage').value === 'private-pickup';
-            getElement('c-private-pickup-discount-container').style.display = isPrivatePickup ? 'block' : 'none';
-            if (!isPrivatePickup) getElement('c-private-pickup-discount').value = "0";
-        }
-
-        function checkWoeEligibility(prefix) {
-             const age = getFloatValue(`${prefix}-driver-age`);
-             const exp = getFloatValue(`${prefix}-driving-exp`);
-             const woeContainer = getElement(`${prefix}-woe-container`);
-             const woeCheckbox = getElement(`${prefix}-woe-check`);
-             if(!woeContainer || !woeCheckbox) return;
-             
-             const isEligible = age >= 25 && exp >= 2;
-             woeContainer.classList.toggle('opacity-50', !isEligible);
-             woeCheckbox.disabled = !isEligible;
-             if(!isEligible) woeCheckbox.checked = false;
-        }
+        function addExtraLoading(prefix) { const container = getElement(`${prefix}-extra-loadings-container`); const loadingRow = document.createElement('div'); loadingRow.className = 'grid grid-cols-3 gap-2 items-center extra-loading-row'; loadingRow.innerHTML = `<input type="text" placeholder="Loading Name" class="col-span-2 p-2 loading-name"><input type="number" placeholder="%" class="p-2 loading-percent">`; container.appendChild(loadingRow); loadingRow.querySelectorAll('input').forEach(input => input.addEventListener('input', calculatePremium)); }
+        function setupDiscountToggle(prefix, id) { const check = getElement(`${prefix}-${id}-check`); if(!check) return; check.addEventListener('change', e => { const valueInput = getElement(`${prefix}-${id}-value`); valueInput.disabled = !e.target.checked; if (!e.target.checked) valueInput.value = ''; calculatePremium(); }); }
+        function setupCheckboxToggle(checkboxId, inputId) { const checkbox = getElement(checkboxId); if (!checkbox) return; checkbox.addEventListener('change', (e) => { const input = getElement(inputId); input.disabled = !e.target.checked; if (!e.target.checked) input.value = ''; calculatePremium(); }); }
+        function handlePrivateCoverageChange() { const isComp = getElement('p-coverage-type').value === 'comprehensive'; getElement('p-sum-insured-container').style.display = isComp ? 'block' : 'none'; getElement('p-woe-container').style.display = isComp ? 'flex' : 'none'; getElement('p-lou-container').style.display = isComp ? 'flex' : 'none'; getElement('p-pa-label').textContent = isComp ? "Personal Accident ($200k)" : "Personal Accident ($100k)"; if (!isComp) { getElement('p-woe-check').checked = false; getElement('p-lou-check').checked = false; } }
+        function handleCommercialCoverageChange() { const isComp = getElement('c-coverage-type').value === 'comprehensive'; getElement('c-sum-insured-container').style.display = isComp ? 'block' : 'none'; getElement('c-usage-container').style.display = isComp ? 'block' : 'none'; getElement('c-hp-container').style.display = isComp ? 'none' : 'block'; }
+        function handleCommercialUsageChange() { const isPrivatePickup = getElement('c-usage').value === 'private-pickup'; getElement('c-private-pickup-discount-container').style.display = isPrivatePickup ? 'block' : 'none'; if (!isPrivatePickup) getElement('c-private-pickup-discount').value = "0"; }
+        function checkWoeEligibility(prefix) { const age = getFloatValue(`${prefix}-driver-age`); const exp = getFloatValue(`${prefix}-driving-exp`); const woeContainer = getElement(`${prefix}-woe-container`); const woeCheckbox = getElement(`${prefix}-woe-check`); if(!woeContainer || !woeCheckbox) return; const isEligible = age >= 25 && exp >= 2; woeContainer.classList.toggle('opacity-50', !isEligible); woeCheckbox.disabled = !isEligible; if(!isEligible) woeCheckbox.checked = false; }
 
         // --- CORE CALCULATION LOGIC ---
         function calculatePremium() {
             const selectedType = getElement('vehicle-type-selector').value;
-            if (!selectedType || typeof NCD_RATES === 'undefined') return;
+            if (!selectedType || typeof NCD_RATES === 'undefined' || !currentUserData) return;
             
             const typePrefix = selectedType === 'platinum' ? 'pl' : selectedType.substring(0, 1);
             if (selectedType !== 'commercial') checkWoeEligibility(typePrefix);
@@ -473,25 +530,16 @@
                 if (advIncludesAgeExp) labelParts.push("Age/Exp");
                 baseLabel = `Manual Rate (${labelParts.join(' + ')})`;
                 corePremium = sumInsured * overrideRate;
-                if (advIncludesAgeExp) {
-                    ageLoadingAmount = 0; expLoadingAmount = 0;
-                }
+                if (advIncludesAgeExp) { ageLoadingAmount = 0; expLoadingAmount = 0; }
             }
             
-            let loadingBreakdown = buildBreakdownHTML('+ Age Loading', loadingPercentages.Age, ageLoadingAmount) +
-                                 buildBreakdownHTML('+ Experience Loading', loadingPercentages.Experience, expLoadingAmount) +
-                                 buildBreakdownHTML('+ Occupation Loading', loadingPercentages.Occupation, occupationLoadingAmount) +
-                                 buildBreakdownHTML('+ Vehicle Type Loading', loadingPercentages['Vehicle Type'], vehicleTypeLoadingAmount);
+            let loadingBreakdown = buildBreakdownHTML('+ Age Loading', loadingPercentages.Age, ageLoadingAmount) + buildBreakdownHTML('+ Experience Loading', loadingPercentages.Experience, expLoadingAmount) + buildBreakdownHTML('+ Occupation Loading', loadingPercentages.Occupation, occupationLoadingAmount) + buildBreakdownHTML('+ Vehicle Type Loading', loadingPercentages['Vehicle Type'], vehicleTypeLoadingAmount);
 
             let extraLoadingAmount = 0;
             getElement(`${typePrefix}-extra-loadings-container`).querySelectorAll('.extra-loading-row').forEach(row => {
                 const name = row.querySelector('.loading-name').value;
                 const percent = parseFloat(row.querySelector('.loading-percent').value) || 0;
-                if (name && percent > 0) {
-                    const amount = corePremium * (percent / 100);
-                    extraLoadingAmount += amount;
-                    loadingBreakdown += `<div class="breakdown-row"><span class="breakdown-label">+ ${name} (${percent}%)</span><span class="breakdown-value">$${formatCurrency(amount)}</span></div>`;
-                }
+                if (name && percent > 0) { const amount = corePremium * (percent / 100); extraLoadingAmount += amount; loadingBreakdown += `<div class="breakdown-row"><span class="breakdown-label">+ ${name} (${percent}%)</span><span class="breakdown-value">$${formatCurrency(amount)}</span></div>`; }
             });
 
             const totalLoadingAmount = ageLoadingAmount + expLoadingAmount + occupationLoadingAmount + vehicleTypeLoadingAmount + extraLoadingAmount;
@@ -532,184 +580,38 @@
             calculateAndDisplayFindersFee(premiumBeforeTax);
         }
         
-        function buildBreakdownHTML(label, rate, amount) {
-            if (amount <= 0) return '';
-            return `<div class="breakdown-row"><span class="breakdown-label">${label} (${(rate * 100)}%)</span><span class="breakdown-value">$${formatCurrency(amount)}</span></div>`;
-        }
-
-        function calculateDiscounts(type, prefix, premiumToDiscount, skipNCD) {
-            let totalDiscountAmount = 0, discountBreakdown = '';
-            
-            if (!skipNCD) {
-                const ncdYears = parseInt(getElement(`${prefix}-ncd`).value, 10);
-                const coverage = (getElement(`${prefix}-coverage-type`) || {}).value || 'comprehensive';
-                const ncdRate = NCD_RATES[type][coverage][ncdYears] || 0;
-                if (ncdRate > 0) {
-                    const amount = premiumToDiscount * ncdRate;
-                    totalDiscountAmount += amount;
-                    discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- NCD (${(ncdRate * 100)}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`;
-                }
-            }
-
-            const standardDiscounts = {'ansa-staff': 0.10, 'other-motor': 0.10, 'multi-client': 0.15};
-            Object.entries(standardDiscounts).forEach(([id, rate]) => {
-                if(getElement(`${prefix}-${id}-check`)?.checked) {
-                    const amount = premiumToDiscount * rate;
-                    totalDiscountAmount += amount;
-                    const label = id.charAt(0).toUpperCase() + id.slice(1).replace('-', ' ');
-                    discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- ${label} (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`;
-                }
-            });
-            
-            if(prefix === 'c' && getElement('c-private-pickup-discount').value > 0){
-                const rate = getFloatValue('c-private-pickup-discount');
-                const amount = premiumToDiscount * rate;
-                totalDiscountAmount += amount;
-                discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- Private Pick-Up (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`;
-            }
-            
-            let specialDiscountBreakdown = '';
-            Object.entries(SPECIAL_DISCOUNTS).forEach(([label, id]) => {
-                if (getElement(`${prefix}-${id}-check`)?.checked) {
-                    const rate = getFloatValue(`${prefix}-${id}-value`) / 100;
-                    if (rate > 0) {
-                        const amount = premiumToDiscount * rate;
-                        totalDiscountAmount += amount;
-                        specialDiscountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- ${label} (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`;
-                    }
-                }
-            });
-            if(specialDiscountBreakdown) discountBreakdown += `<h4 class="font-medium text-[var(--text-secondary)] mt-1">Special Discounts:</h4>${specialDiscountBreakdown}`;
-            if (discountBreakdown) discountBreakdown = `<div class="border-t border-[var(--border-color)] pt-2 mt-2"><p class="font-semibold mb-1">Discounts:</p>${discountBreakdown}</div>`;
-
-            return { totalDiscountAmount, discountBreakdown };
-        }
-
-        function getLoadingPercentages(type, prefix) {
-            let loadings = { 'Age': 0, 'Experience': 0, 'Occupation': 0, 'Vehicle Type': 0 };
-            const age = getFloatValue(`${prefix}-driver-age`), exp = getFloatValue(`${prefix}-driving-exp`), occupation = getElement(`${prefix}-occupation`).value, model = getElement(`${prefix}-vehicle-model`)?.value;
-            const isComp = (getElement(`${prefix}-coverage-type`) || {}).value !== 'third-party';
-
-            if (isComp) {
-                if (type === 'platinum') {
-                    if (age > 0 && age <= 25) loadings['Age'] = 0.50;
-                    if (exp > 0 && exp < 2) loadings['Experience'] = 0.50; else if (exp === 2) loadings['Experience'] = 0.10;
-                    if (['travelling', 'music', 'shift'].includes(occupation)) loadings['Occupation'] = 0.10;
-                    if (occupation === 'protective') loadings['Occupation'] = 0.20;
-                    if (['hybrid', 'electric'].includes(model)) loadings['Vehicle Type'] = 0.20;
-                } else {
-                    if (age > 0 && age <= 24) loadings['Age'] = 0.20;
-                    if (exp > 0 && exp < 2) loadings['Experience'] = 0.20; else if (exp === 2) loadings['Experience'] = 0.10;
-                    if (['travelling', 'music', 'shift', 'protective'].includes(occupation)) loadings['Occupation'] = 0.10;
-                    if (type === 'private' && ['hybrid', 'electric', 'honda-city'].includes(model)) loadings['Vehicle Type'] = model === 'honda-city' ? 0.30 : 0.20;
-                }
-            } else { // Third Party
-                if (age > 0 && age <= 24) loadings['Age'] = 0.50;
-                if (exp > 0 && exp < 2) loadings['Experience'] = 0.50; else if (exp === 2) loadings['Experience'] = 0.10;
-                if (['travelling', 'music', 'shift', 'protective'].includes(occupation)) loadings['Occupation'] = 0.25;
-                 if (type === 'private' && ['hybrid', 'electric', 'honda-city'].includes(model)) loadings['Vehicle Type'] = model === 'honda-city' ? 0.30 : 0.20;
-            }
-            return loadings;
-        }
-
-        function calculatePrivatePremium() {
-            let core = 0, optPremiums = 0, optBreakdown = '', refMsg = '', excess = 0;
-            const coverage = getElement('p-coverage-type').value, engine = getElement('p-engine-cc').value, age = getFloatValue('p-driver-age'), si = getFloatValue('p-sum-insured');
-            if (age > 0 && age < 16) refMsg = "Drivers under 16 are not eligible for insurance.";
-            else if (age > 65) refMsg = "Drivers over 65 must be referred to a manager.";
-
-            if (coverage === 'comprehensive') {
-                excess = si * 0.03;
-                core = (si * 0.08) + (engine === 'under-2000' ? 1700 : 2000);
-                if (getElement('p-windscreen-check').checked) { const val = getFloatValue('p-windscreen-value'); if (val > 5000) { const p = (val-5000)*0.10; optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Windscreen</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;}}
-                if (getElement('p-woe-check').checked) { const p = Math.max(excess*0.10, 400); optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Waiver of Excess</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;}
-                if (getElement('p-lou-check').checked) { optPremiums+=400; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Loss of Use</span><span class="breakdown-value">$400.00</span></div>`;}
-                if (getElement('p-pa-check').checked) { optPremiums+=200; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Personal Accident</span><span class="breakdown-value">$200.00</span></div>`;}
-            } else {
-                core = (engine === 'under-2000' ? 1700 : 2000);
-                if (getElement('p-pa-check').checked) { optPremiums+=100; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Personal Accident</span><span class="breakdown-value">$100.00</span></div>`;}
-            }
-            return { corePremium: core, optionalPremiums: optPremiums, optionalBreakdown: optBreakdown, referralMessage: refMsg, excess: excess };
-        }
-
-        function calculatePlatinumPremium() {
-            let core = 0, optPremiums = 0, optBreakdown = '', refMsg = '', excess = 0;
-            const engine = getElement('pl-engine-cc').value, age = getFloatValue('pl-driver-age'), si = getFloatValue('pl-sum-insured'), vehicleAge = getFloatValue('pl-vehicle-age');
-            if (age > 0 && age < 16) refMsg += "Drivers under 16 are not eligible.\n";
-            if (age > 65) refMsg += "Drivers over 65 must be referred.\n";
-            if (si > 0 && si < 650000) refMsg += "Sum Insured must be >$650k.\n";
-            if (vehicleAge > 2) refMsg += "Vehicle age >2 years requires referral.\n";
-            if (getElement('pl-ncd').value !== '4') refMsg += "Max NCD is required.\n";
-            excess = si * 0.03;
-            core = (si * 0.035) + (engine === 'under-2000' ? 3000 : 4000);
-            if (getElement('pl-windscreen-check').checked) { const val = getFloatValue('pl-windscreen-value'); if (val > 20000) { const p = (val-20000)*0.10; optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Incr. Windscreen</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;}}
-            if (getElement('pl-woe-check').checked) { const p = Math.max(excess*0.10, 1000); optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Waiver of Excess</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;}
-            if (getElement('pl-pa-check').checked) { optPremiums+=200; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Personal Accident</span><span class="breakdown-value">$200.00</span></div>`;}
-            if (getElement('pl-tpl-check').checked) { optPremiums+=2500; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Increased TPL</span><span class="breakdown-value">$2,500.00</span></div>`;}
-            return { corePremium: core, optionalPremiums: optPremiums, optionalBreakdown: optBreakdown, referralMessage: refMsg.trim(), excess: excess };
-        }
-
-        function calculateCommercialPremium() {
-            let core = 0, excess = 0, refMsg = '';
-            const coverage = getElement('c-coverage-type').value;
-            const age = getFloatValue('c-driver-age');
-            if (age > 0 && age < 16) {
-                refMsg = "Drivers under 16 are not eligible for insurance.";
-            }
-
-            if (coverage === 'comprehensive') {
-                const si = getFloatValue('c-sum-insured');
-                excess = si * 0.03;
-                const usage = getElement('c-usage').value;
-                let rate = 0.10, base = 3500;
-                if (usage === 'private-pickup') { rate = 0.08; base = 1700; }
-                else if (usage === 'own-goods') { rate = 0.085; base = 2200; }
-                core = (si * rate) + base;
-            } else {
-                const hp = getElement('c-hp').value;
-                let base = 3700;
-                if (hp === 'upto-30') base = 2200;
-                else if (hp === '31-50') base = 2700;
-                core = base;
-            }
-            return { corePremium: core, optionalPremiums: 0, optionalBreakdown: '', referralMessage: refMsg, excess: excess };
-        }
+        function buildBreakdownHTML(label, rate, amount) { if (amount <= 0) return ''; return `<div class="breakdown-row"><span class="breakdown-label">${label} (${(rate * 100)}%)</span><span class="breakdown-value">$${formatCurrency(amount)}</span></div>`; }
+        function calculateDiscounts(type, prefix, premiumToDiscount, skipNCD) { let totalDiscountAmount = 0, discountBreakdown = ''; if (!skipNCD) { const ncdYears = parseInt(getElement(`${prefix}-ncd`).value, 10); const coverage = (getElement(`${prefix}-coverage-type`) || {}).value || 'comprehensive'; const ncdRate = NCD_RATES[type][coverage][ncdYears] || 0; if (ncdRate > 0) { const amount = premiumToDiscount * ncdRate; totalDiscountAmount += amount; discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- NCD (${(ncdRate * 100)}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`; } } const standardDiscounts = {'ansa-staff': 0.10, 'other-motor': 0.10, 'multi-client': 0.15}; Object.entries(standardDiscounts).forEach(([id, rate]) => { if(getElement(`${prefix}-${id}-check`)?.checked) { const amount = premiumToDiscount * rate; totalDiscountAmount += amount; const label = id.charAt(0).toUpperCase() + id.slice(1).replace('-', ' '); discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- ${label} (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`; } }); if(prefix === 'c' && getElement('c-private-pickup-discount').value > 0){ const rate = getFloatValue('c-private-pickup-discount'); const amount = premiumToDiscount * rate; totalDiscountAmount += amount; discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- Private Pick-Up (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`; } let specialDiscountBreakdown = ''; Object.entries(SPECIAL_DISCOUNTS).forEach(([label, id]) => { if (getElement(`${prefix}-${id}-check`)?.checked) { const rate = getFloatValue(`${prefix}-${id}-value`) / 100; if (rate > 0) { const amount = premiumToDiscount * rate; totalDiscountAmount += amount; specialDiscountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- ${label} (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`; } } }); if(specialDiscountBreakdown) discountBreakdown += `<h4 class="font-medium text-[var(--text-secondary)] mt-1">Special Discounts:</h4>${specialDiscountBreakdown}`; if (discountBreakdown) discountBreakdown = `<div class="border-t border-[var(--border-color)] pt-2 mt-2"><p class="font-semibold mb-1">Discounts:</p>${discountBreakdown}</div>`; return { totalDiscountAmount, discountBreakdown }; }
+        function getLoadingPercentages(type, prefix) { let loadings = { 'Age': 0, 'Experience': 0, 'Occupation': 0, 'Vehicle Type': 0 }; const age = getFloatValue(`${prefix}-driver-age`), exp = getFloatValue(`${prefix}-driving-exp`), occupation = getElement(`${prefix}-occupation`).value, model = getElement(`${prefix}-vehicle-model`)?.value; const isComp = (getElement(`${prefix}-coverage-type`) || {}).value !== 'third-party'; if (isComp) { if (type === 'platinum') { if (age > 0 && age <= 25) loadings['Age'] = 0.50; if (exp > 0 && exp < 2) loadings['Experience'] = 0.50; else if (exp === 2) loadings['Experience'] = 0.10; if (['travelling', 'music', 'shift'].includes(occupation)) loadings['Occupation'] = 0.10; if (occupation === 'protective') loadings['Occupation'] = 0.20; if (['hybrid', 'electric'].includes(model)) loadings['Vehicle Type'] = 0.20; } else { if (age > 0 && age <= 24) loadings['Age'] = 0.20; if (exp > 0 && exp < 2) loadings['Experience'] = 0.20; else if (exp === 2) loadings['Experience'] = 0.10; if (['travelling', 'music', 'shift', 'protective'].includes(occupation)) loadings['Occupation'] = 0.10; if (type === 'private' && ['hybrid', 'electric', 'honda-city'].includes(model)) loadings['Vehicle Type'] = model === 'honda-city' ? 0.30 : 0.20; } } else { if (age > 0 && age <= 24) loadings['Age'] = 0.50; if (exp > 0 && exp < 2) loadings['Experience'] = 0.50; else if (exp === 2) loadings['Experience'] = 0.10; if (['travelling', 'music', 'shift', 'protective'].includes(occupation)) loadings['Occupation'] = 0.25; if (type === 'private' && ['hybrid', 'electric', 'honda-city'].includes(model)) loadings['Vehicle Type'] = model === 'honda-city' ? 0.30 : 0.20; } return loadings; }
+        function calculatePrivatePremium() { let core = 0, optPremiums = 0, optBreakdown = '', refMsg = '', excess = 0; const coverage = getElement('p-coverage-type').value, engine = getElement('p-engine-cc').value, age = getFloatValue('p-driver-age'), si = getFloatValue('p-sum-insured'); if (age > 0 && age < 16) refMsg = "Drivers under 16 are not eligible for insurance."; else if (age > 65) refMsg = "Drivers over 65 must be referred to a manager."; if (coverage === 'comprehensive') { excess = si * 0.03; core = (si * 0.08) + (engine === 'under-2000' ? 1700 : 2000); if (getElement('p-windscreen-check').checked) { const val = getFloatValue('p-windscreen-value'); if (val > 5000) { const p = (val-5000)*0.10; optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Windscreen</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;}} if (getElement('p-woe-check').checked) { const p = Math.max(excess*0.10, 400); optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Waiver of Excess</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;} if (getElement('p-lou-check').checked) { optPremiums+=400; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Loss of Use</span><span class="breakdown-value">$400.00</span></div>`;} if (getElement('p-pa-check').checked) { optPremiums+=200; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Personal Accident</span><span class="breakdown-value">$200.00</span></div>`;} } else { core = (engine === 'under-2000' ? 1700 : 2000); if (getElement('p-pa-check').checked) { optPremiums+=100; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Personal Accident</span><span class="breakdown-value">$100.00</span></div>`;} } return { corePremium: core, optionalPremiums: optPremiums, optionalBreakdown: optBreakdown, referralMessage: refMsg, excess: excess }; }
+        function calculatePlatinumPremium() { let core = 0, optPremiums = 0, optBreakdown = '', refMsg = '', excess = 0; const engine = getElement('pl-engine-cc').value, age = getFloatValue('pl-driver-age'), si = getFloatValue('pl-sum-insured'), vehicleAge = getFloatValue('pl-vehicle-age'); if (age > 0 && age < 16) refMsg += "Drivers under 16 are not eligible.\n"; if (age > 65) refMsg += "Drivers over 65 must be referred.\n"; if (si > 0 && si < 650000) refMsg += "Sum Insured must be >$650k.\n"; if (vehicleAge > 2) refMsg += "Vehicle age >2 years requires referral.\n"; if (getElement('pl-ncd').value !== '4') refMsg += "Max NCD is required.\n"; excess = si * 0.03; core = (si * 0.035) + (engine === 'under-2000' ? 3000 : 4000); if (getElement('pl-windscreen-check').checked) { const val = getFloatValue('pl-windscreen-value'); if (val > 20000) { const p = (val-20000)*0.10; optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Incr. Windscreen</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;}} if (getElement('pl-woe-check').checked) { const p = Math.max(excess*0.10, 1000); optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Waiver of Excess</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;} if (getElement('pl-pa-check').checked) { optPremiums+=200; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Personal Accident</span><span class="breakdown-value">$200.00</span></div>`;} if (getElement('pl-tpl-check').checked) { optPremiums+=2500; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Increased TPL</span><span class="breakdown-value">$2,500.00</span></div>`;} return { corePremium: core, optionalPremiums: optPremiums, optionalBreakdown: optBreakdown, referralMessage: refMsg.trim(), excess: excess }; }
+        function calculateCommercialPremium() { let core = 0, excess = 0, refMsg = ''; const coverage = getElement('c-coverage-type').value; const age = getFloatValue('c-driver-age'); if (age > 0 && age < 16) { refMsg = "Drivers under 16 are not eligible for insurance."; } if (coverage === 'comprehensive') { const si = getFloatValue('c-sum-insured'); excess = si * 0.03; const usage = getElement('c-usage').value; let rate = 0.10, base = 3500; if (usage === 'private-pickup') { rate = 0.08; base = 1700; } else if (usage === 'own-goods') { rate = 0.085; base = 2200; } core = (si * rate) + base; } else { const hp = getElement('c-hp').value; let base = 3700; if (hp === 'upto-30') base = 2200; else if (hp === '31-50') base = 2700; core = base; } return { corePremium: core, optionalPremiums: 0, optionalBreakdown: '', referralMessage: refMsg, excess: excess }; }
 
         function calculateAndDisplayFindersFee(preTaxPremium) {
             const feeSection = getElement('finders-fee-section');
-            if (preTaxPremium <= 0) { feeSection.classList.add('hidden'); return; }
+            if (preTaxPremium <= 0 || !currentUserData) { feeSection.classList.add('hidden'); return; }
+            const commissionSplit = (currentUserData.commissionSplit || 50) / 100;
             const commission = preTaxPremium * 0.10;
             const tax = commission * 0.25;
             const net = commission - tax;
-            const fee = net * 0.50;
+            const fee = net * commissionSplit;
             lastCalculatedData.findersFee = fee;
             getElement('finders-fee-breakdown').innerHTML = `
                 <div class="breakdown-row"><span>Total Commission (10%)</span><span class="breakdown-value">$${formatCurrency(commission)}</span></div>
                 <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span class="breakdown-value">-$${formatCurrency(tax)}</span></div>
                 <div class="breakdown-row font-semibold border-t border-[var(--border-color)] pt-1 mt-1"><span>Net Commission</span><span class="breakdown-value">$${formatCurrency(net)}</span></div>
-                <div class="breakdown-row text-green-600 mt-2 font-bold"><span class="breakdown-label">Your Estimated Fee (50%)</span><span class="breakdown-value">$${formatCurrency(fee)}</span></div>`;
+                <div class="breakdown-row text-green-600 mt-2 font-bold"><span class="breakdown-label">Your Estimated Fee (${commissionSplit*100}%)</span><span class="breakdown-value">$${formatCurrency(fee)}</span></div>`;
             feeSection.classList.remove('hidden');
         }
 
         // --- QUOTE OUTPUT & ACTIONS ---
-        function generateQuoteTextForDisplay(data) {
-            let text = `=========================================\n      OFFICIAL INSURANCE QUOTATION\n=========================================\nDate: ${data.date}\n\n`;
-            text += `CLIENT INFORMATION:\n-------------------\nName:               ${data.client.name}\nEmail:              ${data.client.email}\nContact:            ${data.client.contact}\nAge:                ${data.client.age || 'N/A'}\nDriving Exp:        ${data.client.exp ? `${data.client.exp} years` : 'N/A'}\n\n`;
-            text += `VEHICLE INFORMATION:\n--------------------\nLicense Plate:      ${data.vehicle.license || 'N/A'}\nValue of Vehicle:   ${data.vehicle.value > 0 ? '$' + formatCurrency(data.vehicle.value) : 'N/A'}\nAge of Vehicle:     ${data.vehicle.age > 0 ? `${data.vehicle.age} years` : 'N/A'}\n\n`;
-            text += `PREMIUM CALCULATION:\n--------------------\n`;
-            data.breakdown.forEach(row => {
-                text += `${row.label.padEnd(40, ' ')} ${row.value}\n`;
-            });
-            text +=`\n=========================================\n\nThis quotation is valid for 30 days. Terms and conditions apply.`;
-            return text.trim();
-        }
-
+        function generateQuoteTextForDisplay(data) { let text = `=========================================\n      OFFICIAL INSURANCE QUOTATION\n=========================================\nDate: ${data.date}\n\n`; text += `CLIENT INFORMATION:\n-------------------\nName:               ${data.client.name}\nEmail:              ${data.client.email}\nContact:            ${data.client.contact}\nAge:                ${data.client.age || 'N/A'}\nDriving Exp:        ${data.client.exp ? `${data.client.exp} years` : 'N/A'}\n\n`; text += `VEHICLE INFORMATION:\n--------------------\nLicense Plate:      ${data.vehicle.license || 'N/A'}\nValue of Vehicle:   ${data.vehicle.value > 0 ? '$' + formatCurrency(data.vehicle.value) : 'N/A'}\nAge of Vehicle:     ${data.vehicle.age > 0 ? `${data.vehicle.age} years` : 'N/A'}\n\n`; text += `PREMIUM CALCULATION:\n--------------------\n`; data.breakdown.forEach(row => { text += `${row.label.padEnd(40, ' ')} ${row.value}\n`; }); text +=`\n=========================================\n\nThis quotation is valid for 30 days. Terms and conditions apply.`; return text.trim(); }
+        
         function generateAndDownloadPDF() {
             const doc = new jsPDF();
             const data = quoteDataForActions;
             let y = 15;
 
-            // --- PDF Content Generation (same as before) ---
             doc.setFont("helvetica", "bold");
             doc.setFontSize(16);
             doc.text("Official Insurance Quotation", 105, y, { align: "center" });
@@ -755,45 +657,10 @@
             doc.setFontSize(8);
             doc.text("This quotation is valid for 30 days. Terms and conditions apply.", 105, 280, { align: 'center' });
             
-            // --- FIXED DOWNLOAD LOGIC ---
-            // Generate the PDF as a data URI string instead of saving directly.
-            const pdfData = doc.output('datauristring');
-
-            // Create a temporary link element to trigger the download.
-            const link = document.createElement('a');
-            link.href = pdfData;
-            link.download = `Insurance_Quote_${data.client.name.replace(/\s/g, '_')}.pdf`;
-            
-            // Append, click, and then remove the link.
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            doc.save(`Insurance_Quote_${data.client.name.replace(/\s/g, '_')}.pdf`);
         }
 
-        function copyQuoteToClipboard() {
-            const textToCopy = getElement('quote-output').innerText;
-            const btn = getElement('copy-quote-btn');
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    btn.textContent = 'Copied!';
-                    setTimeout(() => { btn.textContent = 'Copy Details'; }, 2000);
-                });
-            } else { // Fallback for older browsers
-                const textArea = document.createElement("textarea");
-                textArea.value = textToCopy;
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                try {
-                    document.execCommand('copy');
-                    btn.textContent = 'Copied!';
-                } catch (err) {
-                    btn.textContent = 'Failed!';
-                }
-                document.body.removeChild(textArea);
-                setTimeout(() => { btn.textContent = 'Copy Details'; }, 2000);
-            }
-        }
+        function copyQuoteToClipboard() { const textToCopy = getElement('quote-output').innerText; const btn = getElement('copy-quote-btn'); if (navigator.clipboard) { navigator.clipboard.writeText(textToCopy).then(() => { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Details'; }, 2000); }); } else { const textArea = document.createElement("textarea"); textArea.value = textToCopy; document.body.appendChild(textArea); textArea.focus(); textArea.select(); try { document.execCommand('copy'); btn.textContent = 'Copied!'; } catch (err) { btn.textContent = 'Failed!'; } document.body.removeChild(textArea); setTimeout(() => { btn.textContent = 'Copy Details'; }, 2000); } }
         
         // --- HTML TEMPLATES ---
         function getCalculatorHTML() {
@@ -941,7 +808,6 @@
             </div>
             `;
         }
-
     </script>
 </body>
 </html>
