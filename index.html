@@ -341,7 +341,7 @@
         <div class="modal-content">
             <div class="flex justify-between items-start mb-4">
                 <h3 class="text-2xl font-bold text-[var(--primary-accent)]">Referral Details</h3>
-                <button id="close-details-modal-btn" class="text-2xl text-[var(--text-muted)] hover:text-[var(--primary-accent)]">&times;</button>
+                <button id="close-details-modal-btn" class="text-2xl text-[var(--text-muted)] hover:text-[var(--text-primary)]">&times;</button>
             </div>
             <div id="details-modal-content" class="text-sm space-y-2 text-[var(--text-secondary)] max-h-[60vh] overflow-y-auto pr-2">
                 <!-- Details will be injected here -->
@@ -430,47 +430,85 @@
             { name: "Gold", minReferrals: 20, split: 95, bonusPercentage: 25 }
         ];
 
-        onAuthStateChanged(auth, async (user) => {
-            const authLoader = document.getElementById('auth-loader');
-            const authView = document.getElementById('auth-view');
-            const appView = document.getElementById('app-view');
-
-            if (user) {
-                // User is signed in, now check password policy
-                const passwordPolicyMet = await checkPasswordPolicy(user);
-                if (passwordPolicyMet) {
-                    authLoader.classList.add('hidden');
-                    authView.classList.add('hidden');
-                    appView.classList.remove('hidden');
-                    await setupDashboard(user);
-                } else {
-                    // Password has expired, show force reset modal
-                    authLoader.classList.add('hidden');
-                    authView.classList.add('hidden');
-                    appView.classList.add('hidden');
-                    document.getElementById('force-reset-modal').classList.remove('hidden');
-                }
-            } else {
-                // No user is signed in
-                authLoader.classList.add('hidden');
-                appView.classList.add('hidden');
-                authView.classList.remove('hidden');
-                document.getElementById('admin-link-container').innerHTML = '';
+        document.addEventListener('DOMContentLoaded', () => {
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                 logoutBtn.addEventListener('click', () => {
+                    signOut(auth).then(() => {
+                        window.location.href = './index.html';
+                    }).catch(error => console.error('Logout error:', error));
+                });
             }
+
+            onAuthStateChanged(auth, async (user) => {
+                const authLoader = document.getElementById('auth-loader');
+                const authView = document.getElementById('auth-view');
+                const appView = document.getElementById('app-view');
+
+                if (user) {
+                    const passwordPolicyMet = await checkPasswordPolicy(user);
+                    if (passwordPolicyMet) {
+                        authLoader.classList.add('hidden');
+                        authView.classList.add('hidden');
+                        appView.classList.remove('hidden');
+                        await setupDashboard(user);
+                    } else {
+                        authLoader.classList.add('hidden');
+                        authView.classList.add('hidden');
+                        appView.classList.add('hidden');
+                        document.getElementById('force-reset-modal').classList.remove('hidden');
+                    }
+                } else {
+                    authLoader.classList.add('hidden');
+                    appView.classList.add('hidden');
+                    authView.classList.remove('hidden');
+                    if(document.getElementById('admin-link-container')) {
+                         document.getElementById('admin-link-container').innerHTML = '';
+                    }
+                }
+            });
+            
+            // Other event listeners that are safe to set on load
+            const referralsTableBody = document.getElementById('referrals-table-body');
+            if(referralsTableBody) {
+                referralsTableBody.addEventListener('click', e => {
+                    const target = e.target.closest('button');
+                    if (!target) return;
+
+                    const referralId = target.dataset.id;
+
+                    if (target.classList.contains('view-details-btn')) {
+                        const referral = userReferrals.find(r => r.id === referralId);
+                        if (referral) showDetailsModal(referral);
+                    }
+                    if (target.classList.contains('edit-referral-btn')) {
+                        const insuranceType = target.dataset.type.toLowerCase(); // 'Health' or 'Motor'
+                        window.location.href = `./${insuranceType}_rater.html?edit=${referralId}`;
+                    }
+                    if (target.classList.contains('update-status-btn')) {
+                        const newStatus = target.dataset.status;
+                        if (confirm(`Are you sure you want to mark this referral as "${newStatus}"?`)) {
+                            updateReferralStatus(referralId, newStatus);
+                        }
+                    }
+                });
+            }
+             document.getElementById('close-details-modal-btn').addEventListener('click', () => {
+                document.getElementById('details-modal').classList.add('hidden');
+            });
+            setupAuthForms();
         });
         
         async function checkPasswordPolicy(user) {
             const userDocRef = doc(db, 'users', user.uid);
             const userDoc = await getDoc(userDocRef);
 
-            if (!userDoc.exists()) return true; // New user, no policy to check
+            if (!userDoc.exists()) return true;
 
             const userData = userDoc.data();
             const lastUpdate = userData.passwordLastUpdatedAt?.toDate();
             
             if (!lastUpdate) {
-                // If the field doesn't exist, this is their first sign-in since the policy was enacted.
-                // We'll update it now for future checks.
                 await updateDoc(userDocRef, { passwordLastUpdatedAt: Timestamp.now() });
                 return true;
             }
@@ -478,28 +516,24 @@
             const ninetyDaysAgo = new Date();
             ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-            if (lastUpdate < ninetyDaysAgo) {
-                // Password is older than 90 days
-                return false;
-            }
-
-            return true;
+            return lastUpdate >= ninetyDaysAgo;
         }
 
 
         async function setupDashboard(user) {
             document.getElementById('user-greeting').textContent = `Hello, ${user.displayName || user.email}!`;
             
-            // Listen for user-specific data
             onSnapshot(doc(db, "users", user.uid), (userDoc) => {
                 const userData = userDoc.data();
                 if(userData) {
+                    const adminLinkContainer = document.getElementById('admin-link-container');
+                    const dashboardTitle = document.getElementById('dashboard-title');
                     if (userData.role === 'admin') {
-                        document.getElementById('dashboard-title').textContent = "Admin / Referrer Dashboard";
-                        document.getElementById('admin-link-container').innerHTML = `<a href="./admin.html" class="button-base !px-4 !py-2 bg-[var(--secondary-accent)] text-white">Admin Panel</a>`;
+                       if(dashboardTitle) dashboardTitle.textContent = "Admin / Referrer Dashboard";
+                       if(adminLinkContainer) adminLinkContainer.innerHTML = `<a href="./admin.html" class="button-base !px-4 !py-2 bg-[var(--secondary-accent)] text-white">Admin Panel</a>`;
                     } else {
-                        document.getElementById('admin-link-container').innerHTML = '';
-                        document.getElementById('dashboard-title').textContent = "Referrer Dashboard";
+                        if(adminLinkContainer) adminLinkContainer.innerHTML = '';
+                        if(dashboardTitle) dashboardTitle.textContent = "Referrer Dashboard";
                     }
                     displayTierProgress(userData);
                 }
@@ -512,7 +546,7 @@
             const referralsQuery = query(collection(db, "referrals"), where("referrerId", "==", userId));
             onSnapshot(referralsQuery, (snapshot) => {
                 userReferrals = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-                userReferrals.sort((a,b) => b.createdAt.toDate() - a.createdAt.toDate());
+                userReferrals.sort((a,b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
                 displayReferrals(userReferrals);
                 updateUnpaidBalance(userReferrals);
                 updatePerformanceChart(userReferrals);
@@ -527,11 +561,13 @@
                     displayPaymentHistory(allPayments, userId);
                 }, (error) => {
                      console.error("Could not load payment history due to permissions:", error.message);
-                     document.getElementById('payment-history-table-body').innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Could not load payment history.</td></tr>`;
+                     const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
+                     if(paymentHistoryTableBody) paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Could not load payment history.</td></tr>`;
                 });
             } catch (error) {
                  console.error("Error setting up payment listener:", error);
-                 document.getElementById('payment-history-table-body').innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Error loading payment history.</td></tr>`;
+                 const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
+                 if(paymentHistoryTableBody) paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Error loading payment history.</td></tr>`;
             }
         }
         
@@ -644,29 +680,6 @@
             `).join('');
         }
 
-        // --- Event Listeners for new features ---
-        document.getElementById('referrals-table-body').addEventListener('click', e => {
-            const target = e.target.closest('button');
-            if (!target) return;
-
-            const referralId = target.dataset.id;
-
-            if (target.classList.contains('view-details-btn')) {
-                const referral = userReferrals.find(r => r.id === referralId);
-                if (referral) showDetailsModal(referral);
-            }
-            if (target.classList.contains('edit-referral-btn')) {
-                const insuranceType = target.dataset.type.toLowerCase(); // 'Health' or 'Motor'
-                window.location.href = `./${insuranceType}_rater.html?edit=${referralId}`;
-            }
-            if (target.classList.contains('update-status-btn')) {
-                const newStatus = target.dataset.status;
-                if (confirm(`Are you sure you want to mark this referral as "${newStatus}"?`)) {
-                    updateReferralStatus(referralId, newStatus);
-                }
-            }
-        });
-
         async function updateReferralStatus(id, status) {
             const referralRef = doc(db, "referrals", id);
             try {
@@ -674,22 +687,15 @@
                     status: status,
                     lastUpdatedAt: Timestamp.now()
                 });
-                // The UI will update automatically due to the onSnapshot listener
             } catch (error) {
                 console.error("Error updating status: ", error);
                 alert("Could not update the referral's status. Please try again.");
             }
         }
 
-        // --- Details Modal Logic ---
-        document.getElementById('close-details-modal-btn').addEventListener('click', () => {
-            document.getElementById('details-modal').classList.add('hidden');
-        });
-
         function showDetailsModal(referral) {
             const contentEl = document.getElementById('details-modal-content');
             let contentHTML = '';
-            // Exclude some fields from the generic display
             const excludedKeys = ['id', 'referrerId', 'referrerName'];
 
             for (const [key, value] of Object.entries(referral)) {
@@ -717,7 +723,6 @@
         }
 
 
-        // --- UTILITY FUNCTIONS ---
         function getStatusClass(status) {
             switch(status) {
                 case 'Pending': return 'bg-yellow-100 text-yellow-800';
@@ -735,7 +740,6 @@
             return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         }
         
-        // --- CHART LOGIC ---
         function updatePerformanceChart(referrals) {
             const chartEl = document.getElementById('performanceChart');
             if (!chartEl) return;
@@ -799,117 +803,113 @@
             }
         }
         
-        // --- AUTH FORMS ---
-        document.getElementById('show-register').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); });
-        document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); });
-        
-        document.getElementById('login-form').addEventListener('submit', async (e) => { 
-            e.preventDefault(); 
-            const email = document.getElementById('login-email').value; 
-            const password = document.getElementById('login-password').value; 
-            const errorEl = document.getElementById('login-error');
-            errorEl.textContent = '';
-            try { 
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                // On successful login, check if a password reset was required and update the timestamp
-                const userDocRef = doc(db, 'users', userCredential.user.uid);
-                const userDoc = await getDoc(userDocRef);
-                if(userDoc.exists() && userDoc.data().passwordResetRequired) {
-                    await updateDoc(userDocRef, {
-                        passwordLastUpdatedAt: Timestamp.now(),
-                        passwordResetRequired: false
-                    });
+        function setupAuthForms() {
+            document.getElementById('show-register').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); });
+            document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); });
+            
+            document.getElementById('login-form').addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                const email = document.getElementById('login-email').value; 
+                const password = document.getElementById('login-password').value; 
+                const errorEl = document.getElementById('login-error');
+                errorEl.textContent = '';
+                try { 
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    const userDocRef = doc(db, 'users', userCredential.user.uid);
+                    const userDoc = await getDoc(userDocRef);
+                    if(userDoc.exists() && userDoc.data().passwordResetRequired) {
+                        await updateDoc(userDocRef, {
+                            passwordLastUpdatedAt: Timestamp.now(),
+                            passwordResetRequired: false
+                        });
+                    }
+                } catch (error) { 
+                    errorEl.textContent = "Invalid email or password."; 
+                } 
+            });
+
+            document.getElementById('register-form').addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                const name = document.getElementById('register-name').value; 
+                const email = document.getElementById('register-email').value; 
+                const password = document.getElementById('register-password').value; 
+                const errorEl = document.getElementById('register-error');
+                errorEl.textContent = '';
+                try { 
+                    const cred = await createUserWithEmailAndPassword(auth, email, password); 
+                    await updateProfile(cred.user, { displayName: name }); 
+                    await setDoc(doc(db, "users", cred.user.uid), { 
+                        name, 
+                        email, 
+                        role: 'referrer', 
+                        commissionSplit: 50, 
+                        waivesAllFees: false, 
+                        currentTier: 'Bronze', 
+                        wonReferralsCount: 0,
+                        passwordLastUpdatedAt: Timestamp.now() 
+                    }); 
+                } catch (error) { 
+                    errorEl.textContent = error.message; 
+                } 
+            });
+            
+            function togglePasswordVisibility(inputId, toggleId) {
+                const passwordInput = document.getElementById(inputId);
+                const toggleIcon = document.getElementById(toggleId);
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    toggleIcon.classList.remove('fa-eye');
+                    toggleIcon.classList.add('fa-eye-slash');
+                } else {
+                    passwordInput.type = 'password';
+                    toggleIcon.classList.remove('fa-eye-slash');
+                    toggleIcon.classList.add('fa-eye');
                 }
-            } catch (error) { 
-                errorEl.textContent = "Invalid email or password."; 
-            } 
-        });
-
-        document.getElementById('register-form').addEventListener('submit', async (e) => { 
-            e.preventDefault(); 
-            const name = document.getElementById('register-name').value; 
-            const email = document.getElementById('register-email').value; 
-            const password = document.getElementById('register-password').value; 
-            const errorEl = document.getElementById('register-error');
-            errorEl.textContent = '';
-            try { 
-                const cred = await createUserWithEmailAndPassword(auth, email, password); 
-                await updateProfile(cred.user, { displayName: name }); 
-                await setDoc(doc(db, "users", cred.user.uid), { 
-                    name, 
-                    email, 
-                    role: 'referrer', 
-                    commissionSplit: 50, 
-                    waivesAllFees: false, 
-                    currentTier: 'Bronze', 
-                    wonReferralsCount: 0,
-                    passwordLastUpdatedAt: Timestamp.now() // Set initial password date
-                }); 
-            } catch (error) { 
-                errorEl.textContent = error.message; 
-            } 
-        });
-        
-        // --- Password Visibility and Reset Logic ---
-        function togglePasswordVisibility(inputId, toggleId) {
-            const passwordInput = document.getElementById(inputId);
-            const toggleIcon = document.getElementById(toggleId);
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleIcon.classList.remove('fa-eye');
-                toggleIcon.classList.add('fa-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                toggleIcon.classList.remove('fa-eye-slash');
-                toggleIcon.classList.add('fa-eye');
             }
+
+            document.getElementById('toggle-login-password').addEventListener('click', () => togglePasswordVisibility('login-password', 'toggle-login-password'));
+            document.getElementById('toggle-register-password').addEventListener('click', () => togglePasswordVisibility('register-password', 'toggle-register-password'));
+
+            const resetModal = document.getElementById('reset-password-modal');
+            document.getElementById('forgot-password-link').addEventListener('click', (e) => {
+                e.preventDefault();
+                resetModal.classList.remove('hidden');
+            });
+            document.getElementById('close-reset-modal-btn').addEventListener('click', () => resetModal.classList.add('hidden'));
+            document.getElementById('reset-password-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('reset-email').value;
+                const messageEl = document.getElementById('reset-message');
+                messageEl.textContent = 'Sending...';
+                messageEl.classList.remove('text-red-500', 'text-green-500');
+
+                try {
+                    await sendPasswordResetEmail(auth, email);
+                    messageEl.textContent = 'Password reset email sent! Check your inbox.';
+                    messageEl.classList.add('text-green-500');
+                } catch (error) {
+                    messageEl.textContent = 'Error sending email. Please check the address.';
+                    messageEl.classList.add('text-red-500');
+                    console.error("Password reset error:", error);
+                }
+            });
+
+            document.getElementById('force-reset-logout-btn').addEventListener('click', () => signOut(auth));
+            document.getElementById('force-reset-send-link-btn').addEventListener('click', async () => {
+                const messageEl = document.getElementById('force-reset-message');
+                messageEl.textContent = 'Sending...';
+                messageEl.classList.remove('text-red-500', 'text-green-500');
+                try {
+                    await sendPasswordResetEmail(auth, auth.currentUser.email);
+                    await updateDoc(doc(db, 'users', auth.currentUser.uid), { passwordResetRequired: true });
+                    messageEl.textContent = 'Password reset email sent! Please check your inbox, reset your password, then log out and sign back in.';
+                    messageEl.classList.add('text-green-500');
+                } catch (error) {
+                     messageEl.textContent = 'Error sending reset email.';
+                    messageEl.classList.add('text-red-500');
+                }
+            });
         }
-
-        document.getElementById('toggle-login-password').addEventListener('click', () => togglePasswordVisibility('login-password', 'toggle-login-password'));
-        document.getElementById('toggle-register-password').addEventListener('click', () => togglePasswordVisibility('register-password', 'toggle-register-password'));
-
-        const resetModal = document.getElementById('reset-password-modal');
-        document.getElementById('forgot-password-link').addEventListener('click', (e) => {
-            e.preventDefault();
-            resetModal.classList.remove('hidden');
-        });
-        document.getElementById('close-reset-modal-btn').addEventListener('click', () => resetModal.classList.add('hidden'));
-        document.getElementById('reset-password-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('reset-email').value;
-            const messageEl = document.getElementById('reset-message');
-            messageEl.textContent = 'Sending...';
-            messageEl.classList.remove('text-red-500', 'text-green-500');
-
-            try {
-                await sendPasswordResetEmail(auth, email);
-                messageEl.textContent = 'Password reset email sent! Check your inbox.';
-                messageEl.classList.add('text-green-500');
-            } catch (error) {
-                messageEl.textContent = 'Error sending email. Please check the address.';
-                messageEl.classList.add('text-red-500');
-                console.error("Password reset error:", error);
-            }
-        });
-
-        // --- Forced Password Reset Logic ---
-        document.getElementById('force-reset-logout-btn').addEventListener('click', () => signOut(auth));
-        document.getElementById('force-reset-send-link-btn').addEventListener('click', async () => {
-            const messageEl = document.getElementById('force-reset-message');
-            messageEl.textContent = 'Sending...';
-            messageEl.classList.remove('text-red-500', 'text-green-500');
-            try {
-                await sendPasswordResetEmail(auth, auth.currentUser.email);
-                await updateDoc(doc(db, 'users', auth.currentUser.uid), { passwordResetRequired: true });
-                messageEl.textContent = 'Password reset email sent! Please check your inbox, reset your password, then log out and sign back in.';
-                messageEl.classList.add('text-green-500');
-            } catch (error) {
-                 messageEl.textContent = 'Error sending reset email.';
-                messageEl.classList.add('text-red-500');
-            }
-        });
-
-
     </script>
 
 </body>
