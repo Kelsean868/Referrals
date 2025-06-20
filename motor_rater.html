@@ -114,6 +114,7 @@
                  <p class="text-xl text-[var(--text-secondary)]">Motor Vehicle Premiums, Simplified.</p>
             </div>
             <div id="auth-container" class="text-right">
+                <a href="./index.html" class="text-sm font-semibold text-[var(--primary-accent)] hover:underline block mb-2">&larr; Back to Dashboard</a>
                 <span id="user-display" class="block text-sm font-semibold text-[var(--text-primary)]"></span>
                 <button id="auth-btn" class="secondary-btn button-base !py-1 !px-3 !text-xs mt-2"></button>
             </div>
@@ -221,7 +222,8 @@
         let currentUser = null;
         let lastCalculatedData = {};
         let quoteDataForActions = {};
-        const { jsPDF } = window.jspdf;
+        // Correctly reference the jsPDF object from the global scope.
+        const { jsPDF } = jspdf;
 
         // --- AUTHENTICATION ---
         onAuthStateChanged(auth, (user) => {
@@ -773,6 +775,7 @@
         
         // --- HTML TEMPLATES ---
         function getCalculatorHTML() {
+            // FIX: Removed the invalid escape character before the backtick
             return `
             <!-- Private Car Calculator -->
             <div id="private-calculator" class="form-section bento-box">
