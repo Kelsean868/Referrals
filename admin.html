@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Insurance Referral Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -79,19 +80,25 @@
         </header>
 
         <main class="space-y-12">
-            <!-- Stats and Payout Sections remain the same -->
-             <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+             <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="bento-box">
                     <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Pending Referrals</h2>
                     <p id="pending-referrals-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
                 </div>
                 <div class="bento-box">
-                    <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Current Unpaid Fees (All Time)</h2>
+                    <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Unpaid Fees (All Time)</h2>
                     <p id="finders-fee-owed-total" class="text-4xl font-bold text-[var(--primary-accent)]">$0.00</p>
                 </div>
                 <div class="bento-box">
                     <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Total Referrers</h2>
                     <p id="total-referrers-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
+                </div>
+                 <!-- NEW: Monthly Performance Chart -->
+                <div class="bento-box md:col-span-2 lg:col-span-1">
+                     <h2 class="text-lg font-semibold text-center text-[var(--text-secondary)]">This Month's Performance</h2>
+                     <div class="relative h-48 w-48 mx-auto mt-4">
+                        <canvas id="performanceChart"></canvas>
+                     </div>
                 </div>
             </section>
             <section id="payout-section" class="bento-box">
@@ -259,6 +266,7 @@
         const db = getFirestore(app);
 
         let allReferrers = []; // Cache for referrers
+        let performanceChart = null; // Chart instance
 
         onAuthStateChanged(auth, async (user) => {
             const adminApp = document.getElementById('admin-app');
@@ -291,6 +299,7 @@
                 displayReferrals(referrals);
                 updateSummaryCards(referrals);
                 updatePayoutSection(referrals);
+                updatePerformanceChart(referrals);
             });
             
              onSnapshot(usersRef, snapshot => {
@@ -644,6 +653,75 @@
         function formatCurrency(value) {
             if (typeof value !== 'number' || isNaN(value)) return '$0.00';
             return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        }
+        
+        // --- CHART LOGIC ---
+        function updatePerformanceChart(referrals) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            // Filter for referrals submitted this month
+            const thisMonthReferrals = referrals.filter(r => r.createdAt.toDate() >= startOfMonth);
+
+            const potentialFees = thisMonthReferrals
+                .filter(r => !r.feeWaived)
+                .reduce((sum, r) => sum + (r.findersFee || 0), 0);
+
+            const wonFees = thisMonthReferrals
+                .filter(r => (r.status === 'Won' || r.status === 'Paid') && !r.feeWaived)
+                .reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee || 0), 0);
+
+            const pendingOrLostFees = Math.max(0, potentialFees - wonFees);
+
+            const data = {
+                labels: ['Won Fees', 'Pending/Lost Fees'],
+                datasets: [{
+                    data: [wonFees, pendingOrLostFees],
+                    backgroundColor: [
+                        '#16a34a', // green-600
+                        '#d1d5db'  // gray-300
+                    ],
+                    borderColor: 'var(--bg-bento-box)',
+                    borderWidth: 4,
+                    hoverOffset: 8
+                }]
+            };
+
+            if (performanceChart) {
+                performanceChart.data = data;
+                performanceChart.update();
+            } else {
+                performanceChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            label += formatCurrency(context.parsed);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         }
     </script>
 </body>
