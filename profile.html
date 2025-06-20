@@ -39,6 +39,11 @@
             border: 1px solid var(--border-color);
             background-color: var(--bg-main);
         }
+        .form-input:disabled {
+            background-color: #e9ecef;
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
         .form-input:focus {
             outline: none;
             border-color: var(--primary-accent);
@@ -52,6 +57,8 @@
         .primary-btn { background-color: var(--primary-accent); color: white; }
         .primary-btn:hover:not(:disabled) { background-color: var(--primary-accent-darker); }
         .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .secondary-btn { background-color: var(--secondary-accent); color: white; }
+        .secondary-btn:hover:not(:disabled) { background-color: var(--secondary-accent-darker); }
         .profile-pic-container {
             width: 150px;
             height: 150px;
@@ -142,19 +149,19 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label for="form-email" class="block text-sm font-medium text-[var(--text-muted)]">Email Address</label>
-                                <input type="email" id="form-email" class="form-input mt-1" required>
+                                <input type="email" id="form-email" class="form-input mt-1" required disabled>
                             </div>
                             <div>
                                 <label for="form-contact" class="block text-sm font-medium text-[var(--text-muted)]">Contact Number</label>
-                                <input type="tel" id="form-contact" class="form-input mt-1">
+                                <input type="tel" id="form-contact" class="form-input mt-1" disabled>
                             </div>
                              <div>
                                 <label for="form-company" class="block text-sm font-medium text-[var(--text-muted)]">Company Name</label>
-                                <input type="text" id="form-company" class="form-input mt-1">
+                                <input type="text" id="form-company" class="form-input mt-1" disabled>
                             </div>
                              <div>
                                 <label for="form-role" class="block text-sm font-medium text-[var(--text-muted)]">Your Role</label>
-                                <input type="text" id="form-role" class="form-input mt-1">
+                                <input type="text" id="form-role" class="form-input mt-1" disabled>
                             </div>
                         </div>
                     </div>
@@ -165,21 +172,30 @@
                          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label for="form-bank-name" class="block text-sm font-medium text-[var(--text-muted)]">Bank Name</label>
-                                <input type="text" id="form-bank-name" class="form-input mt-1">
+                                <input type="text" id="form-bank-name" class="form-input mt-1" disabled>
                             </div>
                              <div>
                                 <label for="form-account-holder" class="block text-sm font-medium text-[var(--text-muted)]">Account Holder Name</label>
-                                <input type="text" id="form-account-holder" class="form-input mt-1">
+                                <input type="text" id="form-account-holder" class="form-input mt-1" disabled>
                             </div>
                              <div class="md:col-span-2">
                                 <label for="form-account-number" class="block text-sm font-medium text-[var(--text-muted)]">Account Number</label>
-                                <input type="text" id="form-account-number" class="form-input mt-1">
+                                <div class="relative">
+                                    <span id="account-number-masked" class="form-input mt-1 block w-full bg-[#e9ecef]"></span>
+                                    <input type="text" id="form-account-number" class="form-input mt-1 hidden">
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="text-right pt-4 border-t">
-                        <button type="submit" id="save-profile-btn" class="button-base primary-btn">
+                    <div id="form-actions" class="text-right pt-4 border-t">
+                        <button type="button" id="edit-profile-btn" class="button-base secondary-btn">
+                            Edit Profile
+                        </button>
+                        <button type="button" id="cancel-edit-btn" class="button-base bg-gray-500 text-white hidden">
+                            Cancel
+                        </button>
+                        <button type="submit" id="save-profile-btn" class="button-base primary-btn hidden">
                             Save Changes
                         </button>
                     </div>
@@ -191,8 +207,8 @@
     <!-- Re-authentication Modal -->
     <div id="reauth-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h3 class="text-xl font-bold mb-4">Confirm Changes</h3>
-            <p class="text-sm text-[var(--text-secondary)] mb-4">For your security, please re-enter your password to save your changes.</p>
+            <h3 class="text-xl font-bold mb-4">Enable Editing</h3>
+            <p class="text-sm text-[var(--text-secondary)] mb-4">For your security, please re-enter your password to edit your profile.</p>
             <div class="relative">
                 <input type="password" id="reauth-password" class="form-input pr-10" placeholder="Enter your password">
                  <i class="fas fa-eye" id="reauth-pw-toggle" style="position: absolute; top: 50%; right: 1rem; transform: translateY(-50%); cursor: pointer;"></i>
@@ -200,7 +216,7 @@
             <p id="reauth-error" class="text-red-500 text-sm text-center h-4 mt-2"></p>
             <div class="flex justify-end gap-3 pt-4">
                 <button type="button" id="cancel-reauth-btn" class="button-base bg-gray-200 text-gray-700">Cancel</button>
-                <button type="button" id="confirm-save-btn" class="button-base primary-btn">Confirm</button>
+                <button type="button" id="confirm-reauth-btn" class="button-base primary-btn">Verify</button>
             </div>
         </div>
     </div>
@@ -227,6 +243,7 @@
         const storage = getStorage(app);
 
         let currentUser = null;
+        let originalProfileData = {};
 
         onAuthStateChanged(auth, async (user) => {
             const loaderEl = document.getElementById('auth-loader');
@@ -250,28 +267,45 @@
             }
         });
 
-        async function loadProfileData(uid) {
+        async function loadProfileData(uid, forceReload = false) {
+            if (!forceReload && Object.keys(originalProfileData).length > 0) {
+                 populateForm(originalProfileData);
+                 return;
+            }
             const userDocRef = doc(db, "users", uid);
             const userDoc = await getDoc(userDocRef);
 
             if (userDoc.exists()) {
                 const data = userDoc.data();
-                document.getElementById('profile-name').textContent = data.name || 'Referrer';
-                document.getElementById('profile-email-display').textContent = currentUser.email;
-                document.getElementById('form-email').value = currentUser.email || '';
-                document.getElementById('form-contact').value = data.contactNumber || '';
-                document.getElementById('form-company').value = data.companyName || '';
-                document.getElementById('form-role').value = data.roleInCompany || '';
-                
-                if (data.bankingInfo) {
-                    document.getElementById('form-bank-name').value = data.bankingInfo.bankName || '';
-                    document.getElementById('form-account-holder').value = data.bankingInfo.accountHolderName || '';
-                    document.getElementById('form-account-number').value = data.bankingInfo.accountNumber || '';
-                }
-                
-                if (data.profilePictureUrl) {
-                    document.getElementById('profile-pic-img').src = data.profilePictureUrl;
-                }
+                originalProfileData = data; // Cache the data
+                populateForm(data);
+            }
+        }
+        
+        function populateForm(data) {
+            document.getElementById('profile-name').textContent = data.name || 'Referrer';
+            document.getElementById('profile-email-display').textContent = currentUser.email;
+            document.getElementById('form-email').value = currentUser.email || '';
+            document.getElementById('form-contact').value = data.contactNumber || '';
+            document.getElementById('form-company').value = data.companyName || '';
+            document.getElementById('form-role').value = data.roleInCompany || '';
+            
+            const bankInfo = data.bankingInfo || {};
+            document.getElementById('form-bank-name').value = bankInfo.bankName || '';
+            document.getElementById('form-account-holder').value = bankInfo.accountHolderName || '';
+            document.getElementById('form-account-number').value = bankInfo.accountNumber || '';
+            
+            // Mask account number
+            const accNum = bankInfo.accountNumber || '';
+            const maskedEl = document.getElementById('account-number-masked');
+            if (accNum.length > 2) {
+                maskedEl.textContent = '•'.repeat(accNum.length - 2) + accNum.slice(-2);
+            } else {
+                maskedEl.textContent = '•'.repeat(accNum.length);
+            }
+
+            if (data.profilePictureUrl) {
+                document.getElementById('profile-pic-img').src = data.profilePictureUrl;
             }
         }
         
@@ -316,17 +350,44 @@
             );
         }
 
-        // --- Form Submission & Re-authentication ---
-        document.getElementById('profile-form').addEventListener('submit', (e) => {
-            e.preventDefault();
+        // --- Form Edit/Save Flow ---
+        const allInputs = document.querySelectorAll('.form-input');
+        const editBtn = document.getElementById('edit-profile-btn');
+        const saveBtn = document.getElementById('save-profile-btn');
+        const cancelBtn = document.getElementById('cancel-edit-btn');
+        
+        function setFormEditable(isEditable) {
+            allInputs.forEach(input => input.disabled = !isEditable);
+            
+            // Special handling for account number masking
+            document.getElementById('account-number-masked').classList.toggle('hidden', isEditable);
+            document.getElementById('form-account-number').classList.toggle('hidden', !isEditable);
+
+            editBtn.classList.toggle('hidden', isEditable);
+            saveBtn.classList.toggle('hidden', !isEditable);
+            cancelBtn.classList.toggle('hidden', !isEditable);
+        }
+
+        editBtn.addEventListener('click', () => {
             document.getElementById('reauth-modal').classList.remove('hidden');
         });
+        
+        cancelBtn.addEventListener('click', () => {
+             populateForm(originalProfileData); // Revert changes
+             setFormEditable(false);
+        });
 
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await saveProfileData();
+        });
+
+        // --- Re-authentication Logic ---
         document.getElementById('cancel-reauth-btn').addEventListener('click', () => {
             document.getElementById('reauth-modal').classList.add('hidden');
         });
         
-         document.getElementById('reauth-pw-toggle').addEventListener('click', () => {
+        document.getElementById('reauth-pw-toggle').addEventListener('click', () => {
             const pwInput = document.getElementById('reauth-password');
             const icon = document.getElementById('reauth-pw-toggle');
             if (pwInput.type === 'password') {
@@ -340,7 +401,7 @@
             }
         });
 
-        document.getElementById('confirm-save-btn').addEventListener('click', async () => {
+        document.getElementById('confirm-reauth-btn').addEventListener('click', async () => {
             const password = document.getElementById('reauth-password').value;
             const errorEl = document.getElementById('reauth-error');
             if (!password) {
@@ -353,7 +414,9 @@
 
             try {
                 await reauthenticateWithCredential(currentUser, credential);
-                await saveProfileData();
+                document.getElementById('reauth-modal').classList.add('hidden');
+                document.getElementById('reauth-password').value = '';
+                setFormEditable(true); // Enable form on success
             } catch (error) {
                 console.error("Re-authentication failed:", error);
                 errorEl.textContent = "Incorrect password. Please try again.";
@@ -376,7 +439,6 @@
                 lastProfileUpdate: new Date()
             };
 
-            const saveBtn = document.getElementById('confirm-save-btn');
             saveBtn.innerHTML = '<div class="loader"></div>';
             saveBtn.disabled = true;
 
@@ -390,8 +452,9 @@
                 // Update Firestore document
                 await updateDoc(userDocRef, dataToSave);
 
-                document.getElementById('reauth-modal').classList.add('hidden');
                 alert("Profile updated successfully!");
+                await loadProfileData(currentUser.uid, true); // Force reload of cached data
+                setFormEditable(false); // Set form back to read-only
 
             } catch (error) {
                  console.error("Error updating profile:", error);
@@ -401,9 +464,8 @@
                     alert('An error occurred while updating your profile.');
                  }
             } finally {
-                saveBtn.innerHTML = 'Confirm';
+                saveBtn.innerHTML = 'Save Changes';
                 saveBtn.disabled = false;
-                document.getElementById('reauth-password').value = '';
             }
         }
     </script>
