@@ -1,24 +1,53 @@
 {
-  "name": "TATIL Premium Rater Hub",
-  "short_name": "TATIL Raters",
-  "description": "A suite of insurance premium raters for TATIL. Get instant estimates for your Motor and Health insurance needs.",
-  "start_url": "./index.html",
+  "name": "Insurance Referral Hub",
+  "short_name": "Referral Hub",
+  "description": "An app for insurance referrers to create quotes and track commissions.",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#f4f6f9",
   "theme_color": "#005f73",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "https://placehold.co/192x192/005f73/FFFFFF?text=TATIL",
-      "sizes": "192x192",
+      "src": "https://placehold.co/72x72/005f73/FFFFFF?text=Hub",
       "type": "image/png",
+      "sizes": "72x72"
+    },
+    {
+      "src": "https://placehold.co/96x96/005f73/FFFFFF?text=Hub",
+      "type": "image/png",
+      "sizes": "96x96"
+    },
+    {
+      "src": "https://placehold.co/128x128/005f73/FFFFFF?text=Hub",
+      "type": "image/png",
+      "sizes": "128x128"
+    },
+    {
+      "src": "https://placehold.co/144x144/005f73/FFFFFF?text=Hub",
+      "type": "image/png",
+      "sizes": "144x144"
+    },
+    {
+      "src": "https://placehold.co/152x152/005f73/FFFFFF?text=Hub",
+      "type": "image/png",
+      "sizes": "152x152"
+    },
+    {
+      "src": "https://placehold.co/192x192/005f73/FFFFFF?text=Hub",
+      "type": "image/png",
+      "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "https://placehold.co/512x512/005f73/FFFFFF?text=TATIL",
-      "sizes": "512x512",
+      "src": "https://placehold.co/384x384/005f73/FFFFFF?text=Hub",
       "type": "image/png",
-      "purpose": "any maskable"
+      "sizes": "384x384"
+    },
+    {
+      "src": "https://placehold.co/512x512/005f73/FFFFFF?text=Hub",
+      "type": "image/png",
+      "sizes": "512x512"
     }
   ]
 }
