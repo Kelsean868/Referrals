@@ -700,6 +700,8 @@
             const doc = new jsPDF();
             const data = quoteDataForActions;
             let y = 15;
+
+            // --- PDF Content Generation (same as before) ---
             doc.setFont("helvetica", "bold");
             doc.setFontSize(16);
             doc.text("Official Insurance Quotation", 105, y, { align: "center" });
@@ -745,7 +747,19 @@
             doc.setFontSize(8);
             doc.text("This quotation is valid for 30 days. Terms and conditions apply.", 105, 280, { align: 'center' });
             
-            doc.save(`Insurance_Quote_${data.client.name.replace(/\s/g, '_')}.pdf`);
+            // --- FIXED DOWNLOAD LOGIC ---
+            // Generate the PDF as a data URI string instead of saving directly.
+            const pdfData = doc.output('datauristring');
+
+            // Create a temporary link element to trigger the download.
+            const link = document.createElement('a');
+            link.href = pdfData;
+            link.download = `Insurance_Quote_${data.client.name.replace(/\s/g, '_')}.pdf`;
+            
+            // Append, click, and then remove the link.
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function copyQuoteToClipboard() {
