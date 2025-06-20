@@ -103,7 +103,6 @@
                     <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Total Referrers</h2>
                     <p id="total-referrers-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
                 </div>
-                <!-- NEW: Monthly Performance Chart -->
                 <div class="bento-box md:col-span-2 lg:col-span-1">
                      <h2 class="text-lg font-semibold text-center text-[var(--text-secondary)]">This Month's Performance</h2>
                      <div class="relative h-48 w-48 mx-auto mt-4">
@@ -235,6 +234,7 @@
                     <select id="manual-type" class="modal-select" required>
                         <option value="Motor">Motor</option>
                         <option value="Health">Health</option>
+                        <option value="Property">Property</option>
                     </select>
                 </div>
                  <div>
@@ -304,13 +304,13 @@
 
         let allReferrers = []; // Cache for referrers
         let commissionTiers = [];
-        let performanceChart = null; // Chart instance
+        let performanceChart = null; 
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('logout-btn').addEventListener('click', () => {
                 signOut(auth).then(() => {
-                    window.location.href = './index.html';
-                }).catch(error => console.error('Logout error:', error));
+                    window.location.reload();
+                });
             });
 
             onAuthStateChanged(auth, async (user) => {
