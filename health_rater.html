@@ -255,6 +255,11 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="flex items-center space-x-3 mt-4 pt-4 border-t border-[var(--border-color)]">
+                <input type="checkbox" id="waive-fee-checkbox" class="h-4 w-4">
+                <label for="waive-fee-checkbox" class="text-sm font-medium text-[var(--text-secondary)]">Waive finder's fee for this referral</label>
+            </div>
 
             <!-- Action Buttons -->
             <div class="mt-8 pt-6 border-t border-[var(--border-color)] flex flex-wrap justify-between items-center gap-4">
@@ -434,6 +439,8 @@
             if(data.clientName) getElement('client-name').value = data.clientName;
             if(data.clientEmail) getElement('client-email').value = data.clientEmail;
             if(data.clientContact) getElement('client-contact').value = data.clientContact;
+            getElement('waive-fee-checkbox').checked = data.feeWaived || false;
+
 
             // Trigger calculation with populated data
             calculateAndDisplay();
@@ -462,6 +469,8 @@
             document.querySelectorAll('#health-rater-app select').forEach(input => input.addEventListener('change', calculateAndDisplay));
             getElement('proceed-to-quote-btn').addEventListener('click', () => {
                 if (lastCalculatedData.totalPremium > 0) {
+                    // Set waiver checkbox based on user's profile default
+                    getElement('waive-fee-checkbox').checked = currentUserData.waivesAllFees || false;
                     generateFinalQuoteText();
                     getElement('quote-referral-modal').style.display = 'flex';
                 } else { alert("Please calculate a premium first."); }
@@ -572,7 +581,12 @@
         }
 
         function calculateAndDisplayFindersFee(premium, frequency) {
-            if (!currentUserData) return; // Wait until user data is loaded
+            const feeSection = getElement('finders-fee-section');
+            if (!currentUserData || currentUserData.waivesAllFees) { 
+                feeSection.classList.add('hidden');
+                lastCalculatedData.findersFee = 0;
+                return;
+            }
             const commissionSplit = (currentUserData.commissionSplit || 50) / 100;
 
             const totalCommission = premium * 0.25;
@@ -589,6 +603,7 @@
                 <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission Payable</span><span>${formatCurrency(netCommission)}</span></div>
                 <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (${commissionSplit*100}%)</span><span class="font-bold">${formatCurrency(findersFee)}</span></div>
             `;
+            feeSection.classList.remove('hidden');
         }
         
         // --- QUOTE & PDF GENERATION ---
@@ -636,6 +651,8 @@ Number of Children: ${getSelectedText('children-count')}
             submitBtn.innerHTML = '<span class="loader !w-6 !h-6 !border-white/50 !border-b-transparent"></span>';
             submitBtn.disabled = true;
 
+            const feeWaived = getElement('waive-fee-checkbox').checked;
+
             const selectedOptions = Object.fromEntries(
                 [...document.querySelectorAll('#health-rater-app select')].map(sel => [
                     sel.id.replace(/-/g, '_'), // e.g., 'family-status' -> 'family_status'
@@ -643,9 +660,10 @@ Number of Children: ${getSelectedText('children-count')}
                 ])
             );
             
-            // Re-map IDs to more readable keys for Firestore
              const submissionData = {
                 ...lastCalculatedData,
+                feeWaived: feeWaived,
+                findersFee: feeWaived ? 0 : lastCalculatedData.findersFee,
                 planType: selectedOptions.plan_type,
                 familyStatus: selectedOptions.family_status,
                 ageBand: selectedOptions.age_band,
