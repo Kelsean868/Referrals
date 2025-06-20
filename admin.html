@@ -18,6 +18,9 @@
             --border-color: #dce1e7; 
             --primary-accent: #005f73; 
             --secondary-accent: #ae8625; 
+            --gold-accent: #FFD700;
+            --silver-accent: #C0C0C0;
+            --bronze-accent: #CD7F32;
         }
         body {
             font-family: 'Montserrat', sans-serif;
@@ -42,7 +45,7 @@
         .primary-btn:hover { background-color: #003d4d; }
         .primary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         
-        .status-select, .approved-premium-input, .modal-input, .modal-select, .commission-split-input {
+        .form-input, .status-select, .approved-premium-input, .modal-input, .modal-select, .commission-split-input {
             padding: 0.5rem;
             border-radius: 0.375rem;
             border: 1px solid var(--border-color);
@@ -60,10 +63,17 @@
         .modal-content { background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color); width: 90%; max-width: 720px; border-radius: 0.75rem; position: relative; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Style for resubmitted rows */
-        .status-resubmitted {
-            background-color: #f3e8ff; /* Light purple */
+        .status-resubmitted { background-color: #f3e8ff; }
+        .tier-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
         }
+        .tier-Bronze { background-color: var(--bronze-accent); color: white; }
+        .tier-Silver { background-color: var(--silver-accent); color: var(--text-primary); }
+        .tier-Gold { background-color: var(--gold-accent); color: var(--text-primary); }
     </style>
 </head>
 <body class="min-h-screen">
@@ -93,7 +103,6 @@
                     <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Total Referrers</h2>
                     <p id="total-referrers-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
                 </div>
-                <!-- NEW: Monthly Performance Chart -->
                 <div class="bento-box md:col-span-2 lg:col-span-1">
                      <h2 class="text-lg font-semibold text-center text-[var(--text-secondary)]">This Month's Performance</h2>
                      <div class="relative h-48 w-48 mx-auto mt-4">
@@ -101,6 +110,7 @@
                      </div>
                 </div>
             </section>
+            
             <section id="payout-section" class="bento-box">
                 <div class="flex flex-wrap justify-between items-center gap-4">
                     <div>
@@ -111,6 +121,17 @@
                          <p id="payout-total" class="text-2xl font-bold text-green-600">$0.00</p>
                          <button id="process-payout-btn" class="button-base primary-btn mt-2" disabled>Finalize & Pay</button>
                     </div>
+                </div>
+            </section>
+            
+            <!-- NEW: Commission Tier Management -->
+            <section>
+                 <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Commission Tier Management</h2>
+                    <button id="save-tiers-btn" class="button-base primary-btn">Save Tier Settings</button>
+                </div>
+                <div id="tier-settings-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Tiers will be dynamically inserted here -->
                 </div>
             </section>
 
@@ -136,7 +157,6 @@
                 </div>
             </section>
 
-            <!-- Referrer Management Section -->
             <section>
                 <h2 class="text-2xl font-bold mb-6">Manage Referrers</h2>
                 <div class="bento-box overflow-x-auto">
@@ -145,7 +165,8 @@
                             <tr class="border-b border-[var(--border-color)]">
                                 <th class="p-4 text-sm font-semibold">Referrer Name</th>
                                 <th class="p-4 text-sm font-semibold">Email</th>
-                                <th class="p-4 text-sm font-semibold text-right">Commission Split (%)</th>
+                                <th class="p-4 text-sm font-semibold">Current Tier</th>
+                                <th class="p-4 text-sm font-semibold text-right">Won Referrals</th>
                                 <th class="p-4 text-sm font-semibold text-center">Actions</th>
                             </tr>
                         </thead>
@@ -153,6 +174,25 @@
                     </table>
                 </div>
             </section>
+            
+             <!-- NEW: Bonus Payouts Section -->
+             <section>
+                <h2 class="text-2xl font-bold mb-6">Bonus Payouts Owed</h2>
+                 <div class="bento-box overflow-x-auto">
+                     <table class="w-full text-left">
+                         <thead class="whitespace-nowrap">
+                             <tr class="border-b border-[var(--border-color)]">
+                                 <th class="p-4 text-sm font-semibold">Referrer</th>
+                                 <th class="p-4 text-sm font-semibold">Date Earned</th>
+                                 <th class="p-4 text-sm font-semibold">Bonus For Period</th>
+                                 <th class="p-4 text-sm font-semibold text-right">Bonus Amount</th>
+                                 <th class="p-4 text-sm font-semibold text-center">Status</th>
+                             </tr>
+                         </thead>
+                         <tbody id="bonus-payouts-table-body"></tbody>
+                     </table>
+                 </div>
+             </section>
             
             <section>
                 <h2 class="text-2xl font-bold mb-6">Payment History</h2>
@@ -177,7 +217,6 @@
         <p class="mt-4 text-[var(--text-secondary)]">Verifying Admin Access...</p>
     </div>
     
-    <!-- Manual Entry Modal remains the same -->
     <div id="manual-entry-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 class="text-xl font-bold mb-4">Manually Add Won Referral</h3>
@@ -210,7 +249,6 @@
         </div>
     </div>
     
-    <!-- Admin Edit Profile Modal -->
     <div id="admin-edit-profile-modal" class="modal-overlay hidden">
         <div class="modal-content">
              <div class="flex justify-between items-start mb-6">
@@ -219,7 +257,6 @@
             </div>
              <form id="admin-profile-form" class="space-y-6">
                 <input type="hidden" id="edit-user-id">
-                 <!-- Personal & Company Information -->
                 <div>
                     <h4 class="text-lg font-bold border-b pb-2 mb-4">Personal & Company Details</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -229,7 +266,6 @@
                         <div><label for="admin-form-role" class="block text-sm font-medium text-[var(--text-muted)]">Role</label><input type="text" id="admin-form-role" class="modal-input mt-1"></div>
                     </div>
                 </div>
-                <!-- Banking Information -->
                 <div>
                     <h4 class="text-lg font-bold border-b pb-2 mb-4">Banking Information</h4>
                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -249,7 +285,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, writeBatch, where, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, writeBatch, where, Timestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC5hOOzqCPieEpg5ajCBhsScroaB-c1kYg",
@@ -265,8 +301,9 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let allReferrers = []; // Cache for referrers
-        let performanceChart = null; // Chart instance
+        let allReferrers = [];
+        let commissionTiers = [];
+        let performanceChart = null; 
 
         onAuthStateChanged(auth, async (user) => {
             const adminApp = document.getElementById('admin-app');
@@ -290,31 +327,39 @@
         document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
 
         function loadAdminData() {
-            const referralsRef = collection(db, "referrals");
-            const usersRef = query(collection(db, "users"), where("role", "==", "referrer"));
-            const paymentsRef = collection(db, "payments");
-
-            onSnapshot(referralsRef, snapshot => {
-                const referrals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            onSnapshot(collection(db, "referrals"), snapshot => {
+                const referrals = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 displayReferrals(referrals);
                 updateSummaryCards(referrals);
                 updatePayoutSection(referrals);
                 updatePerformanceChart(referrals);
             });
             
-             onSnapshot(usersRef, snapshot => {
-                allReferrers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                document.getElementById('total-referrers-count').textContent = allReferrers.length;
+             onSnapshot(collection(db, "users"), snapshot => {
+                allReferrers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                document.getElementById('total-referrers-count').textContent = allReferrers.filter(u => u.role === 'referrer').length;
                 populateReferrerDropdown();
-                displayReferrersForManagement(allReferrers);
+                displayReferrersForManagement(allReferrers.filter(u => u.role === 'referrer'));
              });
 
-             onSnapshot(paymentsRef, snapshot => {
-                const payments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+             onSnapshot(doc(db, "settings", "commissionTiers"), (doc) => {
+                if(doc.exists()){
+                    commissionTiers = doc.data().tiers;
+                    displayTierSettings(commissionTiers);
+                }
+             });
+             
+             onSnapshot(collection(db, "bonuses"), snapshot => {
+                const bonuses = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                displayBonuses(bonuses);
+             });
+
+             onSnapshot(collection(db, "payments"), snapshot => {
+                const payments = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 displayPaymentHistory(payments);
              });
         }
-
+        
         function updateSummaryCards(referrals) {
             document.getElementById('pending-referrals-count').textContent = referrals.filter(r => ['Pending', 'Resubmitted'].includes(r.status)).length;
             const totalOwed = referrals.filter(r => r.status === 'Won' && !r.feeWaived).reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
@@ -327,10 +372,6 @@
             const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
             const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59);
             
-            const payoutPeriodLabel = document.getElementById('payout-period-label');
-            const payoutTotalEl = document.getElementById('payout-total');
-            const processPayoutBtn = document.getElementById('process-payout-btn');
-            
             payoutPeriodLabel.textContent = `For business won in ${lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
 
             const referralsToPay = referrals.filter(r => {
@@ -340,13 +381,13 @@
 
             const totalToPay = referralsToPay.reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee), 0);
             
-            payoutTotalEl.textContent = formatCurrency(totalToPay);
-            processPayoutBtn.disabled = totalToPay <= 0;
+            document.getElementById('payout-total').textContent = formatCurrency(totalToPay);
+            document.getElementById('process-payout-btn').disabled = totalToPay <= 0;
         }
 
         function displayReferrals(referrals) {
             const tableBody = document.getElementById('admin-referrals-table-body');
-            referrals.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+            referrals.sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
             tableBody.innerHTML = referrals.map(ref => {
                 const isEditable = !['Won', 'Paid', 'Lost', 'Rejected', 'Cancelled'].includes(ref.status);
                 const finalFee = ref.feeWaived ? 0 : (ref.finalFindersFee || ref.findersFee || 0);
@@ -363,7 +404,7 @@
                         </td>
                          <td class="p-4 text-right font-semibold text-green-600">${formatCurrency(finalFee)}</td>
                         <td class="p-4 text-center">
-                            <select class="status-select" data-id="${ref.id}" ${ref.status === 'Paid' ? 'disabled' : ''}>
+                            <select class="status-select" data-id="${ref.id}" data-current-status="${ref.status}" ${ref.status === 'Paid' ? 'disabled' : ''}>
                                 ${['Pending', 'Approved', 'Won', 'Lost', 'Rejected', 'Cancelled', 'Resubmitted', 'Paid'].map(s => `<option value="${s}" ${ref.status === s ? 'selected' : ''} ${s === 'Paid' ? 'disabled' : ''}>${s}</option>`).join('')}
                             </select>
                         </td>
@@ -381,64 +422,180 @@
 
         function displayReferrersForManagement(referrers) {
             const tableBody = document.getElementById('referrers-management-table-body');
+            referrers.sort((a,b) => (b.wonReferralsCount || 0) - (a.wonReferralsCount || 0));
             tableBody.innerHTML = referrers.map(user => `
                 <tr class="border-b border-[var(--border-color)]">
                     <td class="p-4">${user.name}</td>
                     <td class="p-4">${user.email}</td>
-                    <td class="p-2 text-right">
-                        <input type="number" class="commission-split-input w-24" data-id="${user.id}" value="${user.commissionSplit || 50}" min="0" max="100">
-                    </td>
+                     <td class="p-4"><span class="tier-badge tier-${user.currentTier || 'Bronze'}">${user.currentTier || 'Bronze'}</span></td>
+                    <td class="p-4 text-right">${user.wonReferralsCount || 0}</td>
                     <td class="p-4 text-center">
                         <button class="button-base !py-1 !px-3 text-xs bg-[var(--secondary-accent)] text-white manage-profile-btn" data-id="${user.id}">Manage Profile</button>
                     </td>
                 </tr>
             `).join('');
-            
-            tableBody.querySelectorAll('.commission-split-input').forEach(el => el.addEventListener('change', handleCommissionSplitChange));
             tableBody.querySelectorAll('.manage-profile-btn').forEach(el => el.addEventListener('click', handleManageProfileClick));
         }
-
-        function displayPaymentHistory(payments) {
-            const tableBody = document.getElementById('payment-history-table-body');
-             payments.sort((a, b) => b.payoutDate.toDate() - a.payoutDate.toDate());
-            if(payments.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-[var(--text-muted)]">No payments have been processed.</td></tr>`;
+        
+        function displayBonuses(bonuses) {
+             const tableBody = document.getElementById('bonus-payouts-table-body');
+             if(bonuses.length === 0){
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-[var(--text-muted)]">No bonuses owed at this time.</td></tr>`;
                 return;
-            }
-            tableBody.innerHTML = payments.map(p => `
-                <tr class="border-b border-[var(--border-color)]">
-                    <td class="p-4">${p.payoutDate.toDate().toLocaleDateString()}</td>
-                    <td class="p-4">${p.periodCovered}</td>
-                    <td class="p-4 text-right font-semibold">${formatCurrency(p.totalPaid)}</td>
-                </tr>
+             }
+             tableBody.innerHTML = bonuses.map(bonus => `
+                 <tr class="border-b border-[var(--border-color)]">
+                     <td class="p-4">${bonus.referrerName}</td>
+                     <td class="p-4">${bonus.earnedAt.toDate().toLocaleDateString()}</td>
+                     <td class="p-4">${bonus.period}</td>
+                     <td class="p-4 text-right font-semibold text-green-600">${formatCurrency(bonus.bonusAmount)}</td>
+                     <td class="p-4 text-center">
+                         <span class="tier-badge ${bonus.status === 'Paid' ? 'bg-gray-400 text-white' : 'bg-red-500 text-white'}">${bonus.status}</span>
+                     </td>
+                 </tr>
+             `).join('');
+        }
+
+        function displayTierSettings(tiers) {
+            const container = document.getElementById('tier-settings-container');
+            container.innerHTML = tiers.map((tier, index) => `
+                <div class="bento-box space-y-3">
+                    <h3 class="text-xl font-bold flex items-center gap-2"><span class="tier-badge tier-${tier.name}">${tier.name}</span></h3>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Min. Won Referrals</label>
+                        <input type="number" class="form-input" data-index="${index}" data-field="minReferrals" value="${tier.minReferrals}">
+                    </div>
+                     <div class="space-y-1">
+                        <label class="text-sm font-medium">Commission Split (%)</label>
+                        <input type="number" class="form-input" data-index="${index}" data-field="split" value="${tier.split}">
+                    </div>
+                     <div class="space-y-1">
+                        <label class="text-sm font-medium">Bonus (%)</label>
+                        <input type="number" class="form-input" data-index="${index}" data-field="bonusPercentage" value="${tier.bonusPercentage || 0}">
+                    </div>
+                </div>
             `).join('');
         }
         
-        async function calculateNewFindersFee(approvedPremium, insuranceType, referrerId, feeWaived = false) {
-            if (feeWaived) return 0;
-            const referrer = allReferrers.find(r => r.id === referrerId);
-            const commissionSplit = (referrer && referrer.commissionSplit) ? referrer.commissionSplit / 100 : 0.50;
-
-            const commissionRate = insuranceType === 'Motor' ? 0.10 : 0.25;
-            const totalCommission = approvedPremium * commissionRate;
-            const incomeTax = totalCommission * 0.25;
-            const netCommission = totalCommission - incomeTax;
-            return netCommission * commissionSplit;
-        }
-
-        async function handlePremiumChange(event) {
-            const input = event.target;
-            const referralRef = doc(db, "referrals", input.dataset.id);
-            const approvedPremium = parseFloat(input.value);
-            if (isNaN(approvedPremium) || approvedPremium < 0) return;
+        document.getElementById('save-tiers-btn').addEventListener('click', async () => {
+            const newTiers = [...commissionTiers];
+            document.querySelectorAll('#tier-settings-container input').forEach(input => {
+                const index = input.dataset.index;
+                const field = input.dataset.field;
+                newTiers[index][field] = Number(input.value);
+            });
             try {
-                const referralDoc = await getDoc(referralRef);
-                const referralData = referralDoc.data();
-                const newFee = await calculateNewFindersFee(approvedPremium, referralData.insuranceType, referralData.referrerId, referralData.feeWaived);
-                await updateDoc(referralRef, { approvedPremium: approvedPremium, finalFindersFee: newFee });
-            } catch (error) { console.error("Error updating premium: ", error); alert("Could not update premium."); }
+                await updateDoc(doc(db, "settings", "commissionTiers"), { tiers: newTiers });
+                alert("Tier settings saved!");
+            } catch (error) {
+                console.error("Error saving tiers:", error);
+                alert("Could not save settings.");
+            }
+        });
+
+        async function handleStatusChange(event) {
+            const selectElement = event.target;
+            const newStatus = selectElement.value;
+            const oldStatus = selectElement.dataset.currentStatus;
+            const referralId = selectElement.dataset.id;
+            
+            if (newStatus === oldStatus) return;
+
+            selectElement.disabled = true;
+
+            const updateData = { status: newStatus };
+            let triggerTierCheck = false;
+
+            if (newStatus === 'Won' && oldStatus !== 'Won') {
+                updateData.wonAt = Timestamp.now();
+                triggerTierCheck = true; // Mark to check for promotion
+            }
+
+            try {
+                await updateDoc(doc(db, "referrals", referralId), updateData);
+                if(triggerTierCheck) {
+                    const refDoc = await getDoc(doc(db, "referrals", referralId));
+                    await checkAndApplyTierPromotion(refDoc.data().referrerId);
+                }
+            } catch (error) { 
+                console.error("Error updating status: ", error); 
+                alert("Could not update status.");
+            } finally { 
+                selectElement.disabled = false; 
+            }
         }
         
+        async function checkAndApplyTierPromotion(referrerId) {
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const userRef = doc(db, "users", referrerId);
+                    const userDoc = await transaction.get(userRef);
+                    if (!userDoc.exists()) return;
+
+                    const userData = userDoc.data();
+                    const newCount = (userData.wonReferralsCount || 0) + 1;
+                    
+                    const settingsRef = doc(db, "settings", "commissionTiers");
+                    const settingsDoc = await transaction.get(settingsRef);
+                    const tiers = settingsDoc.data().tiers.sort((a,b) => b.minReferrals - a.minReferrals);
+                    
+                    const currentTier = tiers.find(t => t.name === (userData.currentTier || 'Bronze')) || tiers[tiers.length - 1];
+                    const newTier = tiers.find(t => newCount >= t.minReferrals);
+
+                    transaction.update(userRef, { wonReferralsCount: newCount });
+
+                    if (newTier && newTier.name !== currentTier.name) {
+                        transaction.update(userRef, { 
+                            currentTier: newTier.name,
+                            commissionSplit: newTier.split
+                        });
+
+                        // Check for retroactive bonus
+                        const bonusTier = tiers.find(t => t.bonusPercentage > 0);
+                        if (newTier.name === bonusTier.name) {
+                            const now = new Date();
+                            const period = `${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`;
+                            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                            
+                            const q = query(collection(db, "referrals"), 
+                                where("referrerId", "==", referrerId),
+                                where("status", "==", "Won"),
+                                where("wonAt", "<", Timestamp.fromDate(startOfMonth)), // business won *before* this month
+                                where("isBonusApplied", "!=", true)
+                            );
+                            
+                            const referralsToBonusSnapshot = await getDocs(q);
+                            let totalBonus = 0;
+                            
+                            referralsToBonusSnapshot.forEach(refDoc => {
+                                const refData = refDoc.data();
+                                const fee = refData.finalFindersFee || refData.findersFee || 0;
+                                if(fee > 0){
+                                    totalBonus += fee * (bonusTier.bonusPercentage / 100);
+                                    transaction.update(refDoc.ref, { isBonusApplied: true });
+                                }
+                            });
+                            
+                            if(totalBonus > 0){
+                                const bonusRef = doc(collection(db, "bonuses"));
+                                transaction.set(bonusRef, {
+                                    referrerId: referrerId,
+                                    referrerName: userData.name,
+                                    earnedAt: Timestamp.now(),
+                                    period: period,
+                                    bonusAmount: totalBonus,
+                                    status: 'Owed'
+                                });
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Transaction failed: ", e);
+                alert("A critical error occurred while updating referrer level. Please check the logs.");
+            }
+        }
+
         async function handleFeeWaiverChange(event) {
             const checkbox = event.target;
             const referralId = checkbox.dataset.id;
@@ -456,41 +613,19 @@
             }
         }
         
-        async function handleStatusChange(event) {
-            const selectElement = event.target;
-            const newStatus = selectElement.value;
-            const referralId = selectElement.dataset.id;
-            selectElement.disabled = true;
-
-            const updateData = { status: newStatus };
-            if (newStatus === 'Won') {
-                updateData.wonAt = Timestamp.now();
-            }
-
-            try {
-                await updateDoc(doc(db, "referrals", referralId), updateData);
-            } catch (error) { console.error("Error updating status: ", error); alert("Could not update status.");
-            } finally { selectElement.disabled = false; }
-        }
-
-        async function handleCommissionSplitChange(event) {
+        async function handlePremiumChange(event) {
             const input = event.target;
-            const userId = input.dataset.id;
-            let split = parseInt(input.value, 10);
-            if (isNaN(split) || split < 0) split = 0;
-            if (split > 100) split = 100;
-            input.value = split; // Correct the value in the UI
-
-            const userRef = doc(db, "users", userId);
+            const referralRef = doc(db, "referrals", input.dataset.id);
+            const approvedPremium = parseFloat(input.value);
+            if (isNaN(approvedPremium) || approvedPremium < 0) return;
             try {
-                await updateDoc(userRef, { commissionSplit: split });
-            } catch (error) {
-                console.error("Error updating commission split:", error);
-                alert("Failed to update commission split.");
-            }
+                const referralDoc = await getDoc(referralRef);
+                const referralData = referralDoc.data();
+                const newFee = await calculateNewFindersFee(approvedPremium, referralData.insuranceType, referralData.referrerId, referralData.feeWaived);
+                await updateDoc(referralRef, { approvedPremium: approvedPremium, finalFindersFee: newFee });
+            } catch (error) { console.error("Error updating premium: ", error); alert("Could not update premium."); }
         }
         
-        // --- Admin Profile Management ---
         function handleManageProfileClick(event) {
             const userId = event.target.dataset.id;
             const user = allReferrers.find(r => r.id === userId);
@@ -514,7 +649,6 @@
         document.getElementById('close-edit-profile-modal-btn').addEventListener('click', () => {
              document.getElementById('admin-edit-profile-modal').classList.add('hidden');
         });
-
         document.getElementById('admin-profile-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const userId = document.getElementById('edit-user-id').value;
@@ -564,20 +698,18 @@
 
         document.getElementById('manual-entry-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const referrerSelect = document.getElementById('manual-referrer');
-            const referrerId = referrerSelect.value;
-            const referrerName = referrerSelect.options[referrerSelect.selectedIndex].dataset.name;
-            const clientName = document.getElementById('manual-client').value;
-            const insuranceType = document.getElementById('manual-type').value;
-            const approvedPremium = parseFloat(document.getElementById('manual-premium').value);
-
-            const findersFee = await calculateNewFindersFee(approvedPremium, insuranceType, referrerId);
+            const referrerId = document.getElementById('manual-referrer').value;
+            const findersFee = await calculateNewFindersFee(parseFloat(document.getElementById('manual-premium').value), document.getElementById('manual-type').value, referrerId);
             
             const newReferral = {
-                referrerId, referrerName, clientName, insuranceType, approvedPremium, 
+                referrerId, 
+                referrerName: document.getElementById('manual-referrer').options[document.getElementById('manual-referrer').selectedIndex].dataset.name,
+                clientName: document.getElementById('manual-client').value,
+                insuranceType: document.getElementById('manual-type').value,
+                approvedPremium: parseFloat(document.getElementById('manual-premium').value), 
                 findersFee, finalFindersFee: findersFee,
                 status: 'Won', 
-                wonAt: Timestamp.now(), // Set won date for manual entries
+                wonAt: Timestamp.now(),
                 feeWaived: false, 
                 createdAt: Timestamp.now(),
                 isManualEntry: true,
@@ -585,6 +717,7 @@
 
             try {
                 await addDoc(collection(db, "referrals"), newReferral);
+                await checkAndApplyTierPromotion(referrerId); // Check for promotion on manual entry
                 document.getElementById('manual-entry-form').reset();
                 document.getElementById('manual-entry-modal').classList.add('hidden');
             } catch (error) {
@@ -636,6 +769,8 @@
                 
                 if (totalPaid <= 0) {
                     alert("No non-waived fees to process for this period.");
+                    e.target.disabled = false;
+                    e.target.textContent = "Finalize & Pay";
                     return;
                 }
 
