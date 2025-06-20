@@ -79,10 +79,12 @@
         
         .primary-btn { background-color: var(--primary-accent); color: white; }
         .primary-btn:hover { background-color: var(--primary-accent-darker); }
-        .dark-mode .primary-btn { color: var(--bg-bento-box); }
+        .dark-mode .primary-btn { color: var(--text-primary); }
 
         .secondary-btn { background-color: var(--secondary-accent); color: white; }
         .secondary-btn:hover { background-color: var(--secondary-accent-darker); }
+        .dark-mode .secondary-btn { color: var(--text-primary); }
+
         
         /* Modal */
         .modal-overlay {
@@ -93,7 +95,8 @@
         }
         .modal-content {
             background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color);
-            width: 90%; max-width: 560px; border-radius: 0.75rem; position: relative;
+            width: 90%; 
+            border-radius: 0.75rem; position: relative;
             box-shadow: var(--shadow-strong);
         }
         
@@ -213,12 +216,9 @@
                         <h3 class="text-lg font-bold text-[var(--primary-accent)] mb-2">Initial Finder's Fee</h3>
                         <div id="finders-fee-breakdown" class="text-[var(--text-secondary)] text-sm space-y-1"></div>
                     </div>
-                    <div class="mt-6 space-y-3">
-                        <button id="generate-quote-btn" class="w-full secondary-btn button-base py-3">
-                            Generate Official Quote
-                        </button>
-                        <button id="create-referral-btn" class="w-full primary-btn button-base py-3">
-                            Create Referral
+                    <div class="mt-6">
+                        <button id="proceed-to-quote-btn" class="w-full primary-btn button-base py-3">
+                            Create Referral & Quote
                         </button>
                     </div>
                 </div>
@@ -230,39 +230,46 @@
         </footer>
     </div>
 
-    <!-- Final Quote Modal -->
-    <div id="final-quote-modal" class="modal-overlay hidden">
-        <div class="modal-content max-w-2xl">
-            <h3 class="text-xl font-bold leading-6 mb-4">Official COVERCARE Quotation</h3>
-            <div id="quote-output-container" class="w-full h-96 overflow-y-auto bg-[var(--bg-main)] p-4 border border-[var(--border-color)] rounded-md">
-                <pre id="quote-output" class="whitespace-pre-wrap text-sm font-mono"></pre>
+    <!-- Combined Quote & Referral Modal -->
+    <div id="quote-referral-modal" class="modal-overlay hidden">
+        <div class="modal-content max-w-4xl">
+            <h3 class="text-2xl font-bold leading-6 mb-6 text-center">Referral & Official Quotation</h3>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Left side: Client Info for Referral -->
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-[var(--primary-accent)]">Step 1: Enter Client Information</h4>
+                    <div class="space-y-4">
+                        <input type="text" id="client-name" placeholder="Client's Full Name" class="w-full" required>
+                        <input type="email" id="client-email" placeholder="Client's Email Address" class="w-full" required>
+                        <input type="text" id="client-contact" placeholder="Client's Contact Number" class="w-full" required>
+                    </div>
+                    <p id="client-modal-error" class="text-red-500 text-sm text-center mt-4 h-4"></p>
+                </div>
+
+                <!-- Right side: Quote Preview -->
+                <div>
+                    <h4 class="text-lg font-bold mb-4 text-[var(--primary-accent)]">Step 2: Review Official Quote</h4>
+                    <div id="quote-output-container" class="w-full h-64 overflow-y-auto bg-[var(--bg-main)] p-4 border border-[var(--border-color)] rounded-md">
+                        <pre id="quote-output" class="whitespace-pre-wrap text-sm font-mono"></pre>
+                    </div>
+                </div>
             </div>
-            <div class="mt-6 flex flex-wrap justify-end gap-3">
-                <input type="text" id="pdf-client-name" placeholder="Enter Client's Name for PDF" class="w-full md:w-auto flex-grow p-2 rounded-md border border-[var(--border-color)] bg-[var(--bg-main)]">
-                <button id="close-quote-modal-btn" type="button" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Close</button>
-                <button id="download-pdf-btn" type="button" class="button-base secondary-btn py-2 px-4">Download PDF</button>
-                <button id="copy-quote-btn" type="button" class="button-base primary-btn py-2 px-4">Copy Quote</button>
+
+            <!-- Action Buttons -->
+            <div class="mt-8 pt-6 border-t border-[var(--border-color)] flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <button id="close-modal-btn" type="button" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Cancel</button>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <button id="copy-quote-btn" type="button" class="button-base secondary-btn py-2 px-4">Copy Quote</button>
+                    <button id="download-pdf-btn" type="button" class="button-base secondary-btn py-2 px-4">Download PDF</button>
+                    <button id="submit-referral-btn" type="button" class="button-base primary-btn py-2 px-4">Submit Referral</button>
+                </div>
             </div>
         </div>
     </div>
-    
-    <!-- Client Info Modal for Referral -->
-    <div id="client-info-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <h3 class="text-xl font-bold leading-6 mb-4">Client Information for Referral</h3>
-            <div class="space-y-4">
-                <input type="text" id="client-name" placeholder="Client's Full Name" class="w-full" required>
-                <input type="email" id="client-email" placeholder="Client's Email" class="w-full" required>
-                <input type="text" id="client-contact" placeholder="Client's Contact Number" class="w-full" required>
-            </div>
-            <p id="client-modal-error" class="text-red-500 text-sm text-center mt-4"></p>
-            <div class="mt-6 flex justify-end space-x-3">
-                <button type="button" id="close-client-modal-btn" class="button-base bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 py-2 px-4">Cancel</button>
-                <button type="button" id="submit-referral-btn" class="button-base primary-btn py-2 px-4">Submit Referral</button>
-            </div>
-        </div>
-    </div>
-    
+
     <!-- Success Modal -->
     <div id="success-modal" class="modal-overlay hidden">
         <div class="modal-content text-center">
@@ -388,29 +395,30 @@
         function setupEventListeners() {
             allInputs.forEach(input => input.addEventListener('change', calculateAndDisplay));
 
-            // Quote Modal Buttons
-            getElement('generate-quote-btn').addEventListener('click', () => {
-                generateFinalQuoteText();
-                getElement('final-quote-modal').style.display = 'flex';
+            // Combined Modal
+            getElement('proceed-to-quote-btn').addEventListener('click', () => {
+                if (lastCalculatedData.totalPremium > 0) {
+                    generateFinalQuoteText();
+                    getElement('quote-referral-modal').style.display = 'flex';
+                } else {
+                    // This is a good place for a more styled notification
+                    alert("Please calculate a premium first."); 
+                }
             });
-            getElement('close-quote-modal-btn').addEventListener('click', () => getElement('final-quote-modal').style.display = 'none');
+
+            getElement('close-modal-btn').addEventListener('click', () => {
+                getElement('quote-referral-modal').style.display = 'none';
+            });
+            
+            // Modal Action Buttons
             getElement('copy-quote-btn').addEventListener('click', () => {
                 navigator.clipboard.writeText(getElement('quote-output').innerText).then(() => {
                     getElement('copy-quote-btn').textContent = 'Copied!';
                     setTimeout(() => { getElement('copy-quote-btn').textContent = 'Copy Quote'; }, 2000);
                 });
             });
-            getElement('download-pdf-btn').addEventListener('click', generateAndDownloadPDF);
 
-            // Referral Modal Buttons
-            getElement('create-referral-btn').addEventListener('click', () => {
-                if (lastCalculatedData.totalPremium > 0) {
-                     getElement('client-info-modal').style.display = 'flex';
-                } else {
-                    alert("Please calculate a premium first."); // Consider replacing with a styled modal
-                }
-            });
-            getElement('close-client-modal-btn').addEventListener('click', () => getElement('client-info-modal').style.display = 'none');
+            getElement('download-pdf-btn').addEventListener('click', generateAndDownloadPDF);
             getElement('submit-referral-btn').addEventListener('click', submitReferral);
         }
 
@@ -595,7 +603,7 @@ Terms and conditions apply.
         }
 
         function generateAndDownloadPDF() {
-            const clientName = getElement('pdf-client-name').value || 'Valued Client';
+            const clientName = getElement('client-name').value || 'Valued Client';
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
@@ -645,7 +653,7 @@ Terms and conditions apply.
                     status: 'Pending',
                     createdAt: Timestamp.now()
                 });
-                getElement('client-info-modal').style.display = 'none';
+                getElement('quote-referral-modal').style.display = 'none';
                 getElement('success-modal').style.display = 'flex';
             } catch (error) {
                 console.error("Error submitting referral: ", error);
