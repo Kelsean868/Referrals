@@ -11,6 +11,7 @@
     <meta name="author" content="Your Name">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Source+Serif+Pro:wght@600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -245,12 +246,18 @@
             </header>
 
             <main class="space-y-12">
-                <section>
+                <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
                      <div class="bento-box">
                          <h2 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Current Unpaid Balance</h2>
                          <div class="text-center">
                              <p class="text-5xl font-bold text-[var(--secondary-accent)]" id="unpaid-finders-fee-total">$0.00</p>
                              <p class="text-[var(--text-muted)]">From all "Won" referrals that have not yet been paid</p>
+                         </div>
+                     </div>
+                     <div class="bento-box">
+                         <h2 class="text-2xl font-bold text-center text-[var(--primary-accent)] mb-4">This Month's Performance</h2>
+                         <div class="relative h-48 w-48 mx-auto">
+                            <canvas id="performanceChart"></canvas>
                          </div>
                      </div>
                 </section>
@@ -389,9 +396,9 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Global variable to hold all referrals for the current user
         let userReferrals = [];
-        
+        let performanceChart = null;
+
         const authLoader = document.getElementById('auth-loader');
         const authView = document.getElementById('auth-view');
         const appView = document.getElementById('app-view');
@@ -424,7 +431,6 @@
             const userDocRef = doc(db, "users", user.uid);
             const userDoc = await getDoc(userDocRef);
 
-            // Fetch user's role and display admin link if applicable
             if (userDoc.exists() && userDoc.data().role === 'admin') {
                 document.getElementById('dashboard-title').textContent = "Admin / Referrer Dashboard";
                 adminLinkContainer.innerHTML = `<a href="./admin.html" class="button-base !px-4 !py-2 bg-[var(--secondary-accent)] text-white">Admin Panel</a>`;
@@ -433,18 +439,17 @@
                 document.getElementById('dashboard-title').textContent = "Referrer Dashboard";
             }
             
-            // Load user-specific data
             loadDashboardData(user.uid);
         }
 
         function loadDashboardData(userId) {
             const referralsQuery = query(collection(db, "referrals"), where("referrerId", "==", userId));
             onSnapshot(referralsQuery, (snapshot) => {
-                // Store referrals globally to use in the details modal
                 userReferrals = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
                 userReferrals.sort((a,b) => b.createdAt.toDate() - a.createdAt.toDate());
                 displayReferrals(userReferrals);
                 updateUnpaidBalance(userReferrals);
+                updatePerformanceChart(userReferrals);
             });
             
             onSnapshot(collection(db, "payments"), (snapshot) => {
@@ -455,7 +460,7 @@
         
         function updateUnpaidBalance(referrals) {
             const unpaidTotal = referrals
-                .filter(r => r.status === 'Won')
+                .filter(r => r.status === 'Won' && !r.feeWaived)
                 .reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
             unpaidFindersFeeTotal.textContent = formatCurrency(unpaidTotal);
         }
@@ -467,7 +472,7 @@
             }
             referralsTableBody.innerHTML = referrals.map(referral => {
                 const statusClass = getStatusClass(referral.status);
-                const finalFee = referral.finalFindersFee || referral.findersFee;
+                const finalFee = referral.feeWaived ? 0 : (referral.finalFindersFee || referral.findersFee);
                 const canEdit = ['Pending', 'Approved', 'Resubmitted'].includes(referral.status);
 
                 return `
@@ -567,6 +572,8 @@
                     displayValue = `<pre class="bg-[var(--bg-main)] p-2 rounded-md mt-1">${JSON.stringify(value, null, 2)}</pre>`;
                 } else if (typeof value === 'number' && (key.toLowerCase().includes('premium') || key.toLowerCase().includes('fee'))) {
                     displayValue = formatCurrency(value);
+                } else if (key === 'feeWaived' && typeof value === 'boolean') {
+                    displayValue = value ? 'Yes' : 'No';
                 }
 
                 contentHTML += `<div class="grid grid-cols-3 gap-4 border-b border-[var(--border-color)] py-2">
@@ -598,11 +605,65 @@
             return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         }
         
+        // --- CHART LOGIC ---
+        function updatePerformanceChart(referrals) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const thisMonthReferrals = referrals.filter(r => r.createdAt.toDate() >= startOfMonth);
+
+            const potentialFees = thisMonthReferrals
+                .filter(r => !r.feeWaived)
+                .reduce((sum, r) => sum + (r.findersFee || 0), 0);
+
+            const wonFees = thisMonthReferrals
+                .filter(r => (r.status === 'Won' || r.status === 'Paid') && !r.feeWaived)
+                .reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee || 0), 0);
+            
+            const pendingOrLostFees = Math.max(0, potentialFees - wonFees);
+
+            const data = {
+                labels: ['Won Fees', 'Pending/Lost Fees'],
+                datasets: [{
+                    data: [wonFees, pendingOrLostFees],
+                    backgroundColor: ['#16a34a', '#d1d5db'],
+                    borderColor: 'var(--bg-bento-box)',
+                    borderWidth: 4,
+                    hoverOffset: 8
+                }]
+            };
+
+            if (performanceChart) {
+                performanceChart.data = data;
+                performanceChart.update();
+            } else {
+                performanceChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => formatCurrency(context.parsed)
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
         // --- AUTH FORMS ---
         document.getElementById('show-register').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); });
         document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); });
         document.getElementById('login-form').addEventListener('submit', async (e) => { e.preventDefault(); const email = document.getElementById('login-email').value; const password = document.getElementById('login-password').value; try { await signInWithEmailAndPassword(auth, email, password); document.getElementById('login-error').textContent = ''; } catch (error) { document.getElementById('login-error').textContent = "Invalid email or password."; } });
-        document.getElementById('register-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('register-name').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; try { const cred = await createUserWithEmailAndPassword(auth, email, password); await updateProfile(cred.user, { displayName: name }); await setDoc(doc(db, "users", cred.user.uid), { name, email, role: 'referrer', commissionSplit: 50 }); document.getElementById('register-error').textContent = ''; } catch (error) { document.getElementById('register-error').textContent = error.message; } });
+        document.getElementById('register-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('register-name').value; const email = document.getElementById('register-email').value; const password = document.getElementById('register-password').value; try { const cred = await createUserWithEmailAndPassword(auth, email, password); await updateProfile(cred.user, { displayName: name }); await setDoc(doc(db, "users", cred.user.uid), { name, email, role: 'referrer', commissionSplit: 50, waivesAllFees: false }); document.getElementById('register-error').textContent = ''; } catch (error) { document.getElementById('register-error').textContent = error.message; } });
         
         // --- Password Visibility and Reset Logic ---
         function togglePasswordVisibility(inputId, toggleId) {
