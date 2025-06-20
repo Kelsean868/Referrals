@@ -1,419 +1,292 @@
 <!DOCTYPE html>
-<html lang="en-TT" class="scroll-smooth">
-
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-
-    <title>Insurance Referral Hub</title>
-    <meta name="description"
-        content="A platform for insurance referrers to create quotes and track commissions for motor and health insurance.">
-    <meta name="author" content="Your Name">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Insurance Referral Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Source+Serif+Pro:wght@600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-
     <style>
         :root {
-            --bg-main: #f4f6f9;
+            --bg-main: #f4f6f9; 
             --bg-bento-box: #ffffff;
-            --text-primary: #1d2d35;
-            --text-secondary: #4a5568;
-            --border-color: #dce1e7;
-            --primary-accent: #005f73;
-            --primary-accent-darker: #003d4d;
-            --secondary-accent: #ae8625;
-            --shadow-soft: 0 3px 6px rgba(0, 0, 0, 0.04);
-            --shadow-medium: 0 5px 15px rgba(0, 0, 0, 0.06);
-            --font-body: 'Montserrat', sans-serif;
-            --font-heading: 'Source Serif Pro', serif;
+            --text-primary: #1d2d35; 
+            --text-secondary: #4a5568; 
+            --text-muted: #718096;    
+            --border-color: #dce1e7; 
+            --primary-accent: #005f73; 
+            --secondary-accent: #ae8625; 
+            --gold-accent: #FFD700;
+            --silver-accent: #C0C0C0;
+            --bronze-accent: #CD7F32;
         }
-
-        .dark-mode {
-            --bg-main: #1f2937;
-            --bg-bento-box: #2b3c4d;
-            --text-primary: #f0f4f8;
-            --text-secondary: #d1d5db;
-            --border-color: #4b5f71;
-            --primary-accent: #25a1af;
-            --primary-accent-darker: #1e838f;
-            --secondary-accent: #daa520;
-        }
-
         body {
-            font-family: var(--font-body);
+            font-family: 'Montserrat', sans-serif;
             background-color: var(--bg-main);
             color: var(--text-primary);
-            transition: background-color 0.3s ease, color 0.3s ease;
-            overflow-x: hidden;
         }
-
-        .page-title {
-            font-family: var(--font-heading);
-            color: var(--primary-accent);
-            font-weight: 700;
-        }
-        
+        h1, h2, h3, h4 { font-family: 'Source Serif Pro', serif; color: var(--primary-accent); }
         .bento-box {
             background-color: var(--bg-bento-box);
-            border-radius: 0.75rem;
-            padding: 1.75rem;
-            box-shadow: var(--shadow-medium);
-            transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.25s ease;
+            border-radius: 0.75rem; 
+            padding: 1.75rem; 
             border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            height: 100%;
         }
-
-        .bento-box:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-strong);
-        }
-
-        .button-base {
-            display: inline-block;
-            font-weight: 600;
-            padding: 0.85rem 1.5rem;
-            border-radius: 0.375rem;
-            transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
-            box-shadow: var(--shadow-soft);
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-            text-align: center;
+        .button-base { 
+            font-weight: 600; padding: 0.5rem 1rem; border-radius: 0.375rem;
+            transition: background-color 0.2s ease, transform 0.15s ease;
+            text-transform: uppercase; letter-spacing: 0.025em; cursor: pointer; 
             text-decoration: none;
-            cursor: pointer;
+            display: inline-block;
         }
+        .primary-btn { background-color: var(--primary-accent); color: white; }
+        .primary-btn:hover { background-color: #003d4d; }
+        .primary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         
-        .button-sm {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.875rem;
+        .form-input, .status-select, .approved-premium-input, .modal-input, .modal-select, .commission-split-input {
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-main);
+            width: 100%;
         }
-
-        .button-base:hover {
-            transform: translateY(-2px);
-        }
-
-        .main-action-button {
-            background-color: var(--primary-accent);
-            color: white;
-        }
-
-        .dark-mode .main-action-button {
-            color: var(--text-primary);
-        }
-
-        .main-action-button:hover {
-            background-color: var(--primary-accent-darker);
-        }
-        
-        input, select {
-            border: 1px solid var(--border-color); padding: 0.85rem 1.15rem; border-radius: 0.375rem; 
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, color 0.3s ease;
-            background-color: var(--bg-main); color: var(--text-primary);
-            font-weight: 500;
-        }
-        input:focus, select:focus {
-            border-color: var(--primary-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-accent) 25%, transparent); 
-            outline: none; background-color: var(--bg-bento-box);
-        }
-        
-        /* Modal Styles */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(29, 45, 53, 0.7);
-            display: flex; align-items: center; justify-content: center; z-index: 50;
-            backdrop-filter: blur(5px);
-        }
-        .modal-content {
-            background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color);
-            width: 90%; max-width: 640px; 
-            border-radius: 0.75rem; position: relative;
-            box-shadow: var(--shadow-strong);
-        }
-        .password-toggle {
-            position: absolute;
-            right: 0.75rem;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: var(--text-muted);
-        }
+        .commission-split-input { text-align: right; }
         .loader {
             width: 48px; height: 48px; border: 5px solid var(--primary-accent);
             border-bottom-color: transparent; border-radius: 50%;
             display: inline-block; box-sizing: border-box;
             animation: rotation 1s linear infinite;
         }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(29, 45, 53, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(5px); overflow-y: auto; }
+        .modal-content { background-color: var(--bg-bento-box); margin: auto; padding: 2rem; border: 1px solid var(--border-color); width: 90%; max-width: 720px; border-radius: 0.75rem; position: relative; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
+
+        .status-resubmitted { background-color: #f3e8ff; }
         .tier-badge {
             padding: 0.25rem 0.75rem;
             border-radius: 999px;
-            font-size: 0.8rem;
-            font-weight: 700;
+            font-size: 0.75rem;
+            font-weight: 600;
             text-transform: uppercase;
         }
-        .tier-Bronze { background-color: #CD7F32; color: white; }
-        .tier-Silver { background-color: #C0C0C0; color: var(--text-primary); }
-        .tier-Gold { background-color: #FFD700; color: var(--text-primary); }
+        .tier-Bronze { background-color: var(--bronze-accent); color: white; }
+        .tier-Silver { background-color: var(--silver-accent); color: var(--text-primary); }
+        .tier-Gold { background-color: var(--gold-accent); color: var(--text-primary); }
     </style>
 </head>
-
 <body class="min-h-screen">
-    <div id="app-container" class="w-full max-w-7xl mx-auto my-8 p-4 md:p-6 lg:p-8">
-        <!-- Auth Loader -->
-        <div id="auth-loader" class="flex items-center justify-center py-20">
-            <div class="text-center">
-                <div class="loader mx-auto"></div>
-                <p class="mt-4 text-[var(--text-secondary)]">Authenticating...</p>
+    <div id="admin-app" class="w-full max-w-7xl mx-auto my-8 p-4 md:p-6 lg:p-8 hidden">
+        <header class="flex flex-wrap justify-between items-center mb-10 gap-4">
+            <div>
+                <h1 class="text-3xl sm:text-4xl font-bold">Admin Dashboard</h1>
+                <p id="admin-greeting" class="text-lg text-[var(--text-secondary)]"></p>
             </div>
-        </div>
+            <div class="flex items-center space-x-4">
+                <a href="./index.html" class="button-base bg-[var(--secondary-accent)] text-white text-sm py-2 px-4 hover:bg-[#8c6c1d]">Referrer Hub</a>
+                <button id="logout-btn" class="button-base bg-red-600 hover:bg-red-700 text-white text-sm py-2 px-4">Logout</button>
+            </div>
+        </header>
 
-        <!-- Login/Register View -->
-        <div id="auth-view" class="hidden">
-            <header class="mb-10 md:mb-14 text-center">
-                <h1 class="page-title text-4xl sm:text-5xl md:text-6xl mb-2">
-                    Insurance Referral Hub
-                </h1>
-                <p class="text-xl font-semibold text-[var(--secondary-accent)] mb-4">Earn money for your referrals!</p>
-                <p class="text-[var(--text-secondary)] text-md md:text-lg max-w-3xl mx-auto">
-                    Welcome! Please sign in or register to continue.
-                </p>
-            </header>
-            <main class="max-w-md mx-auto">
+        <main class="space-y-12">
+             <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="bento-box">
-                    <div id="auth-form-container">
-                        <!-- Login Form -->
-                        <form id="login-form" class="space-y-6">
-                            <h2 class="text-2xl font-bold text-center text-[var(--primary-accent)]">Sign In</h2>
-                            <div>
-                                <label for="login-email" class="block text-sm font-medium text-[var(--text-muted)]">Email</label>
-                                <input type="email" id="login-email" required class="mt-1 w-full">
-                            </div>
-                            <div>
-                                <label for="login-password"
-                                    class="block text-sm font-medium text-[var(--text-muted)]">Password</label>
-                                <div class="relative">
-                                    <input type="password" id="login-password" required class="mt-1 w-full pr-10">
-                                    <i class="fas fa-eye password-toggle" id="toggle-login-password"></i>
-                                </div>
-                                <a href="#" id="forgot-password-link" class="text-xs text-[var(--primary-accent)] hover:underline mt-1 block text-right">Forgot Password?</a>
-                            </div>
-                            <p id="login-error" class="text-red-500 text-sm text-center h-4"></p>
-                            <button type="submit" class="w-full main-action-button button-base">Sign In</button>
-                            <p class="text-center text-sm">
-                                Don't have an account? <a href="#" id="show-register" class="font-semibold text-[var(--primary-accent)] hover:underline">Register here</a>
-                            </p>
-                        </form>
-
-                        <!-- Register Form (hidden by default) -->
-                        <form id="register-form" class="hidden space-y-6">
-                             <h2 class="text-2xl font-bold text-center text-[var(--primary-accent)]">Register</h2>
-                            <div>
-                                <label for="register-name" class="block text-sm font-medium text-[var(--text-muted)]">Full Name</label>
-                                <input type="text" id="register-name" required class="mt-1 w-full">
-                            </div>
-                            <div>
-                                <label for="register-email" class="block text-sm font-medium text-[var(--text-muted)]">Email</label>
-                                <input type="email" id="register-email" required class="mt-1 w-full">
-                            </div>
-                            <div>
-                                <label for="register-password"
-                                    class="block text-sm font-medium text-[var(--text-muted)]">Password</label>
-                                <div class="relative">
-                                    <input type="password" id="register-password" required class="mt-1 w-full pr-10">
-                                    <i class="fas fa-eye password-toggle" id="toggle-register-password"></i>
-                                </div>
-                            </div>
-                            <p id="register-error" class="text-red-500 text-sm text-center h-4"></p>
-                            <button type="submit" class="w-full main-action-button button-base">Register</button>
-                             <p class="text-center text-sm">
-                                Already have an account? <a href="#" id="show-login" class="font-semibold text-[var(--primary-accent)] hover:underline">Sign in here</a>
-                            </p>
-                        </form>
+                    <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Pending Referrals</h2>
+                    <p id="pending-referrals-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
+                </div>
+                <div class="bento-box">
+                    <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Unpaid Fees (All Time)</h2>
+                    <p id="finders-fee-owed-total" class="text-4xl font-bold text-[var(--primary-accent)]">$0.00</p>
+                </div>
+                <div class="bento-box">
+                    <h2 class="text-lg font-semibold text-[var(--text-secondary)]">Total Referrers</h2>
+                    <p id="total-referrers-count" class="text-4xl font-bold text-[var(--primary-accent)]">0</p>
+                </div>
+                <div class="bento-box md:col-span-2 lg:col-span-1">
+                     <h2 class="text-lg font-semibold text-center text-[var(--text-secondary)]">This Month's Performance</h2>
+                     <div class="relative h-48 w-48 mx-auto mt-4">
+                        <canvas id="performanceChart"></canvas>
+                     </div>
+                </div>
+            </section>
+            
+            <section id="payout-section" class="bento-box">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold">Process Payouts</h2>
+                        <p id="payout-period-label" class="text-[var(--text-secondary)]">For business won in the previous month.</p>
+                    </div>
+                    <div class="text-right">
+                         <p id="payout-total" class="text-2xl font-bold text-green-600">$0.00</p>
+                         <button id="process-payout-btn" class="button-base primary-btn mt-2" disabled>Finalize & Pay</button>
                     </div>
                 </div>
-            </main>
-        </div>
-
-        <!-- Main App View (Dashboard) -->
-        <div id="app-view" class="hidden">
-             <header class="flex flex-wrap justify-between items-center mb-10 md:mb-14 gap-4">
-                <div>
-                    <h1 id="dashboard-title" class="page-title text-3xl sm:text-4xl md:text-5xl">
-                        Referrer Dashboard
-                    </h1>
-                    <p id="user-greeting" class="text-[var(--text-secondary)] text-lg"></p>
+            </section>
+            
+            <!-- NEW: Commission Tier Management -->
+            <section>
+                 <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Commission Tier Management</h2>
+                    <button id="save-tiers-btn" class="button-base primary-btn">Save Tier Settings</button>
                 </div>
-                <div id="nav-buttons" class="flex items-center space-x-4">
-                    <div id="admin-link-container"></div>
-                    <a href="./profile.html" class="button-base bg-white text-[var(--primary-accent)] text-sm py-2 px-4 !px-4 !py-2">My Profile</a>
-                    <button id="logout-btn" class="button-base bg-red-600 hover:bg-red-700 text-white text-sm py-2 px-4 !px-4 !py-2">Logout</button>
+                <div id="tier-settings-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Tiers will be dynamically inserted here -->
                 </div>
-            </header>
+            </section>
 
-            <main class="space-y-12">
-                <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 bento-box">
-                         <h2 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Your Level</h2>
-                         <div id="tier-progress-container">
-                             <!-- Gamification UI will be injected here -->
-                         </div>
-                    </div>
-                    <div class="bento-box">
-                         <h2 class="text-2xl font-bold text-center text-[var(--primary-accent)] mb-4">This Month's Performance</h2>
-                         <div class="relative h-48 w-48 mx-auto">
-                            <canvas id="performanceChart"></canvas>
-                         </div>
-                    </div>
-                </section>
-                
-                <section>
-                    <h2 class="text-2xl md:text-3xl font-bold text-center mb-8 text-[var(--primary-accent)]">Create a New Referral</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div class="bento-box text-center">
-                            <i class="fas fa-car-side text-5xl text-[var(--primary-accent)] mx-auto mb-4"></i>
-                            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Motor Insurance</h3>
-                            <p class="text-[var(--text-secondary)] text-sm mb-6 flex-grow">
-                                Get a premium estimate for a private or commercial vehicle.
-                            </p>
-                            <a href="./motor_rater.html" class="main-action-button button-base mt-4">Open Motor Rater</a>
-                        </div>
-                        <div class="bento-box text-center">
-                            <i class="fas fa-heart-pulse text-5xl text-[var(--primary-accent)] mx-auto mb-4"></i>
-                            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Health Insurance</h3>
-                            <p class="text-[var(--text-secondary)] text-sm mb-6 flex-grow">
-                               Calculate premiums for individual or family health plans.
-                            </p>
-                            <a href="./health_rater.html" class="main-action-button button-base mt-4">Open Health Rater</a>
-                        </div>
-                         <div class="bento-box text-center">
-                            <i class="fas fa-home text-5xl text-[var(--primary-accent)] mx-auto mb-4"></i>
-                            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Property Insurance</h3>
-                            <p class="text-[var(--text-secondary)] text-sm mb-6 flex-grow">
-                               Quote Homeowners and Commercial Property policies.
-                            </p>
-                            <a href="./property_rater.html" class="main-action-button button-base mt-4">Open Property Rater</a>
-                        </div>
-                    </div>
-                </section>
+            <section>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">All Referrals</h2>
+                    <button id="manual-entry-btn" class="button-base primary-btn">Add Referral</button>
+                </div>
+                <div class="bento-box overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="whitespace-nowrap">
+                            <tr class="border-b border-[var(--border-color)]">
+                                <th class="p-4 text-sm font-semibold">Referrer</th>
+                                <th class="p-4 text-sm font-semibold">Client</th>
+                                <th class="p-4 text-sm font-semibold text-right">Approved Premium</th>
+                                <th class="p-4 text-sm font-semibold text-right">Final Fee</th>
+                                <th class="p-4 text-sm font-semibold text-center">Status</th>
+                                <th class="p-4 text-sm font-semibold text-center">Fee Waived</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-referrals-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
 
-                <section>
-                    <h2 class="text-2xl md:text-3xl font-bold mb-8 text-[var(--primary-accent)]">My Referrals</h2>
-                    <div class="bento-box overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead class="whitespace-nowrap">
-                                <tr class="border-b border-[var(--border-color)]">
-                                    <th class="p-4 text-sm font-semibold">Date</th>
-                                    <th class="p-4 text-sm font-semibold">Client</th>
-                                    <th class="p-4 text-sm font-semibold text-right">Approved Premium</th>
-                                    <th class="p-4 text-sm font-semibold text-right">Your Finder's Fee</th>
-                                    <th class="p-4 text-sm font-semibold text-center">Status</th>
-                                    <th class="p-4 text-sm font-semibold text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="referrals-table-body"></tbody>
-                        </table>
-                    </div>
-                </section>
+            <section>
+                <h2 class="text-2xl font-bold mb-6">Manage Referrers</h2>
+                <div class="bento-box overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="whitespace-nowrap">
+                            <tr class="border-b border-[var(--border-color)]">
+                                <th class="p-4 text-sm font-semibold">Referrer Name</th>
+                                <th class="p-4 text-sm font-semibold">Email</th>
+                                <th class="p-4 text-sm font-semibold">Current Tier</th>
+                                <th class="p-4 text-sm font-semibold text-right">Won Referrals</th>
+                                <th class="p-4 text-sm font-semibold text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="referrers-management-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+            
+             <!-- NEW: Bonus Payouts Section -->
+             <section>
+                <h2 class="text-2xl font-bold mb-6">Bonus Payouts Owed</h2>
+                 <div class="bento-box overflow-x-auto">
+                     <table class="w-full text-left">
+                         <thead class="whitespace-nowrap">
+                             <tr class="border-b border-[var(--border-color)]">
+                                 <th class="p-4 text-sm font-semibold">Referrer</th>
+                                 <th class="p-4 text-sm font-semibold">Date Earned</th>
+                                 <th class="p-4 text-sm font-semibold">Bonus For Period</th>
+                                 <th class="p-4 text-sm font-semibold text-right">Bonus Amount</th>
+                                 <th class="p-4 text-sm font-semibold text-center">Status</th>
+                             </tr>
+                         </thead>
+                         <tbody id="bonus-payouts-table-body"></tbody>
+                     </table>
+                 </div>
+             </section>
+            
+            <section>
+                <h2 class="text-2xl font-bold mb-6">Payment History</h2>
+                <div class="bento-box overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="whitespace-nowrap">
+                            <tr class="border-b border-[var(--border-color)]">
+                                <th class="p-4 text-sm font-semibold">Payout Date</th>
+                                <th class="p-4 text-sm font-semibold">Period Covered</th>
+                                <th class="p-4 text-sm font-semibold text-right">Total Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payment-history-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
 
-                <section>
-                    <h2 class="text-2xl md:text-3xl font-bold mb-8 text-[var(--primary-accent)]">Payment History</h2>
-                    <div class="bento-box overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead class="whitespace-nowrap">
-                                <tr class="border-b border-[var(--border-color)]">
-                                    <th class="p-4 text-sm font-semibold">Payout Date</th>
-                                    <th class="p-4 text-sm font-semibold">Period Covered</th>
-                                    <th class="p-4 text-sm font-semibold text-right">Total Paid</th>
-                                </tr>
-                            </thead>
-                            <tbody id="payment-history-table-body"></tbody>
-                        </table>
-                    </div>
-                </section>
-
-                 <footer class="text-center mt-12 text-xs text-[var(--text-muted)]">
-                    <p>&copy; <span id="currentYear"></span> Your Company Name. All Rights Reserved.</p>
-                </footer>
-            </main>
-        </div>
+    <div id="auth-loader" class="text-center p-20">
+        <div class="loader mx-auto"></div>
+        <p class="mt-4 text-[var(--text-secondary)]">Verifying Admin Access...</p>
     </div>
     
-    <!-- Referral Details Modal -->
-    <div id="details-modal" class="modal-overlay hidden">
+    <div id="manual-entry-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <div class="flex justify-between items-start mb-4">
-                <h3 class="text-2xl font-bold text-[var(--primary-accent)]">Referral Details</h3>
-                <button id="close-details-modal-btn" class="text-2xl text-[var(--text-muted)] hover:text-[var(--primary-accent)]">&times;</button>
-            </div>
-            <div id="details-modal-content" class="text-sm space-y-2 text-[var(--text-secondary)] max-h-[60vh] overflow-y-auto pr-2">
-                <!-- Details will be injected here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Password Reset Modal -->
-    <div id="reset-password-modal" class="modal-overlay hidden">
-        <div class="modal-content max-w-md">
-            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Reset Password</h3>
-            <form id="reset-password-form">
-                <p class="text-[var(--text-secondary)] text-sm mb-4">Enter your email address and we'll send you a link to reset your password.</p>
+            <h3 class="text-xl font-bold mb-4">Manually Add Won Referral</h3>
+            <form id="manual-entry-form" class="space-y-4">
                 <div>
-                    <label for="reset-email" class="block text-sm font-medium text-[var(--text-muted)]">Email</label>
-                    <input type="email" id="reset-email" required class="mt-1 w-full">
+                    <label for="manual-referrer" class="text-sm text-[var(--text-muted)]">Referrer</label>
+                    <select id="manual-referrer" class="modal-select" required></select>
                 </div>
-                <p id="reset-message" class="text-sm text-center h-4 my-4"></p>
+                 <div>
+                    <label for="manual-client" class="text-sm text-[var(--text-muted)]">Client Name</label>
+                    <input type="text" id="manual-client" class="modal-input" required>
+                </div>
+                 <div>
+                    <label for="manual-type" class="text-sm text-[var(--text-muted)]">Insurance Type</label>
+                    <select id="manual-type" class="modal-select" required>
+                        <option value="Motor">Motor</option>
+                        <option value="Health">Health</option>
+                        <option value="Property">Property</option>
+                    </select>
+                </div>
+                 <div>
+                    <label for="manual-premium" class="text-sm text-[var(--text-muted)]">Approved Premium</label>
+                    <input type="number" id="manual-premium" step="0.01" class="modal-input" required>
+                </div>
+                <p id="manual-entry-error" class="text-red-500 text-sm text-center"></p>
                 <div class="flex justify-end gap-3 pt-4">
-                    <button type="button" id="close-reset-modal-btn" class="button-base bg-gray-200 text-gray-700">Cancel</button>
-                    <button type="submit" class="button-base main-action-button">Send Reset Link</button>
+                    <button type="button" id="close-manual-modal-btn" class="button-base bg-gray-200 text-gray-700">Cancel</button>
+                    <button type="submit" class="button-base primary-btn">Add Referral</button>
                 </div>
             </form>
         </div>
     </div>
     
-    <!-- NEW: Forced Password Reset Modal -->
-    <div id="force-reset-modal" class="modal-overlay hidden">
-        <div class="modal-content max-w-lg text-center">
-            <i class="fas fa-shield-halved text-5xl text-yellow-500 mx-auto mb-4"></i>
-            <h3 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Security Update Required</h3>
-            <p class="text-[var(--text-secondary)] text-sm mb-6">For your security, we require passwords to be updated every 90 days. Your password has expired.</p>
-            <p id="force-reset-message" class="text-sm h-4 my-4"></p>
-            <div class="flex justify-center gap-3 pt-4">
-                <button type="button" id="force-reset-send-link-btn" class="button-base primary-btn">Send Password Reset Link</button>
-                <button type="button" id="force-reset-logout-btn" class="button-base bg-red-600 text-white">Logout</button>
+    <div id="admin-edit-profile-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+             <div class="flex justify-between items-start mb-6">
+                <h3 class="text-2xl font-bold">Edit Referrer Profile</h3>
+                <button id="close-edit-profile-modal-btn" class="text-2xl text-[var(--text-muted)] hover:text-[var(--primary-accent)]">&times;</button>
             </div>
+             <form id="admin-profile-form" class="space-y-6">
+                <input type="hidden" id="edit-user-id">
+                <div>
+                    <h4 class="text-lg font-bold border-b pb-2 mb-4">Personal & Company Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label for="admin-form-name" class="block text-sm font-medium text-[var(--text-muted)]">Full Name</label><input type="text" id="admin-form-name" class="modal-input mt-1" required></div>
+                        <div><label for="admin-form-contact" class="block text-sm font-medium text-[var(--text-muted)]">Contact Number</label><input type="tel" id="admin-form-contact" class="modal-input mt-1"></div>
+                        <div><label for="admin-form-company" class="block text-sm font-medium text-[var(--text-muted)]">Company Name</label><input type="text" id="admin-form-company" class="modal-input mt-1"></div>
+                        <div><label for="admin-form-role" class="block text-sm font-medium text-[var(--text-muted)]">Role</label><input type="text" id="admin-form-role" class="modal-input mt-1"></div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-bold border-b pb-2 mb-4">Banking Information</h4>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label for="admin-form-bank-name" class="block text-sm font-medium text-[var(--text-muted)]">Bank Name</label><input type="text" id="admin-form-bank-name" class="modal-input mt-1"></div>
+                        <div><label for="admin-form-account-holder" class="block text-sm font-medium text-[var(--text-muted)]">Account Holder Name</label><input type="text" id="admin-form-account-holder" class="modal-input mt-1"></div>
+                        <div class="md:col-span-2"><label for="admin-form-account-number" class="block text-sm font-medium text-[var(--text-muted)]">Account Number</label><input type="text" id="admin-form-account-number" class="modal-input mt-1"></div>
+                    </div>
+                </div>
+                <div class="text-right pt-4 border-t">
+                    <button type="submit" id="save-admin-profile-btn" class="button-base primary-btn">Save Changes</button>
+                </div>
+            </form>
         </div>
     </div>
-    
+
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, 
-            sendPasswordResetEmail,
-            onAuthStateChanged,
-            signOut,
-            updateProfile
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            doc, 
-            getDoc,
-            setDoc,
-            collection,
-            query,
-            where,
-            onSnapshot,
-            updateDoc,
-            Timestamp
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, writeBatch, where, Timestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC5hOOzqCPieEpg5ajCBhsScroaB-c1kYg",
@@ -428,359 +301,539 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
-        let userReferrals = [];
-        let performanceChart = null;
-        
-        // Hardcoded tier settings to prevent permission errors for non-admins
-        const commissionTiers = [
-            { name: "Bronze", minReferrals: 0, split: 50, bonusPercentage: 0 },
-            { name: "Silver", minReferrals: 10, split: 70, bonusPercentage: 0 },
-            { name: "Gold", minReferrals: 20, split: 95, bonusPercentage: 25 }
-        ];
+
+        let allReferrers = []; // Cache for referrers
+        let commissionTiers = [];
+        let performanceChart = null; 
 
         document.addEventListener('DOMContentLoaded', () => {
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                 logoutBtn.addEventListener('click', () => {
-                    signOut(auth).then(() => {
-                        window.location.reload();
-                    });
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                signOut(auth).then(() => {
+                    window.location.reload();
                 });
-            }
+            });
+
             onAuthStateChanged(auth, async (user) => {
-                const authLoader = document.getElementById('auth-loader');
-                const authView = document.getElementById('auth-view');
-                const appView = document.getElementById('app-view');
-
+                const adminApp = document.getElementById('admin-app');
+                const loaderEl = document.getElementById('auth-loader');
                 if (user) {
-                    const passwordPolicyMet = await checkPasswordPolicy(user);
-                    if (passwordPolicyMet) {
-                        authLoader.classList.add('hidden');
-                        authView.classList.add('hidden');
-                        appView.classList.remove('hidden');
-                        await setupDashboard(user);
-                    } else {
-                        authLoader.classList.add('hidden');
-                        authView.classList.add('hidden');
-                        appView.classList.add('hidden');
-                        document.getElementById('force-reset-modal').classList.remove('hidden');
-                    }
-                } else {
-                    authLoader.classList.add('hidden');
-                    appView.classList.add('hidden');
-                    authView.classList.remove('hidden');
-                    if(document.getElementById('admin-link-container')) {
-                         document.getElementById('admin-link-container').innerHTML = '';
-                    }
-                }
+                    const userDocRef = doc(db, "users", user.uid);
+                    const userDoc = await getDoc(userDocRef);
+                    if (userDoc.exists() && userDoc.data().role === 'admin') {
+                        document.getElementById('admin-greeting').textContent = `Welcome, ${user.displayName || user.email}!`;
+                        adminApp.classList.remove('hidden');
+                        loaderEl.classList.add('hidden');
+                        loadAdminData();
+                    } else { showAccessDenied(loaderEl); }
+                } else { showAccessDenied(loaderEl); }
             });
-            
-            // Other event listeners that are safe to set on load
-            const referralsTableBody = document.getElementById('referrals-table-body');
-            if(referralsTableBody) {
-                referralsTableBody.addEventListener('click', e => {
-                    const target = e.target.closest('button');
-                    if (!target) return;
-
-                    const referralId = target.dataset.id;
-
-                    if (target.classList.contains('view-details-btn')) {
-                        const referral = userReferrals.find(r => r.id === referralId);
-                        if (referral) showDetailsModal(referral);
-                    }
-                    if (target.classList.contains('edit-referral-btn')) {
-                        const insuranceType = target.dataset.type.toLowerCase(); // 'Health' or 'Motor'
-                        window.location.href = `./${insuranceType}_rater.html?edit=${referralId}`;
-                    }
-                    if (target.classList.contains('update-status-btn')) {
-                        const newStatus = target.dataset.status;
-                        if (confirm(`Are you sure you want to mark this referral as "${newStatus}"?`)) {
-                            updateReferralStatus(referralId, newStatus);
-                        }
-                    }
-                });
-            }
-             document.getElementById('close-details-modal-btn').addEventListener('click', () => {
-                document.getElementById('details-modal').classList.add('hidden');
-            });
-            setupAuthForms();
         });
         
-        async function checkPasswordPolicy(user) {
-            const userDocRef = doc(db, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            if (!userDoc.exists()) return true;
-
-            const userData = userDoc.data();
-            const lastUpdate = userData.passwordLastUpdatedAt?.toDate();
-            
-            if (!lastUpdate) {
-                await updateDoc(userDocRef, { passwordLastUpdatedAt: Timestamp.now() });
-                return true;
-            }
-
-            const ninetyDaysAgo = new Date();
-            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-
-            return lastUpdate >= ninetyDaysAgo;
+        function showAccessDenied(loaderEl) {
+            loaderEl.innerHTML = `<div class="text-center"><i class="fas fa-gavel text-5xl text-red-500 mx-auto mb-4"></i><h3 class="text-xl font-bold leading-6 mb-2">Access Denied</h3><p class="text-[var(--text-secondary)]">You do not have permission to view this page.</p><div class="mt-6"><a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a></div></div>`;
         }
-
-
-        async function setupDashboard(user) {
-            document.getElementById('user-greeting').textContent = `Hello, ${user.displayName || user.email}!`;
+        
+        function loadAdminData() {
+            onSnapshot(collection(db, "referrals"), snapshot => {
+                const referrals = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                displayReferrals(referrals);
+                updateSummaryCards(referrals);
+                updatePayoutSection(referrals);
+                updatePerformanceChart(referrals);
+            });
             
-            onSnapshot(doc(db, "users", user.uid), (userDoc) => {
-                const userData = userDoc.data();
-                if(userData) {
-                    const adminLinkContainer = document.getElementById('admin-link-container');
-                    const dashboardTitle = document.getElementById('dashboard-title');
-                    if (userData.role === 'admin') {
-                       if(dashboardTitle) dashboardTitle.textContent = "Admin / Referrer Dashboard";
-                       if(adminLinkContainer) adminLinkContainer.innerHTML = `<a href="./admin.html" class="button-base !px-4 !py-2 bg-[var(--secondary-accent)] text-white">Admin Panel</a>`;
-                    } else {
-                        if(adminLinkContainer) adminLinkContainer.innerHTML = '';
-                        if(dashboardTitle) dashboardTitle.textContent = "Referrer Dashboard";
-                    }
-                    displayTierProgress(userData);
+             onSnapshot(collection(db, "users"), snapshot => {
+                allReferrers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                document.getElementById('total-referrers-count').textContent = allReferrers.filter(u => u.role === 'referrer').length;
+                populateReferrerDropdown();
+                displayReferrersForManagement(allReferrers.filter(u => u.role === 'referrer'));
+             });
+
+             onSnapshot(doc(db, "settings", "commissionTiers"), (doc) => {
+                if(doc.exists()){
+                    commissionTiers = doc.data().tiers;
+                    displayTierSettings(commissionTiers);
                 }
-            });
-            
-            loadDashboardData(user.uid);
-        }
+             });
+             
+             onSnapshot(collection(db, "bonuses"), snapshot => {
+                const bonuses = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                displayBonuses(bonuses);
+             });
 
-        function loadDashboardData(userId) {
-            const referralsQuery = query(collection(db, "referrals"), where("referrerId", "==", userId));
-            onSnapshot(referralsQuery, (snapshot) => {
-                userReferrals = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-                userReferrals.sort((a,b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
-                displayReferrals(userReferrals);
-                updateUnpaidBalance(userReferrals);
-                updatePerformanceChart(userReferrals);
-            }, (error) => {
-                console.error("Error loading referrals:", error);
-                document.getElementById('referrals-table-body').innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">Could not load referrals due to a database error.</td></tr>`;
-            });
-            
-            try {
-                onSnapshot(collection(db, "payments"), (snapshot) => {
-                    const allPayments = snapshot.docs.map(p => p.data());
-                    displayPaymentHistory(allPayments, userId);
-                }, (error) => {
-                     console.error("Could not load payment history due to permissions:", error.message);
-                     const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
-                     if(paymentHistoryTableBody) paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Could not load payment history.</td></tr>`;
-                });
-            } catch (error) {
-                 console.error("Error setting up payment listener:", error);
-                 const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
-                 if(paymentHistoryTableBody) paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Error loading payment history.</td></tr>`;
-            }
+             onSnapshot(collection(db, "payments"), snapshot => {
+                const payments = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                displayPaymentHistory(payments);
+             });
         }
         
-        function displayTierProgress(userData) {
-            const container = document.getElementById('tier-progress-container');
-            if (!container || !commissionTiers.length) return;
-            
-            const currentTierName = userData.currentTier || 'Bronze';
-            const wonCount = userData.wonReferralsCount || 0;
-            
-            const currentTier = commissionTiers.find(t => t.name === currentTierName) || commissionTiers[0];
-            const currentTierIndex = commissionTiers.findIndex(t => t.name === currentTierName);
-            const nextTier = (currentTierIndex + 1 < commissionTiers.length) ? commissionTiers[currentTierIndex + 1] : null;
-
-            let progressHTML = `
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xl font-bold">Your Level: <span class="tier-badge tier-${currentTierName}">${currentTierName}</span></h3>
-                    <p class="text-lg font-semibold text-[var(--primary-accent)]">${currentTier.split}% Split</p>
-                </div>
-            `;
-            
-            if (nextTier) {
-                const referralsNeeded = nextTier.minReferrals - wonCount;
-                const progressPercent = (wonCount / nextTier.minReferrals) * 100;
-                progressHTML += `
-                    <p class="text-sm text-[var(--text-secondary)] mb-2">You are <strong>${referralsNeeded}</strong> won ${referralsNeeded === 1 ? 'referral' : 'referrals'} away from the <strong>${nextTier.name}</strong> tier!</p>
-                    <div class="w-full bg-gray-200 rounded-full h-4">
-                        <div class="bg-[var(--secondary-accent)] h-4 rounded-full" style="width: ${progressPercent}%"></div>
-                    </div>
-                     <p class="text-xs text-right mt-1">${wonCount} / ${nextTier.minReferrals}</p>
-                `;
-            } else {
-                 progressHTML += `<p class="font-bold text-green-500 mt-2"><i class="fas fa-crown mr-2"></i>You have reached the highest tier! Congratulations!</p>`;
-            }
-            
-            progressHTML += `<div class="mt-6 pt-4 border-t text-sm space-y-2">`;
-            commissionTiers.forEach(tier => {
-                 progressHTML += `
-                    <div class="flex justify-between">
-                        <span class="font-bold tier-badge tier-${tier.name}">${tier.name}</span>
-                        <span>Requires: <strong>${tier.minReferrals}</strong> won | Split: <strong>${tier.split}%</strong> | Bonus: <strong>${tier.bonusPercentage || 0}%</strong></span>
-                    </div>
-                 `;
-            });
-            progressHTML += `</div>`;
-
-
-            container.innerHTML = progressHTML;
+        function updateSummaryCards(referrals) {
+            document.getElementById('pending-referrals-count').textContent = referrals.filter(r => ['Pending', 'Resubmitted'].includes(r.status)).length;
+            const totalOwed = referrals.filter(r => r.status === 'Won' && !r.feeWaived).reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
+            document.getElementById('finders-fee-owed-total').textContent = formatCurrency(totalOwed);
         }
         
-        function updateUnpaidBalance(referrals) {
-            const unpaidFindersFeeTotal = document.getElementById('unpaid-finders-fee-total');
-            if (!unpaidFindersFeeTotal) return;
-            const unpaidTotal = referrals
-                .filter(r => r.status === 'Won' && !r.feeWaived)
-                .reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
-            unpaidFindersFeeTotal.textContent = formatCurrency(unpaidTotal);
+        function updatePayoutSection(referrals) {
+            const now = new Date();
+            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+            const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59);
+            
+            payoutPeriodLabel.textContent = `For business won in ${lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
+
+            const referralsToPay = referrals.filter(r => {
+                const wonDate = r.wonAt ? r.wonAt.toDate() : null;
+                return r.status === 'Won' && !r.feeWaived && wonDate && wonDate >= startOfLastMonth && wonDate <= endOfLastMonth;
+            });
+
+            const totalToPay = referralsToPay.reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee), 0);
+            
+            document.getElementById('payout-total').textContent = formatCurrency(totalToPay);
+            document.getElementById('process-payout-btn').disabled = totalToPay <= 0;
         }
 
         function displayReferrals(referrals) {
-            const referralsTableBody = document.getElementById('referrals-table-body');
-            if (!referralsTableBody) return;
-            if (!referrals.length) {
-                referralsTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-[var(--text-muted)]">You have not made any referrals yet.</td></tr>';
-                return;
-            }
-            referralsTableBody.innerHTML = referrals.map(referral => {
-                const statusClass = getStatusClass(referral.status);
-                const finalFee = referral.feeWaived ? 0 : (referral.finalFindersFee || referral.findersFee);
-                const canEdit = ['Pending', 'Approved', 'Resubmitted'].includes(referral.status);
+            const tableBody = document.getElementById('admin-referrals-table-body');
+            referrals.sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
+            tableBody.innerHTML = referrals.map(ref => {
+                const isEditable = !['Won', 'Paid', 'Lost', 'Rejected', 'Cancelled'].includes(ref.status);
+                const finalFee = ref.feeWaived ? 0 : (ref.finalFindersFee || ref.findersFee || 0);
+                let rowClass = '';
+                if (ref.status === 'Paid' || ref.status === 'Lost' || ref.status === 'Cancelled') rowClass = 'opacity-50';
+                if (ref.status === 'Resubmitted') rowClass = 'status-resubmitted';
 
                 return `
-                    <tr class="border-b border-[var(--border-color)] hover:bg-[var(--bg-main)] ${referral.status === 'Paid' ? 'opacity-50' : ''}">
-                        <td class="p-4">${referral.createdAt.toDate().toLocaleDateString()}</td>
-                        <td class="p-4">${referral.clientName}</td>
-                        <td class="p-4 text-right">${referral.approvedPremium ? formatCurrency(referral.approvedPremium) : 'N/A'}</td>
-                        <td class="p-4 text-right text-green-600 font-semibold">${formatCurrency(finalFee)}</td>
-                        <td class="p-4 text-center">
-                            <span class="px-3 py-1 text-xs font-semibold rounded-full ${statusClass}">
-                                ${referral.status}
-                            </span>
+                    <tr class="border-b border-[var(--border-color)] ${rowClass}">
+                        <td class="p-4">${ref.referrerName}</td>
+                        <td class="p-4">${ref.clientName}</td>
+                        <td class="p-2 text-right">
+                            <input type="number" class="approved-premium-input w-28 text-right" data-id="${ref.id}" value="${ref.approvedPremium || ''}" placeholder="0.00" ${!isEditable ? 'disabled' : ''}>
                         </td>
-                        <td class="p-4 text-center space-x-2">
-                            <button class="button-base button-sm bg-[var(--secondary-accent)] text-white view-details-btn" data-id="${referral.id}">Details</button>
-                            ${canEdit ? `
-                                <button class="button-base button-sm bg-blue-600 text-white edit-referral-btn" data-id="${referral.id}" data-type="${referral.insuranceType}">Edit</button>
-                                <button class="button-base button-sm bg-red-500 text-white update-status-btn" data-id="${referral.id}" data-status="Lost">Lost</button>
-                                <button class="button-base button-sm bg-yellow-500 text-white update-status-btn" data-id="${referral.id}" data-status="Cancelled">Cancel</button>
-                            ` : ''}
+                         <td class="p-4 text-right font-semibold text-green-600">${formatCurrency(finalFee)}</td>
+                        <td class="p-4 text-center">
+                            <select class="status-select" data-id="${ref.id}" data-current-status="${ref.status}" ${ref.status === 'Paid' ? 'disabled' : ''}>
+                                ${['Pending', 'Approved', 'Won', 'Lost', 'Rejected', 'Cancelled', 'Resubmitted', 'Paid'].map(s => `<option value="${s}" ${ref.status === s ? 'selected' : ''} ${s === 'Paid' ? 'disabled' : ''}>${s}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td class="p-4 text-center">
+                            <input type="checkbox" class="h-5 w-5 fee-waiver-checkbox" data-id="${ref.id}" ${ref.feeWaived ? 'checked' : ''} ${ref.status === 'Paid' ? 'disabled' : ''}>
                         </td>
                     </tr>
                 `;
             }).join('');
+            
+            tableBody.querySelectorAll('.status-select').forEach(el => el.addEventListener('change', handleStatusChange));
+            tableBody.querySelectorAll('.approved-premium-input').forEach(el => el.addEventListener('change', handlePremiumChange));
+            tableBody.querySelectorAll('.fee-waiver-checkbox').forEach(el => el.addEventListener('change', handleFeeWaiverChange));
         }
-        
-        function displayPaymentHistory(allPayments, userId) {
-            const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
-            if (!paymentHistoryTableBody) return;
-            allPayments.sort((a, b) => b.payoutDate.toDate() - a.payoutDate.toDate());
-            if(!allPayments.length) {
-                paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">No payment history found.</td></tr>`;
-                return;
-            }
-             paymentHistoryTableBody.innerHTML = allPayments.map(p => `
+
+        function displayReferrersForManagement(referrers) {
+            const tableBody = document.getElementById('referrers-management-table-body');
+            referrers.sort((a,b) => (b.wonReferralsCount || 0) - (a.wonReferralsCount || 0));
+            tableBody.innerHTML = referrers.map(user => `
                 <tr class="border-b border-[var(--border-color)]">
-                    <td class="p-4">${p.payoutDate.toDate().toLocaleDateString()}</td>
-                    <td class="p-4">${p.periodCovered}</td>
-                    <td class="p-4 text-right font-semibold">${formatCurrency(p.totalPaid)}</td>
+                    <td class="p-4">${user.name}</td>
+                    <td class="p-4">${user.email}</td>
+                     <td class="p-4"><span class="tier-badge tier-${user.currentTier || 'Bronze'}">${user.currentTier || 'Bronze'}</span></td>
+                    <td class="p-4 text-right">${user.wonReferralsCount || 0}</td>
+                    <td class="p-4 text-center">
+                        <button class="button-base !py-1 !px-3 text-xs bg-[var(--secondary-accent)] text-white manage-profile-btn" data-id="${user.id}">Manage Profile</button>
+                    </td>
                 </tr>
             `).join('');
+            tableBody.querySelectorAll('.manage-profile-btn').forEach(el => el.addEventListener('click', handleManageProfileClick));
+        }
+        
+        function displayBonuses(bonuses) {
+             const tableBody = document.getElementById('bonus-payouts-table-body');
+             if(bonuses.length === 0){
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-[var(--text-muted)]">No bonuses owed at this time.</td></tr>`;
+                return;
+             }
+             tableBody.innerHTML = bonuses.map(bonus => `
+                 <tr class="border-b border-[var(--border-color)]">
+                     <td class="p-4">${bonus.referrerName}</td>
+                     <td class="p-4">${bonus.earnedAt.toDate().toLocaleDateString()}</td>
+                     <td class="p-4">${bonus.period}</td>
+                     <td class="p-4 text-right font-semibold text-green-600">${formatCurrency(bonus.bonusAmount)}</td>
+                     <td class="p-4 text-center">
+                         <span class="tier-badge ${bonus.status === 'Paid' ? 'bg-gray-400 text-white' : 'bg-red-500 text-white'}">${bonus.status}</span>
+                     </td>
+                 </tr>
+             `).join('');
         }
 
-        async function updateReferralStatus(id, status) {
-            const referralRef = doc(db, "referrals", id);
+        function displayTierSettings(tiers) {
+            const container = document.getElementById('tier-settings-container');
+            container.innerHTML = tiers.map((tier, index) => `
+                <div class="bento-box space-y-3">
+                    <h3 class="text-xl font-bold flex items-center gap-2"><span class="tier-badge tier-${tier.name}">${tier.name}</span></h3>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium">Min. Won Referrals</label>
+                        <input type="number" class="form-input" data-index="${index}" data-field="minReferrals" value="${tier.minReferrals}">
+                    </div>
+                     <div class="space-y-1">
+                        <label class="text-sm font-medium">Commission Split (%)</label>
+                        <input type="number" class="form-input" data-index="${index}" data-field="split" value="${tier.split}">
+                    </div>
+                     <div class="space-y-1">
+                        <label class="text-sm font-medium">Bonus (%)</label>
+                        <input type="number" class="form-input" data-index="${index}" data-field="bonusPercentage" value="${tier.bonusPercentage || 0}">
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        document.getElementById('save-tiers-btn').addEventListener('click', async () => {
+            const newTiers = [...commissionTiers];
+            document.querySelectorAll('#tier-settings-container input').forEach(input => {
+                const index = input.dataset.index;
+                const field = input.dataset.field;
+                newTiers[index][field] = Number(input.value);
+            });
             try {
-                await updateDoc(referralRef, { 
-                    status: status,
-                    lastUpdatedAt: Timestamp.now()
-                });
+                await updateDoc(doc(db, "settings", "commissionTiers"), { tiers: newTiers });
+                alert("Tier settings saved!");
             } catch (error) {
-                console.error("Error updating status: ", error);
-                alert("Could not update the referral's status. Please try again.");
+                console.error("Error saving tiers:", error);
+                alert("Could not save settings.");
+            }
+        });
+
+        async function handleStatusChange(event) {
+            const selectElement = event.target;
+            const newStatus = selectElement.value;
+            const oldStatus = selectElement.dataset.currentStatus;
+            const referralId = selectElement.dataset.id;
+            
+            if (newStatus === oldStatus) return;
+
+            selectElement.disabled = true;
+
+            const updateData = { status: newStatus };
+            let triggerTierCheck = false;
+
+            if (newStatus === 'Won' && oldStatus !== 'Won') {
+                updateData.wonAt = Timestamp.now();
+                triggerTierCheck = true; // Mark to check for promotion
+            }
+
+            try {
+                await updateDoc(doc(db, "referrals", referralId), updateData);
+                if(triggerTierCheck) {
+                    const refDoc = await getDoc(doc(db, "referrals", referralId));
+                    await checkAndApplyTierPromotion(refDoc.data().referrerId);
+                }
+            } catch (error) { 
+                console.error("Error updating status: ", error); 
+                alert("Could not update status.");
+            } finally { 
+                selectElement.disabled = false; 
+            }
+        }
+        
+        async function checkAndApplyTierPromotion(referrerId) {
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const userRef = doc(db, "users", referrerId);
+                    const userDoc = await transaction.get(userRef);
+                    if (!userDoc.exists()) return;
+
+                    const userData = userDoc.data();
+                    const newCount = (userData.wonReferralsCount || 0) + 1;
+                    
+                    const settingsRef = doc(db, "settings", "commissionTiers");
+                    const settingsDoc = await transaction.get(settingsRef);
+                    const tiers = settingsDoc.data().tiers.sort((a,b) => b.minReferrals - a.minReferrals);
+                    
+                    const currentTier = tiers.find(t => t.name === (userData.currentTier || 'Bronze')) || tiers[tiers.length - 1];
+                    const newTier = tiers.find(t => newCount >= t.minReferrals);
+
+                    transaction.update(userRef, { wonReferralsCount: newCount });
+
+                    if (newTier && newTier.name !== currentTier.name) {
+                        transaction.update(userRef, { 
+                            currentTier: newTier.name,
+                            commissionSplit: newTier.split
+                        });
+
+                        // Check for retroactive bonus
+                        const bonusTier = tiers.find(t => t.bonusPercentage > 0);
+                        if (newTier.name === bonusTier.name) {
+                            const now = new Date();
+                            const period = `${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`;
+                            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                            
+                            const q = query(collection(db, "referrals"), 
+                                where("referrerId", "==", referrerId),
+                                where("status", "==", "Won"),
+                                where("wonAt", "<", Timestamp.fromDate(startOfMonth)), // business won *before* this month
+                                where("isBonusApplied", "!=", true)
+                            );
+                            
+                            const referralsToBonusSnapshot = await getDocs(q);
+                            let totalBonus = 0;
+                            
+                            referralsToBonusSnapshot.forEach(refDoc => {
+                                const refData = refDoc.data();
+                                const fee = refData.finalFindersFee || refData.findersFee || 0;
+                                if(fee > 0){
+                                    totalBonus += fee * (bonusTier.bonusPercentage / 100);
+                                    transaction.update(refDoc.ref, { isBonusApplied: true });
+                                }
+                            });
+                            
+                            if(totalBonus > 0){
+                                const bonusRef = doc(collection(db, "bonuses"));
+                                transaction.set(bonusRef, {
+                                    referrerId: referrerId,
+                                    referrerName: userData.name,
+                                    earnedAt: Timestamp.now(),
+                                    period: period,
+                                    bonusAmount: totalBonus,
+                                    status: 'Owed'
+                                });
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Transaction failed: ", e);
+                alert("A critical error occurred while updating referrer level. Please check the logs.");
             }
         }
 
-        function showDetailsModal(referral) {
-            const contentEl = document.getElementById('details-modal-content');
-            let contentHTML = '';
-            const excludedKeys = ['id', 'referrerId', 'referrerName'];
+        async function handleFeeWaiverChange(event) {
+            const checkbox = event.target;
+            const referralId = checkbox.dataset.id;
+            const feeWaived = checkbox.checked;
+            const referralRef = doc(db, "referrals", referralId);
+            try {
+                const referralDoc = await getDoc(referralRef);
+                const referralData = referralDoc.data();
+                const newFee = await calculateNewFindersFee(referralData.approvedPremium || 0, referralData.insuranceType, referralData.referrerId, feeWaived);
+                await updateDoc(referralRef, { feeWaived: feeWaived, finalFindersFee: newFee });
+            } catch (error) {
+                console.error("Error updating fee waiver status:", error);
+                alert("Could not update fee waiver status.");
+                checkbox.checked = !feeWaived; // Revert on failure
+            }
+        }
+        
+        async function handlePremiumChange(event) {
+            const input = event.target;
+            const referralRef = doc(db, "referrals", input.dataset.id);
+            const approvedPremium = parseFloat(input.value);
+            if (isNaN(approvedPremium) || approvedPremium < 0) return;
+            try {
+                const referralDoc = await getDoc(referralRef);
+                const referralData = referralDoc.data();
+                const newFee = await calculateNewFindersFee(approvedPremium, referralData.insuranceType, referralData.referrerId, referralData.feeWaived);
+                await updateDoc(referralRef, { approvedPremium: approvedPremium, finalFindersFee: newFee });
+            } catch (error) { console.error("Error updating premium: ", error); alert("Could not update premium."); }
+        }
+        
+        function handleManageProfileClick(event) {
+            const userId = event.target.dataset.id;
+            const user = allReferrers.find(r => r.id === userId);
+            if (!user) return;
+            
+            document.getElementById('edit-user-id').value = userId;
+            document.getElementById('admin-form-name').value = user.name || '';
+            document.getElementById('admin-form-contact').value = user.contactNumber || '';
+            document.getElementById('admin-form-company').value = user.companyName || '';
+            document.getElementById('admin-form-role').value = user.roleInCompany || '';
 
-            for (const [key, value] of Object.entries(referral)) {
-                if (excludedKeys.includes(key)) continue;
+            if (user.bankingInfo) {
+                document.getElementById('admin-form-bank-name').value = user.bankingInfo.bankName || '';
+                document.getElementById('admin-form-account-holder').value = user.bankingInfo.accountHolderName || '';
+                document.getElementById('admin-form-account-number').value = user.bankingInfo.accountNumber || '';
+            }
 
-                let displayValue = value;
-                if (value instanceof Timestamp) {
-                    displayValue = value.toDate().toLocaleString();
-                } else if (typeof value === 'object' && value !== null) {
-                    displayValue = `<pre class="bg-[var(--bg-main)] p-2 rounded-md mt-1">${JSON.stringify(value, null, 2)}</pre>`;
-                } else if (typeof value === 'number' && (key.toLowerCase().includes('premium') || key.toLowerCase().includes('fee'))) {
-                    displayValue = formatCurrency(value);
-                } else if (key === 'feeWaived' && typeof value === 'boolean') {
-                    displayValue = value ? 'Yes' : 'No';
+            document.getElementById('admin-edit-profile-modal').classList.remove('hidden');
+        }
+        
+        document.getElementById('close-edit-profile-modal-btn').addEventListener('click', () => {
+             document.getElementById('admin-edit-profile-modal').classList.add('hidden');
+        });
+        document.getElementById('admin-profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userId = document.getElementById('edit-user-id').value;
+            if (!userId) return;
+            
+            const dataToSave = {
+                name: document.getElementById('admin-form-name').value,
+                contactNumber: document.getElementById('admin-form-contact').value,
+                companyName: document.getElementById('admin-form-company').value,
+                roleInCompany: document.getElementById('admin-form-role').value,
+                bankingInfo: {
+                    bankName: document.getElementById('admin-form-bank-name').value,
+                    accountHolderName: document.getElementById('admin-form-account-holder').value,
+                    accountNumber: document.getElementById('admin-form-account-number').value,
+                }
+            };
+
+            const saveBtn = document.getElementById('save-admin-profile-btn');
+            saveBtn.disabled = true;
+
+            try {
+                const userDocRef = doc(db, "users", userId);
+                await updateDoc(userDocRef, dataToSave);
+                document.getElementById('admin-edit-profile-modal').classList.add('hidden');
+                alert('Profile updated successfully!');
+            } catch (error) {
+                console.error("Admin failed to update profile:", error);
+                alert('An error occurred. Please check console.');
+            } finally {
+                saveBtn.disabled = false;
+            }
+        });
+
+
+        // --- Manual Entry ---
+        document.getElementById('manual-entry-btn').addEventListener('click', () => {
+            document.getElementById('manual-entry-modal').classList.remove('hidden');
+        });
+        document.getElementById('close-manual-modal-btn').addEventListener('click', () => {
+            document.getElementById('manual-entry-modal').classList.add('hidden');
+        });
+        
+        function populateReferrerDropdown() {
+            const select = document.getElementById('manual-referrer');
+            select.innerHTML = '<option value="">Select a referrer...</option>' + allReferrers.map(r => `<option value="${r.id}" data-name="${r.name}">${r.name}</option>`).join('');
+        }
+
+        document.getElementById('manual-entry-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const referrerId = document.getElementById('manual-referrer').value;
+            const findersFee = await calculateNewFindersFee(parseFloat(document.getElementById('manual-premium').value), document.getElementById('manual-type').value, referrerId);
+            
+            const newReferral = {
+                referrerId, 
+                referrerName: document.getElementById('manual-referrer').options[document.getElementById('manual-referrer').selectedIndex].dataset.name,
+                clientName: document.getElementById('manual-client').value,
+                insuranceType: document.getElementById('manual-type').value,
+                approvedPremium: parseFloat(document.getElementById('manual-premium').value), 
+                findersFee, finalFindersFee: findersFee,
+                status: 'Won', 
+                wonAt: Timestamp.now(),
+                feeWaived: false, 
+                createdAt: Timestamp.now(),
+                isManualEntry: true,
+            };
+
+            try {
+                await addDoc(collection(db, "referrals"), newReferral);
+                await checkAndApplyTierPromotion(referrerId); // Check for promotion on manual entry
+                document.getElementById('manual-entry-form').reset();
+                document.getElementById('manual-entry-modal').classList.add('hidden');
+            } catch (error) {
+                document.getElementById('manual-entry-error').textContent = "Error adding referral.";
+                console.error(error);
+            }
+        });
+
+        // --- Payout Logic ---
+        document.getElementById('process-payout-btn').addEventListener('click', async (e) => {
+            if (!confirm("Are you sure you want to process this payout? This action cannot be undone.")) return;
+
+            e.target.disabled = true;
+            e.target.textContent = "Processing...";
+
+            const now = new Date();
+            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const startOfLastMonth = Timestamp.fromDate(new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1));
+            const endOfLastMonth = Timestamp.fromDate(new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59));
+            
+            const q = query(collection(db, 'referrals'), 
+                where('status', '==', 'Won'), 
+                where('wonAt', '>=', startOfLastMonth),
+                where('wonAt', '<=', endOfLastMonth)
+            );
+
+            try {
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    alert("No 'Won' referrals found for the previous month to pay out.");
+                    e.target.disabled = false;
+                    e.target.textContent = "Finalize & Pay";
+                    return;
                 }
 
-                contentHTML += `<div class="grid grid-cols-3 gap-4 border-b border-[var(--border-color)] py-2">
-                                  <strong class="col-span-1 capitalize">${key.replace(/([A-Z])/g, ' $1').trim()}:</strong>
-                                  <span class="col-span-2">${displayValue}</span>
-                                </div>`;
+                const batch = writeBatch(db);
+                let totalPaid = 0;
+                const paidReferralIds = [];
+
+                querySnapshot.forEach(doc => {
+                    const referral = doc.data();
+                    if (!referral.feeWaived) {
+                        const fee = referral.finalFindersFee || referral.findersFee;
+                        totalPaid += fee;
+                        paidReferralIds.push(doc.id);
+                        batch.update(doc.ref, { status: 'Paid' });
+                    }
+                });
+                
+                if (totalPaid <= 0) {
+                    alert("No non-waived fees to process for this period.");
+                    e.target.disabled = false;
+                    e.target.textContent = "Finalize & Pay";
+                    return;
+                }
+
+                const paymentDoc = {
+                    payoutDate: Timestamp.now(),
+                    periodCovered: lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' }),
+                    totalPaid,
+                    paidReferralIds
+                };
+
+                batch.set(doc(collection(db, 'payments')), paymentDoc);
+
+                await batch.commit();
+                alert(`Payout of ${formatCurrency(totalPaid)} successfully processed!`);
+
+            } catch(error) {
+                console.error("Error processing payout:", error);
+                alert("An error occurred during payout processing.");
+            } finally {
+                 e.target.disabled = false;
+                 e.target.textContent = "Finalize & Pay";
             }
-
-            contentEl.innerHTML = contentHTML;
-            document.getElementById('details-modal').classList.remove('hidden');
-        }
-
-
-        function getStatusClass(status) {
-            switch(status) {
-                case 'Pending': return 'bg-yellow-100 text-yellow-800';
-                case 'Approved': return 'bg-blue-100 text-blue-800';
-                case 'Won': return 'bg-green-100 text-green-800';
-                case 'Lost': case 'Rejected': case 'Cancelled': return 'bg-red-100 text-red-800';
-                case 'Paid': return 'bg-gray-400 text-white';
-                case 'Resubmitted': return 'bg-purple-100 text-purple-800';
-                default: return 'bg-gray-100 text-gray-800';
-            }
-        }
+        });
 
         function formatCurrency(value) {
             if (typeof value !== 'number' || isNaN(value)) return '$0.00';
             return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         }
         
+        // --- CHART LOGIC ---
         function updatePerformanceChart(referrals) {
-            const chartEl = document.getElementById('performanceChart');
-            if (!chartEl) return;
-            const ctx = chartEl.getContext('2d');
+            const ctx = document.getElementById('performanceChart').getContext('2d');
             
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-            const wonThisMonth = referrals.filter(r => {
-                const wonDate = r.wonAt ? r.wonAt.toDate() : null;
-                return (r.status === 'Won' || r.status === 'Paid') && !r.feeWaived && wonDate && wonDate >= startOfMonth && wonDate <= endOfMonth;
-            });
-            
-            const submittedThisMonth = referrals.filter(r => {
-                const createdAt = r.createdAt.toDate();
-                return createdAt >= startOfMonth && createdAt <= endOfMonth;
-            });
+            const thisMonthReferrals = referrals.filter(r => r.createdAt.toDate() >= startOfMonth);
 
-            const potentialFees = submittedThisMonth
+            const potentialFees = thisMonthReferrals
                 .filter(r => !r.feeWaived)
                 .reduce((sum, r) => sum + (r.findersFee || 0), 0);
 
-            const wonFees = wonThisMonth
+            const wonFees = thisMonthReferrals
+                .filter(r => (r.status === 'Won' || r.status === 'Paid') && !r.feeWaived)
                 .reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee || 0), 0);
-            
+
             const pendingOrLostFees = Math.max(0, potentialFees - wonFees);
 
             const data = {
-                labels: ['Won Fees This Month', 'Other Submitted Fees This Month'],
+                labels: ['Won Fees', 'Pending/Lost Fees'],
                 datasets: [{
                     data: [wonFees, pendingOrLostFees],
-                    backgroundColor: ['#16a34a', '#d1d5db'],
+                    backgroundColor: [
+                        '#16a34a', // green-600
+                        '#d1d5db'  // gray-300
+                    ],
                     borderColor: 'var(--bg-bento-box)',
                     borderWidth: 4,
                     hoverOffset: 8
@@ -799,10 +852,21 @@
                         maintainAspectRatio: false,
                         cutout: '70%',
                         plugins: {
-                            legend: { display: false },
+                            legend: {
+                                display: false
+                            },
                             tooltip: {
                                 callbacks: {
-                                    label: (context) => formatCurrency(context.parsed)
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            label += formatCurrency(context.parsed);
+                                        }
+                                        return label;
+                                    }
                                 }
                             }
                         }
@@ -810,116 +874,6 @@
                 });
             }
         }
-        
-        function setupAuthForms() {
-            document.getElementById('show-register').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('login-form').classList.add('hidden'); document.getElementById('register-form').classList.remove('hidden'); });
-            document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('register-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); });
-            
-            document.getElementById('login-form').addEventListener('submit', async (e) => { 
-                e.preventDefault(); 
-                const email = document.getElementById('login-email').value; 
-                const password = document.getElementById('login-password').value; 
-                const errorEl = document.getElementById('login-error');
-                errorEl.textContent = '';
-                try { 
-                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                    const userDocRef = doc(db, 'users', userCredential.user.uid);
-                    const userDoc = await getDoc(userDocRef);
-                    if(userDoc.exists() && userDoc.data().passwordResetRequired) {
-                        await updateDoc(userDocRef, {
-                            passwordLastUpdatedAt: Timestamp.now(),
-                            passwordResetRequired: false
-                        });
-                    }
-                } catch (error) { 
-                    errorEl.textContent = "Invalid email or password."; 
-                } 
-            });
-
-            document.getElementById('register-form').addEventListener('submit', async (e) => { 
-                e.preventDefault(); 
-                const name = document.getElementById('register-name').value; 
-                const email = document.getElementById('register-email').value; 
-                const password = document.getElementById('register-password').value; 
-                const errorEl = document.getElementById('register-error');
-                errorEl.textContent = '';
-                try { 
-                    const cred = await createUserWithEmailAndPassword(auth, email, password); 
-                    await updateProfile(cred.user, { displayName: name }); 
-                    await setDoc(doc(db, "users", cred.user.uid), { 
-                        name, 
-                        email, 
-                        role: 'referrer', 
-                        commissionSplit: 50, 
-                        waivesAllFees: false, 
-                        currentTier: 'Bronze', 
-                        wonReferralsCount: 0,
-                        passwordLastUpdatedAt: Timestamp.now() 
-                    }); 
-                } catch (error) { 
-                    errorEl.textContent = error.message; 
-                } 
-            });
-            
-            function togglePasswordVisibility(inputId, toggleId) {
-                const passwordInput = document.getElementById(inputId);
-                const toggleIcon = document.getElementById(toggleId);
-                if (passwordInput.type === 'password') {
-                    passwordInput.type = 'text';
-                    toggleIcon.classList.remove('fa-eye');
-                    toggleIcon.classList.add('fa-eye-slash');
-                } else {
-                    passwordInput.type = 'password';
-                    toggleIcon.classList.remove('fa-eye-slash');
-                    toggleIcon.classList.add('fa-eye');
-                }
-            }
-
-            document.getElementById('toggle-login-password').addEventListener('click', () => togglePasswordVisibility('login-password', 'toggle-login-password'));
-            document.getElementById('toggle-register-password').addEventListener('click', () => togglePasswordVisibility('register-password', 'toggle-register-password'));
-
-            const resetModal = document.getElementById('reset-password-modal');
-            document.getElementById('forgot-password-link').addEventListener('click', (e) => {
-                e.preventDefault();
-                resetModal.classList.remove('hidden');
-            });
-            document.getElementById('close-reset-modal-btn').addEventListener('click', () => resetModal.classList.add('hidden'));
-            document.getElementById('reset-password-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const email = document.getElementById('reset-email').value;
-                const messageEl = document.getElementById('reset-message');
-                messageEl.textContent = 'Sending...';
-                messageEl.classList.remove('text-red-500', 'text-green-500');
-
-                try {
-                    await sendPasswordResetEmail(auth, email);
-                    messageEl.textContent = 'Password reset email sent! Check your inbox.';
-                    messageEl.classList.add('text-green-500');
-                } catch (error) {
-                    messageEl.textContent = 'Error sending email. Please check the address.';
-                    messageEl.classList.add('text-red-500');
-                    console.error("Password reset error:", error);
-                }
-            });
-
-            document.getElementById('force-reset-logout-btn').addEventListener('click', () => signOut(auth));
-            document.getElementById('force-reset-send-link-btn').addEventListener('click', async () => {
-                const messageEl = document.getElementById('force-reset-message');
-                messageEl.textContent = 'Sending...';
-                messageEl.classList.remove('text-red-500', 'text-green-500');
-                try {
-                    await sendPasswordResetEmail(auth, auth.currentUser.email);
-                    await updateDoc(doc(db, 'users', auth.currentUser.uid), { passwordResetRequired: true });
-                    messageEl.textContent = 'Password reset email sent! Please check your inbox, reset your password, then log out and sign back in.';
-                    messageEl.classList.add('text-green-500');
-                } catch (error) {
-                     messageEl.textContent = 'Error sending reset email.';
-                    messageEl.classList.add('text-red-500');
-                }
-            });
-        }
     </script>
-
 </body>
-
 </html>
