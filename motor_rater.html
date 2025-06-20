@@ -615,7 +615,9 @@
         function calculatePrivatePremium() {
             let core = 0, optPremiums = 0, optBreakdown = '', refMsg = '', excess = 0;
             const coverage = getElement('p-coverage-type').value, engine = getElement('p-engine-cc').value, age = getFloatValue('p-driver-age'), si = getFloatValue('p-sum-insured');
-            if (age > 65) refMsg = "Drivers over 65 must be referred to a manager.";
+            if (age > 0 && age < 16) refMsg = "Drivers under 16 are not eligible for insurance.";
+            else if (age > 65) refMsg = "Drivers over 65 must be referred to a manager.";
+
             if (coverage === 'comprehensive') {
                 excess = si * 0.03;
                 core = (si * 0.08) + (engine === 'under-2000' ? 1700 : 2000);
@@ -633,6 +635,7 @@
         function calculatePlatinumPremium() {
             let core = 0, optPremiums = 0, optBreakdown = '', refMsg = '', excess = 0;
             const engine = getElement('pl-engine-cc').value, age = getFloatValue('pl-driver-age'), si = getFloatValue('pl-sum-insured'), vehicleAge = getFloatValue('pl-vehicle-age');
+            if (age > 0 && age < 16) refMsg += "Drivers under 16 are not eligible.\n";
             if (age > 65) refMsg += "Drivers over 65 must be referred.\n";
             if (si > 0 && si < 650000) refMsg += "Sum Insured must be >$650k.\n";
             if (vehicleAge > 2) refMsg += "Vehicle age >2 years requires referral.\n";
@@ -649,6 +652,11 @@
         function calculateCommercialPremium() {
             let core = 0, excess = 0, refMsg = '';
             const coverage = getElement('c-coverage-type').value;
+            const age = getFloatValue('c-driver-age');
+            if (age > 0 && age < 16) {
+                refMsg = "Drivers under 16 are not eligible for insurance.";
+            }
+
             if (coverage === 'comprehensive') {
                 const si = getFloatValue('c-sum-insured');
                 excess = si * 0.03;
@@ -814,7 +822,7 @@
                     </div>
                     <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Driver Details</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                         <div><label for="p-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="p-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35"></div>
+                         <div><label for="p-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="p-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 25" min="16"></div>
                         <div><label for="p-driving-exp" class="block text-sm font-medium text-[var(--text-muted)]">Driving Exp.</label><input type="number" id="p-driving-exp" class="mt-1 w-full p-2.5" placeholder="e.g., 10"></div>
                          <div><label for="p-occupation" class="block text-sm font-medium text-[var(--text-muted)]">Occupation</label><select id="p-occupation" class="mt-1 w-full p-2.5"><option value="standard">Standard</option><option value="travelling">Travelling Officer</option><option value="music">Musician/DJ</option><option value="shift">Shift Worker</option><option value="protective">Protective Services</option></select></div>
                     </div>
@@ -859,7 +867,7 @@
                     </div>
                     <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Driver Details</h3>
                      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <div><label for="pl-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="pl-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35"></div>
+                         <div><label for="pl-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="pl-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35" min="16"></div>
                         <div><label for="pl-driving-exp" class="block text-sm font-medium text-[var(--text-muted)]">Driving Exp.</label><input type="number" id="pl-driving-exp" class="mt-1 w-full p-2.5" placeholder="e.g., 10"></div>
                          <div><label for="pl-occupation" class="block text-sm font-medium text-[var(--text-muted)]">Occupation</label><select id="pl-occupation" class="mt-1 w-full p-2.5"><option value="standard">Standard</option><option value="travelling">Travelling Officer</option><option value="music">Musician/DJ</option><option value="shift">Shift Worker</option><option value="protective">Protective Services</option></select></div>
                     </div>
@@ -907,7 +915,7 @@
                     </div>
                     <h3 class="text-lg font-bold text-[var(--text-secondary)] border-t pt-6 mt-6">Driver Details</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div><label for="c-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="c-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35"></div>
+                        <div><label for="c-driver-age" class="block text-sm font-medium text-[var(--text-muted)]">Driver's Age</label><input type="number" id="c-driver-age" class="mt-1 w-full p-2.5" placeholder="e.g., 35" min="16"></div>
                         <div><label for="c-driving-exp" class="block text-sm font-medium text-[var(--text-muted)]">Driving Exp.</label><input type="number" id="c-driving-exp" class="mt-1 w-full p-2.5" placeholder="e.g., 10"></div>
                         <div><label for="c-occupation" class="block text-sm font-medium text-[var(--text-muted)]">Occupation</label><select id="c-occupation" class="mt-1 w-full p-2.5"><option value="standard">Standard</option><option value="travelling">Travelling Officer</option><option value="music">Musician/DJ</option><option value="shift">Shift Worker</option><option value="protective">Protective Services</option></select></div>
                     </div>
