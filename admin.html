@@ -552,26 +552,36 @@
                     const userDoc = await transaction.get(userRef);
                     const settingsDoc = await transaction.get(settingsRef);
 
-                    if (!userDoc.exists() || !settingsDoc.exists()) {
-                        throw "User or settings document not found!";
+                    if (!userDoc.exists()) {
+                        throw new Error(`User document not found for referrerId: ${referrerId}`);
+                    }
+                    if (!settingsDoc.exists()) {
+                        throw new Error("Commission Tiers settings document not found at 'settings/commissionTiers'");
+                    }
+                    
+                    const settingsData = settingsDoc.data();
+                    if (!settingsData || !Array.isArray(settingsData.tiers)) {
+                        throw new Error("Commission Tiers data is malformed or the 'tiers' array is missing.");
                     }
 
                     const userData = userDoc.data();
-                    const tiers = [...settingsDoc.data().tiers].sort((a, b) => b.minReferrals - a.minReferrals);
+                    const tiers = [...settingsData.tiers].sort((a, b) => (b.minReferrals || 0) - (a.minReferrals || 0));
                     const newCount = (userData.wonReferralsCount || 0) + 1;
 
-                    const currentTier = tiers.find(t => t.name === (userData.currentTier || 'Bronze')) || tiers[tiers.length - 1];
-                    const newTier = tiers.find(t => newCount >= t.minReferrals);
+                    const currentTierName = userData.currentTier || 'Bronze';
+                    const currentTier = tiers.find(t => t.name === currentTierName) || tiers[tiers.length - 1];
+                    const newTier = tiers.find(t => newCount >= (t.minReferrals || 0));
 
                     transaction.update(userRef, { wonReferralsCount: newCount });
 
                     if (newTier && newTier.name !== currentTier.name) {
+                        console.log(`Promoting ${userData.name} from ${currentTier.name} to ${newTier.name}`);
                         transaction.update(userRef, {
                             currentTier: newTier.name,
                             commissionSplit: newTier.split
                         });
 
-                        const bonusTier = tiers.find(t => t.bonusPercentage > 0);
+                        const bonusTier = tiers.find(t => (t.bonusPercentage || 0) > 0);
                         if (bonusTier && newTier.name === bonusTier.name) {
                             promotedToBonusTier = true;
                             newTierForBonus = newTier;
@@ -581,8 +591,8 @@
                 });
                 console.log("Transaction successful. User promotion applied if necessary.");
             } catch (e) {
-                console.error("User promotion transaction failed: ", e);
-                alert("A critical error occurred while updating the referrer's level. Bonus calculation was skipped.");
+                console.error("User promotion transaction failed:", e.message, e);
+                alert(`A critical error occurred while updating the referrer's level. Please check the logs. Error: ${e.message}`);
                 return; // Stop if transaction fails
             }
 
@@ -593,7 +603,6 @@
                     const now = new Date();
                     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-                    // This query is now OUTSIDE the transaction
                     const q = query(collection(db, "referrals"),
                         where("referrerId", "==", referrerId),
                         where("status", "==", "Won"),
