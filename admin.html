@@ -539,41 +539,49 @@
         }
         
         async function checkAndApplyTierPromotion(referrerId) {
+             if (!referrerId) {
+                console.error("checkAndApplyTierPromotion called with null or undefined referrerId.");
+                return;
+            }
+            
             let promotedToBonusTier = false;
             let newTierForBonus;
             let referrerNameForBonus;
 
-            // Step 1: Atomic Transaction for User Promotion
             try {
                 await runTransaction(db, async (transaction) => {
                     const userRef = doc(db, "users", referrerId);
                     const settingsRef = doc(db, "settings", "commissionTiers");
 
-                    const userDoc = await transaction.get(userRef);
-                    const settingsDoc = await transaction.get(settingsRef);
+                    // Get all documents within the transaction
+                    const [userDoc, settingsDoc] = await Promise.all([
+                        transaction.get(userRef),
+                        transaction.get(settingsRef)
+                    ]);
 
-                    if (!userDoc.exists()) {
-                        throw new Error(`User document not found for referrerId: ${referrerId}`);
-                    }
-                    if (!settingsDoc.exists()) {
-                        throw new Error("Commission Tiers settings document not found at 'settings/commissionTiers'");
-                    }
-                    
-                    const settingsData = settingsDoc.data();
-                    if (!settingsData || !Array.isArray(settingsData.tiers)) {
-                        throw new Error("Commission Tiers data is malformed or the 'tiers' array is missing.");
-                    }
+                    if (!userDoc.exists()) throw new Error(`User document not found for referrerId: ${referrerId}`);
+                    if (!settingsDoc.exists()) throw new Error("Commission Tiers settings document not found.");
 
                     const userData = userDoc.data();
-                    const tiers = [...settingsData.tiers].sort((a, b) => (b.minReferrals || 0) - (a.minReferrals || 0));
-                    const newCount = (userData.wonReferralsCount || 0) + 1;
+                    const tiers = [...settingsDoc.data().tiers].sort((a, b) => b.minReferrals - a.minReferrals);
+
+                    // --- FIX: Logic to correctly count 'Won' referrals for the specific user ---
+                    // The original code was missing this crucial step inside the transaction.
+                    const referralsQuery = query(collection(db, "referrals"), 
+                                                 where("referrerId", "==", referrerId), 
+                                                 where("status", "==", "Won"));
+                    const wonReferralsSnapshot = await getDocs(referralsQuery);
+                    const newCount = wonReferralsSnapshot.size;
+                    // --- END FIX ---
 
                     const currentTierName = userData.currentTier || 'Bronze';
                     const currentTier = tiers.find(t => t.name === currentTierName) || tiers[tiers.length - 1];
-                    const newTier = tiers.find(t => newCount >= (t.minReferrals || 0));
+                    const newTier = tiers.find(t => newCount >= t.minReferrals);
 
+                    // Update the count first
                     transaction.update(userRef, { wonReferralsCount: newCount });
 
+                    // Then, check for promotion
                     if (newTier && newTier.name !== currentTier.name) {
                         console.log(`Promoting ${userData.name} from ${currentTier.name} to ${newTier.name}`);
                         transaction.update(userRef, {
@@ -591,12 +599,12 @@
                 });
                 console.log("Transaction successful. User promotion applied if necessary.");
             } catch (e) {
-                console.error("User promotion transaction failed:", e.message, e);
-                alert(`A critical error occurred while updating the referrer's level. Please check the logs. Error: ${e.message}`);
-                return; // Stop if transaction fails
+                console.error("User promotion transaction failed:", e);
+                alert(`A critical error occurred while updating referrer level. Please check the logs. Error: ${e.message}`);
+                return; 
             }
 
-            // Step 2: Non-atomic Bonus Calculation (runs only if promotion happened and was to a bonus tier)
+            // Non-atomic Bonus Calculation (runs only if promotion happened and was to a bonus tier)
             if (promotedToBonusTier && newTierForBonus) {
                 console.log(`User ${referrerNameForBonus} promoted to bonus tier. Calculating retroactive bonus.`);
                 try {
