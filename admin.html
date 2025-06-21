@@ -549,46 +549,45 @@
             let referrerNameForBonus;
 
             try {
+                // --- FIX V2: Step 1: Count 'Won' referrals *outside* the transaction ---
+                // Firestore transactions don't support running queries after writes.
+                // We get the definitive count first to avoid transaction failures.
+                const referralsQuery = query(collection(db, "referrals"),
+                    where("referrerId", "==", referrerId),
+                    where("status", "==", "Won"));
+                const wonReferralsSnapshot = await getDocs(referralsQuery);
+                const newCount = wonReferralsSnapshot.size;
+
+                // --- FIX V2: Step 2: Run an atomic transaction to read user/settings and then write updates ---
                 await runTransaction(db, async (transaction) => {
                     const userRef = doc(db, "users", referrerId);
                     const settingsRef = doc(db, "settings", "commissionTiers");
 
-                    // Get all documents within the transaction
-                    const [userDoc, settingsDoc] = await Promise.all([
-                        transaction.get(userRef),
-                        transaction.get(settingsRef)
-                    ]);
+                    // Read documents within the transaction
+                    const userDoc = await transaction.get(userRef);
+                    const settingsDoc = await transaction.get(settingsRef);
 
                     if (!userDoc.exists()) throw new Error(`User document not found for referrerId: ${referrerId}`);
                     if (!settingsDoc.exists()) throw new Error("Commission Tiers settings document not found.");
 
                     const userData = userDoc.data();
-                    const tiers = [...settingsDoc.data().tiers].sort((a, b) => b.minReferrals - a.minReferrals);
-
-                    // --- FIX: Logic to correctly count 'Won' referrals for the specific user ---
-                    // The original code was missing this crucial step inside the transaction.
-                    const referralsQuery = query(collection(db, "referrals"), 
-                                                 where("referrerId", "==", referrerId), 
-                                                 where("status", "==", "Won"));
-                    const wonReferralsSnapshot = await getDocs(referralsQuery);
-                    const newCount = wonReferralsSnapshot.size;
-                    // --- END FIX ---
+                    const tiers = [...settingsDoc.data().tiers].sort((a, b) => (b.minReferrals || 0) - (a.minReferrals || 0));
 
                     const currentTierName = userData.currentTier || 'Bronze';
                     const currentTier = tiers.find(t => t.name === currentTierName) || tiers[tiers.length - 1];
-                    const newTier = tiers.find(t => newCount >= t.minReferrals);
+                    // Use the count we fetched *before* the transaction
+                    const newTier = tiers.find(t => newCount >= (t.minReferrals || 0));
 
-                    // Update the count first
-                    transaction.update(userRef, { wonReferralsCount: newCount });
+                    // Prepare updates in a single object
+                    const updates = { wonReferralsCount: newCount };
 
-                    // Then, check for promotion
+                    // Check if a promotion is needed
                     if (newTier && newTier.name !== currentTier.name) {
                         console.log(`Promoting ${userData.name} from ${currentTier.name} to ${newTier.name}`);
-                        transaction.update(userRef, {
-                            currentTier: newTier.name,
-                            commissionSplit: newTier.split
-                        });
+                        updates.currentTier = newTier.name;
+                        updates.commissionSplit = newTier.split;
 
+                        // Check if the new tier is a bonus tier
                         const bonusTier = tiers.find(t => (t.bonusPercentage || 0) > 0);
                         if (bonusTier && newTier.name === bonusTier.name) {
                             promotedToBonusTier = true;
@@ -596,7 +595,11 @@
                             referrerNameForBonus = userData.name;
                         }
                     }
+                    
+                    // All updates are performed in a single atomic write at the end of the transaction.
+                    transaction.update(userRef, updates);
                 });
+
                 console.log("Transaction successful. User promotion applied if necessary.");
             } catch (e) {
                 console.error("User promotion transaction failed:", e);
