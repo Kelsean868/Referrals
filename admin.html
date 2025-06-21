@@ -292,7 +292,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, writeBatch, where, Timestamp, runTransaction, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, writeBatch, where, Timestamp, runTransaction, getDocs, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC5hOOzqCPieEpg5ajCBhsScroaB-c1kYg",
@@ -517,22 +517,32 @@
             selectElement.disabled = true;
 
             const updateData = { status: newStatus };
-            let triggerTierCheck = false;
+            
+            // --- FIX V3: Trigger check whenever 'Won' status is added OR removed ---
+            const wonStateChanged = (newStatus === 'Won' && oldStatus !== 'Won') || (newStatus !== 'Won' && oldStatus === 'Won');
 
             if (newStatus === 'Won' && oldStatus !== 'Won') {
                 updateData.wonAt = Timestamp.now();
-                triggerTierCheck = true; // Mark to check for promotion
+            } else if (newStatus !== 'Won' && oldStatus === 'Won') {
+                // When moving away from Won, remove the wonAt timestamp
+                updateData.wonAt = deleteField();
             }
 
             try {
-                await updateDoc(doc(db, "referrals", referralId), updateData);
-                if(triggerTierCheck) {
-                    const refDoc = await getDoc(doc(db, "referrals", referralId));
-                    await checkAndApplyTierPromotion(refDoc.data().referrerId);
+                const referralRef = doc(db, "referrals", referralId);
+                await updateDoc(referralRef, updateData);
+
+                // If the 'Won' state changed, we MUST re-evaluate the user's tier.
+                if (wonStateChanged) {
+                    const refDoc = await getDoc(referralRef);
+                    if (refDoc.exists() && refDoc.data().referrerId) {
+                         await checkAndApplyTierPromotion(refDoc.data().referrerId);
+                    }
                 }
             } catch (error) { 
                 console.error("Error updating status: ", error); 
                 alert("Could not update status.");
+                selectElement.value = oldStatus; // Revert UI on failure
             } finally { 
                 selectElement.disabled = false; 
             }
@@ -549,21 +559,16 @@
             let referrerNameForBonus;
 
             try {
-                // --- FIX V2: Step 1: Count 'Won' referrals *outside* the transaction ---
-                // Firestore transactions don't support running queries after writes.
-                // We get the definitive count first to avoid transaction failures.
                 const referralsQuery = query(collection(db, "referrals"),
                     where("referrerId", "==", referrerId),
                     where("status", "==", "Won"));
                 const wonReferralsSnapshot = await getDocs(referralsQuery);
                 const newCount = wonReferralsSnapshot.size;
 
-                // --- FIX V2: Step 2: Run an atomic transaction to read user/settings and then write updates ---
                 await runTransaction(db, async (transaction) => {
                     const userRef = doc(db, "users", referrerId);
                     const settingsRef = doc(db, "settings", "commissionTiers");
 
-                    // Read documents within the transaction
                     const userDoc = await transaction.get(userRef);
                     const settingsDoc = await transaction.get(settingsRef);
 
@@ -575,19 +580,15 @@
 
                     const currentTierName = userData.currentTier || 'Bronze';
                     const currentTier = tiers.find(t => t.name === currentTierName) || tiers[tiers.length - 1];
-                    // Use the count we fetched *before* the transaction
                     const newTier = tiers.find(t => newCount >= (t.minReferrals || 0));
 
-                    // Prepare updates in a single object
                     const updates = { wonReferralsCount: newCount };
 
-                    // Check if a promotion is needed
                     if (newTier && newTier.name !== currentTier.name) {
                         console.log(`Promoting ${userData.name} from ${currentTier.name} to ${newTier.name}`);
                         updates.currentTier = newTier.name;
                         updates.commissionSplit = newTier.split;
 
-                        // Check if the new tier is a bonus tier
                         const bonusTier = tiers.find(t => (t.bonusPercentage || 0) > 0);
                         if (bonusTier && newTier.name === bonusTier.name) {
                             promotedToBonusTier = true;
@@ -596,7 +597,6 @@
                         }
                     }
                     
-                    // All updates are performed in a single atomic write at the end of the transaction.
                     transaction.update(userRef, updates);
                 });
 
