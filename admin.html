@@ -293,6 +293,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, writeBatch, where, Timestamp, runTransaction, getDocs, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC5hOOzqCPieEpg5ajCBhsScroaB-c1kYg",
@@ -307,6 +308,8 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        // NEW: Initialize Firebase Functions
+        const functions = getFunctions(app);
 
         let allReferrers = []; 
         let commissionTiers = [];
@@ -452,7 +455,7 @@
         
         function displayBonuses(bonuses) {
              const tableBody = document.getElementById('bonus-payouts-table-body');
-             if(bonuses.length === 0){
+             if(!bonuses || bonuses.length === 0){
                 tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-[var(--text-muted)]">No bonuses owed at this time.</td></tr>`;
                 return;
              }
@@ -506,6 +509,14 @@
             }
         });
 
+        // --- REMOVED: All client-side tier promotion logic is gone. ---
+        // The onReferralUpdate Cloud Function now handles this automatically and securely.
+        
+        /**
+         * Handles changing a referral's status. This now ONLY updates the Firestore document.
+         * The `onReferralUpdate` Cloud Function will automatically trigger to handle
+         * any necessary tier promotions or demotions.
+         */
         async function handleStatusChange(event) {
             const selectElement = event.target;
             const newStatus = selectElement.value;
@@ -518,30 +529,17 @@
 
             const updateData = { status: newStatus };
             
-            const wonStateChanged = (newStatus === 'Won' && oldStatus !== 'Won') || (newStatus !== 'Won' && oldStatus === 'Won');
-            let countChange = 0;
-
-            if (newStatus === 'Won' && oldStatus !== 'Won') {
+            // Add or remove the 'wonAt' timestamp based on the new status.
+            if (newStatus === 'Won') {
                 updateData.wonAt = Timestamp.now();
-                countChange = 1;
-            } else if (newStatus !== 'Won' && oldStatus === 'Won') {
+            } else if (oldStatus === 'Won') {
                 updateData.wonAt = deleteField();
-                countChange = -1;
             }
 
             try {
                 const referralRef = doc(db, "referrals", referralId);
+                // Just update the document. The Cloud Function does the rest.
                 await updateDoc(referralRef, updateData);
-
-                if (wonStateChanged) {
-                    const refDoc = await getDoc(referralRef);
-                    const referrerId = refDoc.exists() ? refDoc.data().referrerId : null;
-                    if (referrerId) {
-                         await checkAndApplyTierPromotion(referrerId, countChange);
-                    } else {
-                        console.error("Referrer ID not found on referral doc, cannot update tier.");
-                    }
-                }
             } catch (error) { 
                 console.error("Error updating status: ", error); 
                 alert("Could not update status.");
@@ -550,122 +548,6 @@
                 selectElement.disabled = false; 
             }
         }
-        
-        async function checkAndApplyTierPromotion(referrerId, countChange) {
-             if (!referrerId || countChange === 0) {
-                console.log("Tier check skipped: No referrer ID or no change in 'Won' count.");
-                return;
-            }
-            
-            let promotedToBonusTier = false;
-            let newTierForBonus;
-            let referrerNameForBonus;
-
-            try {
-                await runTransaction(db, async (transaction) => {
-                    const userRef = doc(db, "users", referrerId);
-                    const settingsRef = doc(db, "settings", "commissionTiers");
-
-                    const userDoc = await transaction.get(userRef);
-                    const settingsDoc = await transaction.get(settingsRef);
-
-                    if (!userDoc.exists()) throw new Error(`User document not found for referrerId: ${referrerId}`);
-                    if (!settingsDoc.exists()) throw new Error("Commission Tiers settings document not found.");
-
-                    const userData = userDoc.data();
-                    const tiers = [...settingsDoc.data().tiers].sort((a, b) => (b.minReferrals || 0) - (a.minReferrals || 0));
-
-                    // Atomically update the count
-                    const currentCount = userData.wonReferralsCount || 0;
-                    const newCount = Math.max(0, currentCount + countChange); // Ensure count doesn't go below 0
-
-                    const currentTierName = userData.currentTier || 'Bronze';
-                    const currentTier = tiers.find(t => t.name === currentTierName) || tiers[tiers.length - 1];
-                    const newTier = tiers.find(t => newCount >= (t.minReferrals || 0));
-
-                    const updates = { wonReferralsCount: newCount };
-
-                    if (newTier && newTier.name !== currentTier.name) {
-                        console.log(`Promoting ${userData.name} from ${currentTier.name} to ${newTier.name}`);
-                        updates.currentTier = newTier.name;
-                        updates.commissionSplit = newTier.split;
-
-                        const bonusTier = tiers.find(t => (t.bonusPercentage || 0) > 0);
-                        if (bonusTier && newTier.name === bonusTier.name) {
-                            promotedToBonusTier = true;
-                            newTierForBonus = newTier;
-                            referrerNameForBonus = userData.name;
-                        }
-                    }
-                    
-                    transaction.update(userRef, updates);
-                });
-
-                console.log("Transaction successful. User promotion applied if necessary.");
-            } catch (e) {
-                console.error("User promotion transaction failed:", e);
-                alert(`A critical error occurred while updating referrer level. Please check the logs. Error: ${e.message}`);
-                return; 
-            }
-
-            // Bonus calculation can proceed if promotion occurred
-            if (promotedToBonusTier && newTierForBonus) {
-                 // (Bonus logic remains the same as it runs after the successful transaction)
-                 console.log(`User ${referrerNameForBonus} promoted to bonus tier. Calculating retroactive bonus.`);
-                 try {
-                     const now = new Date();
-                     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-                     const q = query(collection(db, "referrals"),
-                         where("referrerId", "==", referrerId),
-                         where("status", "==", "Won"),
-                         where("wonAt", "<", Timestamp.fromDate(startOfMonth)),
-                         where("isBonusApplied", "!=", true)
-                     );
-
-                     const referralsToBonusSnapshot = await getDocs(q);
-                     if (referralsToBonusSnapshot.empty) {
-                         console.log("No previous referrals found for retroactive bonus application.");
-                         return;
-                     }
-
-                     const batch = writeBatch(db);
-                     let totalBonus = 0;
-
-                     referralsToBonusSnapshot.forEach(refDoc => {
-                         const refData = refDoc.data();
-                         const fee = refData.finalFindersFee || refData.findersFee || 0;
-                         if (fee > 0) {
-                             totalBonus += fee * (newTierForBonus.bonusPercentage / 100);
-                             batch.update(refDoc.ref, { isBonusApplied: true });
-                         }
-                     });
-
-                     if (totalBonus > 0) {
-                         const period = `${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`;
-                         const bonusRef = doc(collection(db, "bonuses"));
-                         batch.set(bonusRef, {
-                             referrerId: referrerId,
-                             referrerName: referrerNameForBonus,
-                             earnedAt: Timestamp.now(),
-                             period: period,
-                             bonusAmount: totalBonus,
-                             status: 'Owed'
-                         });
-
-                         await batch.commit();
-                         console.log(`Successfully applied a retroactive bonus of ${totalBonus} for ${referrerNameForBonus}.`);
-                         alert(`Referrer promoted and a retroactive bonus of ${formatCurrency(totalBonus)} was applied!`);
-                     } else {
-                         console.log("No bonus amount to apply.");
-                     }
-                 } catch (bonusError) {
-                     console.error("Bonus calculation/application failed: ", bonusError);
-                     alert("The user was promoted, but an error occurred during the retroactive bonus calculation. Please check the logs and apply any bonus manually if needed.");
-                 }
-            }
-        }
-
 
         async function handleFeeWaiverChange(event) {
             const checkbox = event.target;
@@ -673,6 +555,8 @@
             const feeWaived = checkbox.checked;
             const referralRef = doc(db, "referrals", referralId);
             try {
+                // Fee calculation logic is complex and should ideally be on the backend,
+                // but for now, we leave it here for simplicity until further refactoring.
                 const referralDoc = await getDoc(referralRef);
                 const referralData = referralDoc.data();
                 const newFee = await calculateNewFindersFee(referralData.approvedPremium || 0, referralData.insuranceType, referralData.referrerId, feeWaived);
@@ -720,6 +604,7 @@
         document.getElementById('close-edit-profile-modal-btn').addEventListener('click', () => {
              document.getElementById('admin-edit-profile-modal').classList.add('hidden');
         });
+
         document.getElementById('admin-profile-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const userId = document.getElementById('edit-user-id').value;
@@ -753,11 +638,11 @@
             }
         });
 
-
         // --- Manual Entry ---
         document.getElementById('manual-entry-btn').addEventListener('click', () => {
             document.getElementById('manual-entry-modal').classList.remove('hidden');
         });
+
         document.getElementById('close-manual-modal-btn').addEventListener('click', () => {
             document.getElementById('manual-entry-modal').classList.add('hidden');
         });
@@ -787,8 +672,10 @@
             };
 
             try {
-                const referralDoc = await addDoc(collection(db, "referrals"), newReferral);
-                await checkAndApplyTierPromotion(referrerId, 1); // Directly increment count by 1
+                // The onReferralUpdate function doesn't trigger for 'create' events,
+                // so we still need to call the promotion logic here for manual entries.
+                await addDoc(collection(db, "referrals"), newReferral);
+                await checkAndApplyTierPromotion(referrerId, 1);
             } catch (error) {
                 document.getElementById('manual-entry-error').textContent = "Error adding referral.";
                 console.error(error);
@@ -798,72 +685,38 @@
             }
         });
 
-        // --- Payout Logic ---
+        /**
+         * UPDATED Payout Logic
+         * This function now calls the secure `processMonthlyPayouts` Cloud Function
+         * instead of performing the logic on the client.
+         */
         document.getElementById('process-payout-btn').addEventListener('click', async (e) => {
             if (!confirm("Are you sure you want to process this payout? This action cannot be undone.")) return;
 
-            e.target.disabled = true;
-            e.target.textContent = "Processing...";
-
-            const now = new Date();
-            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const startOfLastMonth = Timestamp.fromDate(new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1));
-            const endOfLastMonth = Timestamp.fromDate(new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59));
-            
-            const q = query(collection(db, 'referrals'), 
-                where('status', '==', 'Won'), 
-                where('wonAt', '>=', startOfLastMonth),
-                where('wonAt', '<=', endOfLastMonth)
-            );
+            const payoutBtn = e.target;
+            payoutBtn.disabled = true;
+            payoutBtn.textContent = "Processing...";
 
             try {
-                const querySnapshot = await getDocs(q);
-                if (querySnapshot.empty) {
-                    alert("No 'Won' referrals found for the previous month to pay out.");
-                    e.target.disabled = false;
-                    e.target.textContent = "Finalize & Pay";
-                    return;
-                }
-
-                const batch = writeBatch(db);
-                let totalPaid = 0;
-                const paidReferralIds = [];
-
-                querySnapshot.forEach(doc => {
-                    const referral = doc.data();
-                    if (!referral.feeWaived) {
-                        const fee = referral.finalFindersFee || referral.findersFee;
-                        totalPaid += fee;
-                        paidReferralIds.push(doc.id);
-                        batch.update(doc.ref, { status: 'Paid' });
-                    }
-                });
+                // Get a reference to the callable function
+                const processPayouts = httpsCallable(functions, 'processMonthlyPayouts');
+                const result = await processPayouts();
                 
-                if (totalPaid <= 0) {
-                    alert("No non-waived fees to process for this period.");
-                    e.target.disabled = false;
-                    e.target.textContent = "Finalize & Pay";
-                    return;
+                // The result contains the data returned from the function
+                const { success, message } = result.data;
+                
+                if(success) {
+                    alert(`Payout successful: ${message}`);
+                } else {
+                    alert(`Payout process completed with a message: ${message}`);
                 }
-
-                const paymentDoc = {
-                    payoutDate: Timestamp.now(),
-                    periodCovered: lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' }),
-                    totalPaid,
-                    paidReferralIds
-                };
-
-                batch.set(doc(collection(db, 'payments')), paymentDoc);
-
-                await batch.commit();
-                alert(`Payout of ${formatCurrency(totalPaid)} successfully processed!`);
 
             } catch(error) {
-                console.error("Error processing payout:", error);
-                alert("An error occurred during payout processing.");
+                console.error("Error calling processMonthlyPayouts function:", error);
+                alert(`An error occurred: ${error.message}`);
             } finally {
-                 e.target.disabled = false;
-                 e.target.textContent = "Finalize & Pay";
+                 payoutBtn.disabled = false;
+                 payoutBtn.textContent = "Finalize & Pay";
             }
         });
 
@@ -872,7 +725,16 @@
             return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         }
         
-        // --- CHART LOGIC ---
+        // This function is still needed for manual premium changes on the client.
+        async function calculateNewFindersFee(premium, type, referrerId, feeWaived) {
+             if(feeWaived) return 0;
+             const user = allReferrers.find(r => r.id === referrerId);
+             if(!user) return 0;
+             const commissionSplit = (user.commissionSplit || 50) / 100;
+             // Placeholder for fee logic, as this should eventually be on the backend
+             return premium * 0.10 * 0.75 * commissionSplit; 
+        }
+        
         function updatePerformanceChart(referrals) {
             const ctx = document.getElementById('performanceChart').getContext('2d');
             
