@@ -675,6 +675,13 @@ Number of Children: ${getSelectedText('children-count')}
 
             const feeWaived = getElement('waive-fee-checkbox').checked;
 
+            // --- FIX START: Correctly handle maternity value ---
+            const maternitySelect = getElement('maternity');
+            const maternityValue = (maternitySelect.style.display === 'none' || maternitySelect.disabled) 
+                ? 'N/A' 
+                : maternitySelect.options[maternitySelect.selectedIndex].text;
+            // --- FIX END ---
+            
             const selectedOptions = Object.fromEntries(
                 [...document.querySelectorAll('#health-rater-app select')].map(sel => [
                     sel.id.replace(/-/g, '_'), // e.g., 'family-status' -> 'family_status'
@@ -692,7 +699,7 @@ Number of Children: ${getSelectedText('children-count')}
                 ageBand: selectedOptions.age_band,
                 childrenCount: selectedOptions.children_count,
                 dentalVision: selectedOptions.dental_vision,
-                maternity: getElement('maternity').disabled ? 'N/A' : selectedOptions.maternity,
+                maternity: maternityValue, // Use the corrected value
                 mmAmount: selectedOptions.major_medical_amount,
                 premiumFrequency: selectedOptions.payment_frequency,
                 clientName, clientEmail, clientContact,
