@@ -552,18 +552,25 @@
                 }
             });
 
+            // --- FIX: Add console.log for debugging ---
             onSnapshot(doc(db, "users", user.uid), (userDoc) => {
+                // This log will appear in the browser console every time the user's data changes.
+                console.log("DEBUG: User data listener fired!", userDoc.data());
+
                 if (userDoc.exists()) {
                     currentUserData = userDoc.data(); 
                     
                     const adminLinkContainer = document.getElementById('admin-link-container');
                     const dashboardTitle = document.getElementById('dashboard-title');
+                    
+                    // Set default referrer title first
+                    if(dashboardTitle) dashboardTitle.textContent = "Referrer Dashboard";
+                    if(adminLinkContainer) adminLinkContainer.innerHTML = '';
+                    
+                    // If user is also an admin, enhance the UI
                     if (currentUserData.role === 'admin') {
                        if(dashboardTitle) dashboardTitle.textContent = "Admin / Referrer Dashboard";
                        if(adminLinkContainer) adminLinkContainer.innerHTML = `<a href="./admin.html" class="button-base !px-4 !py-2 bg-[var(--secondary-accent)] text-white">Admin Panel</a>`;
-                    } else {
-                        if(adminLinkContainer) adminLinkContainer.innerHTML = '';
-                        if(dashboardTitle) dashboardTitle.textContent = "Referrer Dashboard";
                     }
                     
                     if (commissionTiers.length > 0) {
@@ -591,16 +598,11 @@
                 document.getElementById('referrals-table-body').innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">Could not load referrals due to a database error.</td></tr>`;
             });
             
-            // --- FIX START: Corrected query for payment history ---
             try {
-                // This query is now secure because it only looks inside the logged-in user's own data.
-                // NOTE: This requires the 'processMonthlyPayouts' cloud function to be updated
-                // to write payment records to '/users/{userId}/paymentHistory/{paymentId}'.
                 const paymentsQuery = query(collection(db, "users", userId, "paymentHistory"));
                 onSnapshot(paymentsQuery, (snapshot) => {
                     const userPayments = snapshot.docs.map(p => {
                         const paymentData = p.data();
-                        // Data structure is now simpler as it's directly from the user's subcollection.
                         return {
                             id: p.id,
                             payoutDate: paymentData.payoutDate,
@@ -608,9 +610,9 @@
                             totalPaid: paymentData.totalPaid || 0,
                         };
                     });
-                    displayPaymentHistory(userPayments); // Display the filtered list
+                    displayPaymentHistory(userPayments);
                 }, (error) => {
-                     console.error("Could not load payment history:", error.message);
+                     console.error("Could not load payment history due to permissions:", error.message);
                      const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
                      if(paymentHistoryTableBody) paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Could not load payment history.</td></tr>`;
                 });
@@ -619,7 +621,6 @@
                  const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
                  if(paymentHistoryTableBody) paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Error loading payment history.</td></tr>`;
             }
-            // --- FIX END ---
         }
         
         function displayTierProgress(userData) {
