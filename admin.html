@@ -353,7 +353,7 @@
                             document.getElementById('admin-greeting').textContent = `Welcome, ${user.displayName || user.email}!`;
                             adminApp.classList.remove('hidden');
                             loaderEl.classList.add('hidden');
-                            loadAdminData(); // Main data load function
+                            loadAdminData();
                             setupStaticEventListeners();
                         } else {
                             showAccessDenied(loaderEl, "You do not have permission to view this page.");
@@ -390,7 +390,7 @@
                 allReferrers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 document.getElementById('total-referrers-count').textContent = allReferrers.filter(u => u.role === 'referrer').length;
                 populateReferrerDropdown();
-                displayReferrersForManagement(allReferrers.filter(u => u.role === 'referrer'));
+                displayReferrersForManagement(allReferrers);
              });
 
              const settingsRef = doc(db, "settings", "commissionTiers");
@@ -487,23 +487,23 @@
         }
         
         function displayBonuses(bonuses) {
-            const tableBody = document.getElementById('bonus-payouts-table-body');
-            if(!bonuses || bonuses.length === 0){
+             const tableBody = document.getElementById('bonus-payouts-table-body');
+             if(!bonuses || bonuses.length === 0){
                 tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-[var(--text-muted)]">No bonuses owed at this time.</td></tr>`;
                 return;
-            }
-            bonuses.sort((a,b) => b.earnedAt.toDate() - a.earnedAt.toDate());
-            tableBody.innerHTML = bonuses.map(bonus => `
-                <tr class="border-b border-[var(--border-color)]">
-                    <td class="p-4">${bonus.referrerName}</td>
-                    <td class="p-4">${bonus.earnedAt.toDate().toLocaleDateString()}</td>
-                    <td class="p-4">${bonus.period}</td>
-                    <td class="p-4 text-right font-semibold text-green-600">${formatCurrency(bonus.bonusAmount)}</td>
-                    <td class="p-4 text-center">
-                        <span class="tier-badge ${bonus.status === 'Paid' ? 'bg-gray-400 text-white' : 'bg-red-500 text-white'}">${bonus.status}</span>
-                    </td>
-                </tr>
-            `).join('');
+             }
+             bonuses.sort((a,b) => b.earnedAt.toDate() - a.earnedAt.toDate());
+             tableBody.innerHTML = bonuses.map(bonus => `
+                 <tr class="border-b border-[var(--border-color)]">
+                     <td class="p-4">${bonus.referrerName}</td>
+                     <td class="p-4">${bonus.earnedAt.toDate().toLocaleDateString()}</td>
+                     <td class="p-4">${bonus.period}</td>
+                     <td class="p-4 text-right font-semibold text-green-600">${formatCurrency(bonus.bonusAmount)}</td>
+                     <td class="p-4 text-center">
+                         <span class="tier-badge ${bonus.status === 'Paid' ? 'bg-gray-400 text-white' : 'bg-red-500 text-white'}">${bonus.status}</span>
+                     </td>
+                 </tr>
+             `).join('');
         }
         
         function displayPaymentHistory(payments) {
