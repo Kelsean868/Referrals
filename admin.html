@@ -136,7 +136,7 @@
                 <div class="flex flex-wrap justify-between items-center gap-4">
                     <div>
                         <h2 class="text-xl font-bold">Process Payouts</h2>
-                        <p id="payout-period-label" class="text-[var(--text-secondary)]">For business won in the current month.</p>
+                        <p id="payout-period-label" class="text-[var(--text-secondary)]">For business won in the previous month.</p>
                     </div>
                     <div class="text-right">
                          <p class="text-lg font-semibold text-[var(--text-secondary)]">Total to be Paid This Period:</p>
@@ -525,28 +525,25 @@
         
         function updatePayoutSection(referrals) {
             const now = new Date();
-            // CHANGE: Calculate for the current month.
-            const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            const startOfCurrentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-            const endOfCurrentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59);
+            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const startOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+            const endOfLastMonth = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59);
             
-            // CHANGE: Update label to show current month.
-            document.getElementById('payout-period-label').textContent = `For business won in ${currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
-            
+            document.getElementById('payout-period-label').textContent = `For business won in ${lastMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
             const referralsToPay = referrals.filter(r => {
                 const wonDate = r.wonAt ? r.wonAt.toDate() : null;
-                 // CHANGE: Filter for current month.
-                return r.status === 'Won' && !r.feeWaived && wonDate && wonDate >= startOfCurrentMonth && wonDate <= endOfCurrentMonth;
+                return r.status === 'Won' && !r.feeWaived && wonDate && wonDate >= startOfLastMonth && wonDate <= endOfLastMonth;
             });
-            
             const totalToPay = referralsToPay.reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee), 0);
             document.getElementById('payout-total').textContent = formatCurrency(totalToPay);
             document.getElementById('process-payout-btn').disabled = totalToPay <= 0;
         }
 
+        // UPDATED: Chart function to include text in the middle
         function updatePerformanceChart(referrals) {
             const ctx = document.getElementById('performanceChart').getContext('2d');
             if(!ctx) return;
+            
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
             const thisMonthReferrals = referrals.filter(r => (r.createdAt?.toDate() || new Date(0)) >= startOfMonth);
@@ -560,6 +557,7 @@
                 .reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee || 0), 0);
 
             const pendingOrLostFees = Math.max(0, potentialFees - wonFees);
+            
             const data = {
                 labels: ['Won Fees', 'Pending/Lost Fees'],
                 datasets: [{
@@ -569,6 +567,31 @@
                     borderWidth: 4,
                     hoverOffset: 8
                 }]
+            };
+
+            // NEW: Plugin to draw text in the center
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw: (chart) => {
+                    const { ctx, width, height } = chart;
+                    const totalWon = chart.data.datasets[0].data[0] || 0;
+                    
+                    ctx.save();
+                    ctx.font = 'bold 24px Montserrat, sans-serif';
+                    ctx.fillStyle = '#16a34a'; // Green color for the amount
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const text = formatCurrency(totalWon);
+                    const textX = width / 2;
+                    const textY = height / 2;
+                    ctx.fillText(text, textX, textY);
+                    
+                    ctx.font = 'normal 12px Montserrat, sans-serif';
+                    ctx.fillStyle = 'var(--text-secondary)';
+                    ctx.fillText('Won This Month', textX, textY + 25);
+
+                    ctx.restore();
+                }
             };
 
             if (performanceChart) {
@@ -592,7 +615,8 @@
                                 }
                             }
                         }
-                    }
+                    },
+                    plugins: [centerTextPlugin] // Add the new plugin here
                 });
             }
         }
