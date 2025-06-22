@@ -292,7 +292,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, writeBatch, where, Timestamp, runTransaction, getDocs, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, where, Timestamp, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         const firebaseConfig = {
@@ -308,7 +308,6 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        // NEW: Initialize Firebase Functions
         const functions = getFunctions(app);
 
         let allReferrers = []; 
@@ -509,14 +508,6 @@
             }
         });
 
-        // --- REMOVED: All client-side tier promotion logic is gone. ---
-        // The onReferralUpdate Cloud Function now handles this automatically and securely.
-        
-        /**
-         * Handles changing a referral's status. This now ONLY updates the Firestore document.
-         * The `onReferralUpdate` Cloud Function will automatically trigger to handle
-         * any necessary tier promotions or demotions.
-         */
         async function handleStatusChange(event) {
             const selectElement = event.target;
             const newStatus = selectElement.value;
@@ -529,7 +520,6 @@
 
             const updateData = { status: newStatus };
             
-            // Add or remove the 'wonAt' timestamp based on the new status.
             if (newStatus === 'Won') {
                 updateData.wonAt = Timestamp.now();
             } else if (oldStatus === 'Won') {
@@ -538,7 +528,6 @@
 
             try {
                 const referralRef = doc(db, "referrals", referralId);
-                // Just update the document. The Cloud Function does the rest.
                 await updateDoc(referralRef, updateData);
             } catch (error) { 
                 console.error("Error updating status: ", error); 
@@ -555,8 +544,6 @@
             const feeWaived = checkbox.checked;
             const referralRef = doc(db, "referrals", referralId);
             try {
-                // Fee calculation logic is complex and should ideally be on the backend,
-                // but for now, we leave it here for simplicity until further refactoring.
                 const referralDoc = await getDoc(referralRef);
                 const referralData = referralDoc.data();
                 const newFee = await calculateNewFindersFee(referralData.approvedPremium || 0, referralData.insuranceType, referralData.referrerId, feeWaived);
@@ -564,7 +551,7 @@
             } catch (error) {
                 console.error("Error updating fee waiver status:", error);
                 alert("Could not update fee waiver status.");
-                checkbox.checked = !feeWaived; // Revert on failure
+                checkbox.checked = !feeWaived;
             }
         }
         
@@ -638,7 +625,6 @@
             }
         });
 
-        // --- Manual Entry ---
         document.getElementById('manual-entry-btn').addEventListener('click', () => {
             document.getElementById('manual-entry-modal').classList.remove('hidden');
         });
@@ -655,6 +641,12 @@
         document.getElementById('manual-entry-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const referrerId = document.getElementById('manual-referrer').value;
+            if (!referrerId) {
+                document.getElementById('manual-entry-error').textContent = "Please select a referrer.";
+                return;
+            }
+            document.getElementById('manual-entry-error').textContent = "";
+
             const findersFee = await calculateNewFindersFee(parseFloat(document.getElementById('manual-premium').value), document.getElementById('manual-type').value, referrerId);
             
             const newReferral = {
@@ -672,10 +664,8 @@
             };
 
             try {
-                // The onReferralUpdate function doesn't trigger for 'create' events,
-                // so we still need to call the promotion logic here for manual entries.
+                // Simply add the document. The `onReferralUpdate` Cloud Function will handle the tier logic.
                 await addDoc(collection(db, "referrals"), newReferral);
-                await checkAndApplyTierPromotion(referrerId, 1);
             } catch (error) {
                 document.getElementById('manual-entry-error').textContent = "Error adding referral.";
                 console.error(error);
@@ -685,11 +675,6 @@
             }
         });
 
-        /**
-         * UPDATED Payout Logic
-         * This function now calls the secure `processMonthlyPayouts` Cloud Function
-         * instead of performing the logic on the client.
-         */
         document.getElementById('process-payout-btn').addEventListener('click', async (e) => {
             if (!confirm("Are you sure you want to process this payout? This action cannot be undone.")) return;
 
@@ -698,11 +683,9 @@
             payoutBtn.textContent = "Processing...";
 
             try {
-                // Get a reference to the callable function
                 const processPayouts = httpsCallable(functions, 'processMonthlyPayouts');
                 const result = await processPayouts();
                 
-                // The result contains the data returned from the function
                 const { success, message } = result.data;
                 
                 if(success) {
@@ -725,13 +708,11 @@
             return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         }
         
-        // This function is still needed for manual premium changes on the client.
         async function calculateNewFindersFee(premium, type, referrerId, feeWaived) {
              if(feeWaived) return 0;
              const user = allReferrers.find(r => r.id === referrerId);
              if(!user) return 0;
              const commissionSplit = (user.commissionSplit || 50) / 100;
-             // Placeholder for fee logic, as this should eventually be on the backend
              return premium * 0.10 * 0.75 * commissionSplit; 
         }
         
