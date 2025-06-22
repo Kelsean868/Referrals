@@ -292,7 +292,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, where, Timestamp, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, updateDoc, addDoc, where, Timestamp, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         const firebaseConfig = {
@@ -341,7 +341,25 @@
             loaderEl.innerHTML = `<div class="text-center"><i class="fas fa-gavel text-5xl text-red-500 mx-auto mb-4"></i><h3 class="text-xl font-bold leading-6 mb-2">Access Denied</h3><p class="text-[var(--text-secondary)]">You do not have permission to view this page.</p><div class="mt-6"><a href="./index.html" class="button-base primary-btn py-2 px-4">Go to Login</a></div></div>`;
         }
         
-        function loadAdminData() {
+        async function loadAdminData() {
+            // --- FIX: Check for and create default tiers if they don't exist ---
+            const settingsRef = doc(db, "settings", "commissionTiers");
+            const settingsDoc = await getDoc(settingsRef);
+            if (!settingsDoc.exists()) {
+                console.log("Commission tiers document not found, creating with defaults.");
+                const defaultTiers = [
+                    { name: "Bronze", minReferrals: 0, split: 50, bonusPercentage: 0 },
+                    { name: "Silver", minReferrals: 10, split: 70, bonusPercentage: 0 },
+                    { name: "Gold", minReferrals: 20, split: 95, bonusPercentage: 25 }
+                ];
+                try {
+                    await setDoc(settingsRef, { tiers: defaultTiers });
+                    console.log("Default commission tiers document created successfully.");
+                } catch (error) {
+                    console.error("Error creating default commission tiers:", error);
+                }
+            }
+
             onSnapshot(collection(db, "referrals"), snapshot => {
                 const referrals = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 displayReferrals(referrals);
@@ -357,7 +375,7 @@
                 displayReferrersForManagement(allReferrers.filter(u => u.role === 'referrer'));
              });
 
-             onSnapshot(doc(db, "settings", "commissionTiers"), (doc) => {
+             onSnapshot(settingsRef, (doc) => {
                 if(doc.exists()){
                     commissionTiers = doc.data().tiers;
                     displayTierSettings(commissionTiers);
