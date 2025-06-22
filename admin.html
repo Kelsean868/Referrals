@@ -541,6 +541,7 @@
 
         function updatePerformanceChart(referrals) {
             const ctx = document.getElementById('performanceChart').getContext('2d');
+            if(!ctx) return;
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
             const thisMonthReferrals = referrals.filter(r => (r.createdAt?.toDate() || new Date(0)) >= startOfMonth);
@@ -671,17 +672,14 @@
             document.getElementById('recalculate-counts-btn').addEventListener('click', recalculateAllWonCounts);
             document.getElementById('process-payout-btn').addEventListener('click', processPayout);
 
-            // Manual Entry Modal
             document.getElementById('manual-entry-btn').addEventListener('click', () => document.getElementById('manual-entry-modal').classList.remove('hidden'));
             document.getElementById('close-manual-modal-btn').addEventListener('click', () => document.getElementById('manual-entry-modal').classList.add('hidden'));
             document.getElementById('manual-entry-form').addEventListener('submit', handleManualEntrySubmit);
 
-            // Edit Profile Modal
             document.getElementById('close-edit-profile-modal-btn').addEventListener('click', () => document.getElementById('admin-edit-profile-modal').classList.add('hidden'));
             document.getElementById('admin-profile-form').addEventListener('submit', handleProfileFormSubmit);
         }
 
-        // --- Action Handlers ---
         async function recalculateAllWonCounts() { /* ... */ }
         async function saveTierSettings() { /* ... */ }
         function handleManageProfileClick(event) { /* ... */ }
