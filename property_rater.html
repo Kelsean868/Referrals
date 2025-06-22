@@ -353,10 +353,19 @@
             calculateAndDisplay();
         }
 
+        // --- FIX START: Corrected Event Listener Setup ---
         function setupEventListeners() {
-            document.querySelectorAll('#property-rater-app input, #property-rater-app select').forEach(input => {
-                 input.addEventListener('input', calculateAndDisplay);
+            // Specific listener for the main policy type dropdown
+            getElement('policy-type').addEventListener('change', handlePolicyTypeChange);
+
+            // General listeners for all other inputs within the form sections
+            // 'input' is used for instant feedback on number/text fields. 'change' is used as a fallback.
+            document.querySelectorAll('#homeowners-section input, #homeowners-section select, #commercial-section input, #commercial-section select').forEach(input => {
+                input.addEventListener('input', calculateAndDisplay);
+                input.addEventListener('change', calculateAndDisplay); 
             });
+
+            // Listeners for modals and buttons
             getElement('create-referral-btn').addEventListener('click', () => {
                 getElement('waive-fee-checkbox').checked = currentUserData?.waivesAllFees || false;
                 getElement('client-info-modal').style.display = 'flex';
@@ -364,6 +373,7 @@
             getElement('close-client-modal-btn').addEventListener('click', () => getElement('client-info-modal').style.display = 'none');
             getElement('submit-referral-btn').addEventListener('click', submitReferral);
         }
+        // --- FIX END ---
         
         const getFloatValue = (id) => parseFloat(getElement(id).value.replace(/,/g, '')) || 0;
         const formatCurrency = (value) => isNaN(value) ? '$0.00' : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -378,7 +388,13 @@
         
         function calculateAndDisplay() {
             const policyType = getElement('policy-type').value;
-            if (!policyType) return;
+            if (!policyType) {
+                // Clear results if no policy type is selected
+                getElement('total-premium').textContent = '$0.00';
+                getElement('premium-breakdown').innerHTML = '';
+                getElement('finders-fee-section').classList.add('hidden');
+                return;
+            }
             
             let premiumData = {};
             if(policyType === 'homeowners') {
@@ -455,14 +471,14 @@
             
             const commissionSplit = (currentUserData.commissionSplit || 50) / 100;
             const commission = basePremium * 0.125; // 12.5% commission for Property
-            const tax = commission * 0.25;
-            const net = commission - tax;
+            const incomeTax = commission * 0.25;
+            const net = commission - incomeTax;
             const fee = net * commissionSplit;
             
             lastCalculatedData.findersFee = fee;
             getElement('finders-fee-breakdown').innerHTML = `
                 <div class="breakdown-row"><span>Total Commission (12.5%)</span><span class="float-right font-semibold">${formatCurrency(commission)}</span></div>
-                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span class="float-right">-${formatCurrency(tax)}</span></div>
+                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span class="float-right">-${formatCurrency(incomeTax)}</span></div>
                 <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission</span><span class="float-right">${formatCurrency(net)}</span></div>
                 <div class="breakdown-row text-green-600 mt-2 font-bold"><span class="breakdown-label">Your Estimated Fee (${commissionSplit*100}%)</span><span class="float-right">${formatCurrency(fee)}</span></div>`;
             feeSection.classList.remove('hidden');
