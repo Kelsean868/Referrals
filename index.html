@@ -439,8 +439,11 @@
         let userReferrals = [];
         let performanceChart = null;
         
-        // --- FIX: This will now be populated from Firestore ---
+        // --- FIX: This is now populated from Firestore ---
         let commissionTiers = [];
+        // --- FIX: Add a variable to hold the current user's data to avoid race conditions ---
+        let currentUserData = null;
+
 
         document.addEventListener('DOMContentLoaded', () => {
             const logoutBtn = document.getElementById('logout-btn');
@@ -471,6 +474,9 @@
                         document.getElementById('force-reset-modal').classList.remove('hidden');
                     }
                 } else {
+                    // --- FIX: Reset global variables on logout ---
+                    currentUserData = null;
+                    commissionTiers = [];
                     authLoader.classList.add('hidden');
                     appView.classList.add('hidden');
                     authView.classList.remove('hidden');
@@ -534,37 +540,50 @@
         async function setupDashboard(user) {
             document.getElementById('user-greeting').textContent = `Hello, ${user.displayName || user.email}!`;
             
-            // --- FIX: Fetch commission tiers from Firestore to ensure consistency ---
+            // --- FIX START: Resolve Race Condition for Tier Progress Display ---
             const settingsRef = doc(db, "settings", "commissionTiers");
+            
+            // Listen for changes to commission tiers settings
             onSnapshot(settingsRef, (settingsDoc) => {
                 if (settingsDoc.exists()) {
                     commissionTiers = settingsDoc.data().tiers;
-                    // Re-render tier progress in case user data arrived first
-                    getDoc(doc(db, "users", user.uid)).then(userDoc => {
-                        if (userDoc.exists()) {
-                            displayTierProgress(userDoc.data());
-                        }
-                    });
+                    // If user data has already loaded, re-render the tier progress section
+                    if (currentUserData) {
+                        displayTierProgress(currentUserData);
+                    }
                 } else {
                     console.error("Commission Tiers settings not found in Firestore!");
+                    const container = document.getElementById('tier-progress-container');
+                    if(container) container.innerHTML = `<p class="text-red-500">Error: Commission tier settings could not be loaded.</p>`;
                 }
             });
 
+            // Listen for changes to the user's document
             onSnapshot(doc(db, "users", user.uid), (userDoc) => {
-                const userData = userDoc.data();
-                if(userData) {
+                if (userDoc.exists()) {
+                    currentUserData = userDoc.data(); // Store user data globally
+                    
                     const adminLinkContainer = document.getElementById('admin-link-container');
                     const dashboardTitle = document.getElementById('dashboard-title');
-                    if (userData.role === 'admin') {
+                    if (currentUserData.role === 'admin') {
                        if(dashboardTitle) dashboardTitle.textContent = "Admin / Referrer Dashboard";
                        if(adminLinkContainer) adminLinkContainer.innerHTML = `<a href="./admin.html" class="button-base !px-4 !py-2 bg-[var(--secondary-accent)] text-white">Admin Panel</a>`;
                     } else {
                         if(adminLinkContainer) adminLinkContainer.innerHTML = '';
                         if(dashboardTitle) dashboardTitle.textContent = "Referrer Dashboard";
                     }
-                    displayTierProgress(userData);
+                    
+                    // Now, only display tier progress if the commissionTiers array has been populated
+                    if (commissionTiers.length > 0) {
+                        displayTierProgress(currentUserData);
+                    } else {
+                         // If tiers aren't loaded yet, show a loading message. The settings listener will update this.
+                        const container = document.getElementById('tier-progress-container');
+                        if (container) container.innerHTML = `<p class="text-sm text-[var(--text-muted)]">Loading tier progress...</p>`;
+                    }
                 }
             });
+            // --- FIX END ---
             
             loadDashboardData(user.uid);
         }
@@ -600,9 +619,9 @@
         
         function displayTierProgress(userData) {
             const container = document.getElementById('tier-progress-container');
-            if (!container || !commissionTiers || commissionTiers.length === 0) {
-                 // If tiers aren't loaded yet, display a placeholder and wait for the listener to re-render.
-                container.innerHTML = `<p class="text-sm text-[var(--text-muted)]">Loading tier progress...</p>`;
+            // --- FIX: Add a guard clause to ensure both userData and commissionTiers are available ---
+            if (!container || !userData || !commissionTiers || commissionTiers.length === 0) {
+                if (container) container.innerHTML = `<p class="text-sm text-[var(--text-muted)]">Loading tier progress...</p>`;
                 return;
             }
             
@@ -611,7 +630,7 @@
             
             const currentTier = commissionTiers.find(t => t.name === currentTierName) || commissionTiers[0];
             const currentTierIndex = commissionTiers.findIndex(t => t.name === currentTierName);
-            const nextTier = (currentTierIndex + 1 < commissionTiers.length) ? commissionTiers[currentTierIndex + 1] : null;
+            const nextTier = (currentTierIndex >= 0 && currentTierIndex + 1 < commissionTiers.length) ? commissionTiers[currentTierIndex + 1] : null;
 
             let progressHTML = `
                 <div class="flex items-center justify-between mb-4">
@@ -622,11 +641,11 @@
             
             if (nextTier) {
                 const referralsNeeded = nextTier.minReferrals - wonCount;
-                const progressPercent = (wonCount / nextTier.minReferrals) * 100;
+                const progressPercent = Math.min(100, (wonCount / nextTier.minReferrals) * 100);
                 progressHTML += `
-                    <p class="text-sm text-[var(--text-secondary)] mb-2">You are <strong>${referralsNeeded}</strong> won ${referralsNeeded === 1 ? 'referral' : 'referrals'} away from the <strong>${nextTier.name}</strong> tier!</p>
-                    <div class="w-full bg-gray-200 rounded-full h-4">
-                        <div class="bg-[var(--secondary-accent)] h-4 rounded-full" style="width: ${progressPercent}%"></div>
+                    <p class="text-sm text-[var(--text-secondary)] mb-2">You are <strong>${referralsNeeded > 0 ? referralsNeeded : 0}</strong> won ${referralsNeeded === 1 ? 'referral' : 'referrals'} away from the <strong>${nextTier.name}</strong> tier!</p>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+                        <div class="bg-[var(--secondary-accent)] h-4 rounded-full transition-all duration-500" style="width: ${progressPercent}%"></div>
                     </div>
                      <p class="text-xs text-right mt-1">${wonCount} / ${nextTier.minReferrals}</p>
                 `;
@@ -634,10 +653,10 @@
                  progressHTML += `<p class="font-bold text-green-500 mt-2"><i class="fas fa-crown mr-2"></i>You have reached the highest tier! Congratulations!</p>`;
             }
             
-            progressHTML += `<div class="mt-6 pt-4 border-t text-sm space-y-2">`;
+            progressHTML += `<div class="mt-6 pt-4 border-t border-[var(--border-color)] text-sm space-y-2">`;
             commissionTiers.forEach(tier => {
                  progressHTML += `
-                    <div class="flex justify-between">
+                    <div class="flex justify-between items-center">
                         <span class="font-bold tier-badge tier-${tier.name}">${tier.name}</span>
                         <span>Requires: <strong>${tier.minReferrals}</strong> won | Split: <strong>${tier.split}%</strong> | Bonus: <strong>${tier.bonusPercentage || 0}%</strong></span>
                     </div>
