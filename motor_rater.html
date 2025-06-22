@@ -398,9 +398,14 @@
             });
             setupCheckboxToggle('p-windscreen-check', 'p-windscreen-value');
             setupCheckboxToggle('pl-windscreen-check', 'pl-windscreen-value');
-            getElement('p-coverage-type').addEventListener('change', handlePrivateCoverageChange);
-            getElement('c-coverage-type').addEventListener('change', handleCommercialCoverageChange);
-            getElement('c-usage').addEventListener('change', handleCommercialUsageChange);
+            const pCoverageType = getElement('p-coverage-type');
+            if (pCoverageType) pCoverageType.addEventListener('change', handlePrivateCoverageChange);
+
+            const cCoverageType = getElement('c-coverage-type');
+            if (cCoverageType) cCoverageType.addEventListener('change', handleCommercialCoverageChange);
+
+            const cUsage = getElement('c-usage');
+            if(cUsage) cUsage.addEventListener('change', handleCommercialUsageChange);
         }
 
         // --- EVENT HANDLERS ---
@@ -440,7 +445,12 @@
             const prefix = lastCalculatedData.typePrefix;
             const feeWaived = getElement('waive-fee-checkbox').checked;
             
-            // Gather all form data for saving/updating
+            // --- FIX START: Ensure all checkbox values are booleans, not undefined ---
+            const getCheckboxValue = (id) => {
+                const el = getElement(id);
+                return el ? el.checked : false;
+            };
+            
             const referralData = { 
                 ...lastCalculatedData, 
                 clientName, clientEmail, clientContact, licensePlate,
@@ -456,24 +466,25 @@
                 drivingExp: getFloatValue(`${prefix}-driving-exp`),
                 occupation: getElementValue(`${prefix}-occupation`),
                 ncd: getElementValue(`${prefix}-ncd`),
-                isAdvanced: getElement(`${prefix}-advanced-mode-check`)?.checked,
+                isAdvanced: getCheckboxValue(`${prefix}-advanced-mode-check`),
                 overrideRate: getFloatValue(`${prefix}-override-rate`),
-                advIncludesBase: getElement(`${prefix}-adv-inc-base`)?.checked,
-                advIncludesNCD: getElement(`${prefix}-adv-inc-ncd`)?.checked,
-                advIncludesAgeExp: getElement(`${prefix}-adv-inc-age-exp`)?.checked,
-                ansaStaff: getElement(`${prefix}-ansa-staff-check`)?.checked,
-                otherMotor: getElement(`${prefix}-other-motor-check`)?.checked,
-                multiClient: getElement(`${prefix}-multi-client-check`)?.checked,
-                windscreen: getElement(`${prefix}-windscreen-check`)?.checked,
-                woe: getElement(`${prefix}-woe-check`)?.checked,
-                lou: getElement(`${prefix}-lou-check`)?.checked,
-                pa: getElement(`${prefix}-pa-check`)?.checked,
-                tpl: getElement(`${prefix}-tpl-check`)?.checked,
+                advIncludesBase: getCheckboxValue(`${prefix}-adv-inc-base`),
+                advIncludesNCD: getCheckboxValue(`${prefix}-adv-inc-ncd`),
+                advIncludesAgeExp: getCheckboxValue(`${prefix}-adv-inc-age-exp`),
+                ansaStaff: getCheckboxValue(`${prefix}-ansa-staff-check`),
+                otherMotor: getCheckboxValue(`${prefix}-other-motor-check`),
+                multiClient: getCheckboxValue(`${prefix}-multi-client-check`),
+                windscreen: getCheckboxValue(`${prefix}-windscreen-check`),
+                woe: getCheckboxValue(`${prefix}-woe-check`),
+                lou: getCheckboxValue(`${prefix}-lou-check`),
+                pa: getCheckboxValue(`${prefix}-pa-check`),
+                tpl: getCheckboxValue(`${prefix}-tpl-check`),
             };
+            // --- FIX END ---
             
             // Add special discounts dynamically
             Object.values(SPECIAL_DISCOUNTS).forEach(id => {
-                referralData[`${id}Check`] = getElement(`${prefix}-${id}-check`)?.checked;
+                referralData[`${id}Check`] = getCheckboxValue(`${prefix}-${id}-check`);
                 referralData[`${id}Value`] = getFloatValue(`${prefix}-${id}-value`);
             });
             
@@ -556,11 +567,14 @@
             let loadingBreakdown = buildBreakdownHTML('+ Age Loading', loadingPercentages.Age, ageLoadingAmount) + buildBreakdownHTML('+ Experience Loading', loadingPercentages.Experience, expLoadingAmount) + buildBreakdownHTML('+ Occupation Loading', loadingPercentages.Occupation, occupationLoadingAmount) + buildBreakdownHTML('+ Vehicle Type Loading', loadingPercentages['Vehicle Type'], vehicleTypeLoadingAmount);
 
             let extraLoadingAmount = 0;
-            getElement(`${typePrefix}-extra-loadings-container`).querySelectorAll('.extra-loading-row').forEach(row => {
-                const name = row.querySelector('.loading-name').value;
-                const percent = parseFloat(row.querySelector('.loading-percent').value) || 0;
-                if (name && percent > 0) { const amount = corePremium * (percent / 100); extraLoadingAmount += amount; loadingBreakdown += `<div class="breakdown-row"><span class="breakdown-label">+ ${name} (${percent}%)</span><span class="breakdown-value">$${formatCurrency(amount)}</span></div>`; }
-            });
+            const extraLoadingsContainer = getElement(`${typePrefix}-extra-loadings-container`);
+            if (extraLoadingsContainer) {
+                extraLoadingsContainer.querySelectorAll('.extra-loading-row').forEach(row => {
+                    const name = row.querySelector('.loading-name').value;
+                    const percent = parseFloat(row.querySelector('.loading-percent').value) || 0;
+                    if (name && percent > 0) { const amount = corePremium * (percent / 100); extraLoadingAmount += amount; loadingBreakdown += `<div class="breakdown-row"><span class="breakdown-label">+ ${name} (${percent}%)</span><span class="breakdown-value">$${formatCurrency(amount)}</span></div>`; }
+                });
+            }
 
             const totalLoadingAmount = ageLoadingAmount + expLoadingAmount + occupationLoadingAmount + vehicleTypeLoadingAmount + extraLoadingAmount;
             const premiumAfterLoadings = corePremium + totalLoadingAmount;
@@ -602,7 +616,7 @@
         
         function buildBreakdownHTML(label, rate, amount) { if (amount <= 0) return ''; return `<div class="breakdown-row"><span class="breakdown-label">${label} (${(rate * 100)}%)</span><span class="breakdown-value">$${formatCurrency(amount)}</span></div>`; }
         function calculateDiscounts(type, prefix, premiumToDiscount, skipNCD) { let totalDiscountAmount = 0, discountBreakdown = ''; if (!skipNCD) { const ncdYears = parseInt(getElement(`${prefix}-ncd`).value, 10); const coverage = (getElement(`${prefix}-coverage-type`) || {}).value || 'comprehensive'; const ncdRate = NCD_RATES[type][coverage][ncdYears] || 0; if (ncdRate > 0) { const amount = premiumToDiscount * ncdRate; totalDiscountAmount += amount; discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- NCD (${(ncdRate * 100)}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`; } } const standardDiscounts = {'ansa-staff': 0.10, 'other-motor': 0.10, 'multi-client': 0.15}; Object.entries(standardDiscounts).forEach(([id, rate]) => { if(getElement(`${prefix}-${id}-check`)?.checked) { const amount = premiumToDiscount * rate; totalDiscountAmount += amount; const label = id.charAt(0).toUpperCase() + id.slice(1).replace('-', ' '); discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- ${label} (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`; } }); if(prefix === 'c' && getElement('c-private-pickup-discount').value > 0){ const rate = getFloatValue('c-private-pickup-discount'); const amount = premiumToDiscount * rate; totalDiscountAmount += amount; discountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- Private Pick-Up (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`; } let specialDiscountBreakdown = ''; Object.entries(SPECIAL_DISCOUNTS).forEach(([label, id]) => { if (getElement(`${prefix}-${id}-check`)?.checked) { const rate = getFloatValue(`${prefix}-${id}-value`) / 100; if (rate > 0) { const amount = premiumToDiscount * rate; totalDiscountAmount += amount; specialDiscountBreakdown += `<div class="breakdown-row text-green-600 dark:text-green-400"><span class="breakdown-label">- ${label} (${rate*100}%)</span><span class="breakdown-value">-$${formatCurrency(amount)}</span></div>`; } } }); if(specialDiscountBreakdown) discountBreakdown += `<h4 class="font-medium text-[var(--text-secondary)] mt-1">Special Discounts:</h4>${specialDiscountBreakdown}`; if (discountBreakdown) discountBreakdown = `<div class="border-t border-[var(--border-color)] pt-2 mt-2"><p class="font-semibold mb-1">Discounts:</p>${discountBreakdown}</div>`; return { totalDiscountAmount, discountBreakdown }; }
-        function getLoadingPercentages(type, prefix) { let loadings = { 'Age': 0, 'Experience': 0, 'Occupation': 0, 'Vehicle Type': 0 }; const age = getFloatValue(`${prefix}-driver-age`), exp = getFloatValue(`${prefix}-driving-exp`), occupation = getElement(`${prefix}-occupation`).value, model = getElement(`${prefix}-vehicle-model`)?.value; const isComp = (getElement(`${prefix}-coverage-type`) || {}).value !== 'third-party'; if (isComp) { if (type === 'platinum') { if (age > 0 && age <= 25) loadings['Age'] = 0.50; if (exp > 0 && exp < 2) loadings['Experience'] = 0.50; else if (exp === 2) loadings['Experience'] = 0.10; if (['travelling', 'music', 'shift'].includes(occupation)) loadings['Occupation'] = 0.10; if (occupation === 'protective') loadings['Occupation'] = 0.20; if (['hybrid', 'electric'].includes(model)) loadings['Vehicle Type'] = 0.20; } else { if (age > 0 && age <= 24) loadings['Age'] = 0.20; if (exp > 0 && exp < 2) loadings['Experience'] = 0.20; else if (exp === 2) loadings['Experience'] = 0.10; if (['travelling', 'music', 'shift', 'protective'].includes(occupation)) loadings['Occupation'] = 0.10; if (type === 'private' && ['hybrid', 'electric', 'honda-city'].includes(model)) loadings['Vehicle Type'] = model === 'honda-city' ? 0.30 : 0.20; } } else { if (age > 0 && age <= 24) loadings['Age'] = 0.50; if (exp > 0 && exp < 2) loadings['Experience'] = 0.50; else if (exp === 2) loadings['Experience'] = 0.10; if (['travelling', 'music', 'shift', 'protective'].includes(occupation)) loadings['Occupation'] = 0.25; if (type === 'private' && ['hybrid', 'electric', 'honda-city'].includes(model)) loadings['Vehicle Type'] = model === 'honda-city' ? 0.30 : 0.20; } return loadings; }
+        function getLoadingPercentages(type, prefix) { let loadings = { 'Age': 0, 'Experience': 0, 'Occupation': 0, 'Vehicle Type': 0 }; const age = getFloatValue(`${prefix}-driver-age`), exp = getFloatValue(`${prefix}-driving-exp`), occupation = getElementValue(`${prefix}-occupation`), model = getElementValue(`${prefix}-vehicle-model`); const isComp = (getElement(`${prefix}-coverage-type`) || {}).value !== 'third-party'; if (isComp) { if (type === 'platinum') { if (age > 0 && age <= 25) loadings['Age'] = 0.50; if (exp > 0 && exp < 2) loadings['Experience'] = 0.50; else if (exp === 2) loadings['Experience'] = 0.10; if (['travelling', 'music', 'shift'].includes(occupation)) loadings['Occupation'] = 0.10; if (occupation === 'protective') loadings['Occupation'] = 0.20; if (['hybrid', 'electric'].includes(model)) loadings['Vehicle Type'] = 0.20; } else { if (age > 0 && age <= 24) loadings['Age'] = 0.20; if (exp > 0 && exp < 2) loadings['Experience'] = 0.20; else if (exp === 2) loadings['Experience'] = 0.10; if (['travelling', 'music', 'shift', 'protective'].includes(occupation)) loadings['Occupation'] = 0.10; if (type === 'private' && ['hybrid', 'electric', 'honda-city'].includes(model)) loadings['Vehicle Type'] = model === 'honda-city' ? 0.30 : 0.20; } } else { if (age > 0 && age <= 24) loadings['Age'] = 0.50; if (exp > 0 && exp < 2) loadings['Experience'] = 0.50; else if (exp === 2) loadings['Experience'] = 0.10; if (['travelling', 'music', 'shift', 'protective'].includes(occupation)) loadings['Occupation'] = 0.25; if (type === 'private' && ['hybrid', 'electric', 'honda-city'].includes(model)) loadings['Vehicle Type'] = model === 'honda-city' ? 0.30 : 0.20; } return loadings; }
         function calculatePrivatePremium() { let core = 0, optPremiums = 0, optBreakdown = '', refMsg = '', excess = 0; const coverage = getElement('p-coverage-type').value, engine = getElement('p-engine-cc').value, age = getFloatValue('p-driver-age'), si = getFloatValue('p-sum-insured'); if (age > 0 && age < 16) refMsg = "Drivers under 16 are not eligible for insurance."; else if (age > 65) refMsg = "Drivers over 65 must be referred to a manager."; if (coverage === 'comprehensive') { excess = si * 0.03; core = (si * 0.08) + (engine === 'under-2000' ? 1700 : 2000); if (getElement('p-windscreen-check').checked) { const val = getFloatValue('p-windscreen-value'); if (val > 5000) { const p = (val-5000)*0.10; optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Windscreen</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;}} if (getElement('p-woe-check').checked) { const p = Math.max(excess*0.10, 400); optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Waiver of Excess</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;} if (getElement('p-lou-check').checked) { optPremiums+=400; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Loss of Use</span><span class="breakdown-value">$400.00</span></div>`;} if (getElement('p-pa-check').checked) { optPremiums+=200; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Personal Accident</span><span class="breakdown-value">$200.00</span></div>`;} } else { core = (engine === 'under-2000' ? 1700 : 2000); if (getElement('p-pa-check').checked) { optPremiums+=100; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Personal Accident</span><span class="breakdown-value">$100.00</span></div>`;} } return { corePremium: core, optionalPremiums: optPremiums, optionalBreakdown: optBreakdown, referralMessage: refMsg, excess: excess }; }
         function calculatePlatinumPremium() { let core = 0, optPremiums = 0, optBreakdown = '', refMsg = '', excess = 0; const engine = getElement('pl-engine-cc').value, age = getFloatValue('pl-driver-age'), si = getFloatValue('pl-sum-insured'), vehicleAge = getFloatValue('pl-vehicle-age'); if (age > 0 && age < 16) refMsg += "Drivers under 16 are not eligible.\n"; if (age > 65) refMsg += "Drivers over 65 must be referred.\n"; if (si > 0 && si < 650000) refMsg += "Sum Insured must be >$650k.\n"; if (vehicleAge > 2) refMsg += "Vehicle age >2 years requires referral.\n"; if (getElement('pl-ncd').value !== '4') refMsg += "Max NCD is required.\n"; excess = si * 0.03; core = (si * 0.035) + (engine === 'under-2000' ? 3000 : 4000); if (getElement('pl-windscreen-check').checked) { const val = getFloatValue('pl-windscreen-value'); if (val > 20000) { const p = (val-20000)*0.10; optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Incr. Windscreen</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;}} if (getElement('pl-woe-check').checked) { const p = Math.max(excess*0.10, 1000); optPremiums+=p; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Waiver of Excess</span><span class="breakdown-value">$${formatCurrency(p)}</span></div>`;} if (getElement('pl-pa-check').checked) { optPremiums+=200; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Personal Accident</span><span class="breakdown-value">$200.00</span></div>`;} if (getElement('pl-tpl-check').checked) { optPremiums+=2500; optBreakdown+=`<div class="breakdown-row pl-4"><span class="breakdown-label">+ Increased TPL</span><span class="breakdown-value">$2,500.00</span></div>`;} return { corePremium: core, optionalPremiums: optPremiums, optionalBreakdown: optBreakdown, referralMessage: refMsg.trim(), excess: excess }; }
         function calculateCommercialPremium() { let core = 0, excess = 0, refMsg = ''; const coverage = getElement('c-coverage-type').value; const age = getFloatValue('c-driver-age'); if (age > 0 && age < 16) { refMsg = "Drivers under 16 are not eligible for insurance."; } if (coverage === 'comprehensive') { const si = getFloatValue('c-sum-insured'); excess = si * 0.03; const usage = getElement('c-usage').value; let rate = 0.10, base = 3500; if (usage === 'private-pickup') { rate = 0.08; base = 1700; } else if (usage === 'own-goods') { rate = 0.085; base = 2200; } core = (si * rate) + base; } else { const hp = getElement('c-hp').value; let base = 3700; if (hp === 'upto-30') base = 2200; else if (hp === '31-50') base = 2700; core = base; } return { corePremium: core, optionalPremiums: 0, optionalBreakdown: '', referralMessage: refMsg, excess: excess }; }
