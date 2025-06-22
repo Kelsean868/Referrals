@@ -133,8 +133,33 @@
                 </div>
             </section>
             
+            <section id="payout-section" class="bento-box">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold">Process Payouts</h2>
+                        <p id="payout-period-label" class="text-[var(--text-secondary)]">For business won in the previous month.</p>
+                    </div>
+                    <div class="text-right">
+                         <p id="payout-total" class="text-2xl font-bold text-green-600">$0.00</p>
+                         <button id="process-payout-btn" class="button-base primary-btn mt-2" disabled>Finalize & Pay</button>
+                    </div>
+                </div>
+            </section>
+            
             <section>
                  <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                    <h2 class="text-2xl font-bold">Commission Tier Management</h2>
+                    <div class="flex gap-4">
+                        <button id="recalculate-counts-btn" class="button-base secondary-btn">Recalculate All Counts</button>
+                        <button id="save-tiers-btn" class="button-base primary-btn">Save Tier Settings</button>
+                    </div>
+                </div>
+                <div id="tier-settings-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                </div>
+            </section>
+
+            <section>
+                <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
                     <h2 class="text-2xl font-bold">All Referrals</h2>
                     <div id="referral-actions" class="flex items-center gap-4">
                          <button id="manual-entry-btn" class="button-base secondary-btn">Add Referral</button>
@@ -159,6 +184,24 @@
                     </table>
                 </div>
             </section>
+
+            <section>
+                <h2 class="text-2xl font-bold mb-6">Manage Referrers</h2>
+                <div class="bento-box overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="whitespace-nowrap">
+                            <tr class="border-b border-[var(--border-color)]">
+                                <th class="p-4 text-sm font-semibold">Referrer Name</th>
+                                <th class="p-4 text-sm font-semibold">Email</th>
+                                <th class="p-4 text-sm font-semibold">Current Tier</th>
+                                <th class="p-4 text-sm font-semibold text-right">Won Referrals</th>
+                                <th class="p-4 text-sm font-semibold text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="referrers-management-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -167,10 +210,19 @@
         <p class="mt-4 text-[var(--text-secondary)]">Verifying Admin Access...</p>
     </div>
     
+    <!-- Modals -->
+    <div id="manual-entry-modal" class="modal-overlay hidden">
+        <!-- ... (modal content is unchanged) ... -->
+    </div>
+    
+    <div id="admin-edit-profile-modal" class="modal-overlay hidden">
+        <!-- ... (modal content is unchanged) ... -->
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, collection, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         const firebaseConfig = {
@@ -189,8 +241,11 @@
         const functions = getFunctions(app);
 
         let allReferralsData = [];
+        let allReferrers = [];
+        let commissionTiers = [];
         let pendingReferralChanges = {};
         let isEditMode = false;
+        let performanceChart = null;
         
         function formatCurrency(value) {
             if (typeof value !== 'number' || isNaN(value)) return '$0.00';
@@ -211,7 +266,7 @@
                         <td class="p-2 text-right">
                             <input type="number" class="approved-premium-input w-28 text-right" data-id="${ref.id}" value="${ref.approvedPremium || ''}" ${!isEditMode || isPaid ? 'disabled' : ''}>
                         </td>
-                        <td class="p-4 text-right font-semibold text-green-600">${formatCurrency(finalFee)}</td>
+                         <td class="p-4 text-right font-semibold text-green-600">${formatCurrency(finalFee)}</td>
                         <td class="p-4 text-center">
                             <select class="status-select" data-id="${ref.id}" ${!isEditMode || isPaid ? 'disabled' : ''}>
                                 ${['Pending', 'Approved', 'Won', 'Lost', 'Rejected', 'Cancelled', 'Resubmitted', 'Paid'].map(s => `<option value="${s}" ${ref.status === s ? 'selected' : ''} ${isPaid && s !== 'Paid' ? 'disabled' : ''}>${s}</option>`).join('')}
@@ -235,6 +290,7 @@
         }
         
         function handleInputChange(event) {
+            if (!isEditMode) return;
             const element = event.target;
             const referralId = element.dataset.id;
             const field = element.matches('.status-select') ? 'status' 
@@ -249,22 +305,27 @@
             pendingReferralChanges[referralId][field] = value;
             document.getElementById(`ref-row-${referralId}`).classList.add('pending-changes');
         }
-
+        
         function setupAdminPage(user) {
             document.getElementById('admin-greeting').textContent = `Welcome, ${user.displayName || user.email}!`;
             document.getElementById('admin-app').classList.remove('hidden');
             document.getElementById('auth-loader').classList.add('hidden');
 
-            onSnapshot(query(collection(db, "referrals")), snapshot => {
+            // Set up all data listeners
+            onSnapshot(collection(db, "referrals"), snapshot => {
                 allReferralsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 allReferralsData.sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
                 displayReferrals(allReferralsData);
                 // Update summary cards
-                const pendingCount = allReferralsData.filter(r => ['Pending', 'Resubmitted'].includes(r.status)).length;
-                document.getElementById('pending-referrals-count').textContent = pendingCount;
+                document.getElementById('pending-referrals-count').textContent = allReferralsData.filter(r => ['Pending', 'Resubmitted'].includes(r.status)).length;
+                const totalOwed = allReferralsData.filter(r => r.status === 'Won' && !r.feeWaived).reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
+                document.getElementById('finders-fee-owed-total').textContent = formatCurrency(totalOwed);
             });
-            
-            // ... other onSnapshot listeners for users, etc.
+
+            onSnapshot(collection(db, "users"), (snapshot) => {
+                 allReferrers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                 document.getElementById('total-referrers-count').textContent = allReferrers.filter(u => u.role === 'referrer').length;
+            });
             
             const editBtn = document.getElementById('edit-referrals-btn');
             const saveBtn = document.getElementById('save-referrals-btn');
@@ -275,7 +336,7 @@
                 editBtn.classList.add('hidden');
                 saveBtn.classList.remove('hidden');
                 cancelBtn.classList.remove('hidden');
-                displayReferrals(allReferralsData);
+                displayReferrals(allReferralsData); // Re-render to unlock fields
             });
 
             cancelBtn.addEventListener('click', () => {
@@ -284,7 +345,7 @@
                 editBtn.classList.remove('hidden');
                 saveBtn.classList.add('hidden');
                 cancelBtn.classList.add('hidden');
-                displayReferrals(allReferralsData);
+                displayReferrals(allReferralsData); // Re-render to lock fields and remove highlights
             });
 
             saveBtn.addEventListener('click', async () => {
@@ -316,7 +377,6 @@
                     editBtn.classList.remove('hidden');
                     saveBtn.classList.add('hidden');
                     cancelBtn.classList.add('hidden');
-                    // Data will be refreshed automatically by the onSnapshot listener
                     
                 } catch (error) {
                     console.error("Error saving referral changes:", error);
@@ -327,7 +387,7 @@
                 }
             });
 
-             document.getElementById('logout-btn').addEventListener('click', () => {
+            document.getElementById('logout-btn').addEventListener('click', () => {
                 signOut(auth).then(() => window.location.reload());
             });
         }
@@ -353,4 +413,3 @@
     </script>
 </body>
 </html>
-
