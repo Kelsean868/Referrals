@@ -272,11 +272,12 @@
                              <!-- Gamification UI will be injected here -->
                          </div>
                     </div>
-                    <!-- UPDATED: Added Expected Payout Box -->
+                    <!-- UPDATED: Changed this section to hold the chart -->
                     <div class="bento-box text-center">
-                        <h2 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">Expected Payout This Period</h2>
-                        <p id="expected-payout-total" class="text-5xl font-bold text-green-600 my-auto">$0.00</p>
-                        <p id="payout-period-info" class="text-sm text-[var(--text-muted)] mt-2"></p>
+                        <h2 class="text-2xl font-bold text-[var(--primary-accent)] mb-4">This Month's Performance</h2>
+                        <div class="relative h-48 w-48 mx-auto my-auto">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
                     </div>
                 </section>
                 
@@ -318,7 +319,6 @@
                                 <tr class="border-b border-[var(--border-color)]">
                                     <th class="p-4 text-sm font-semibold">Date</th>
                                     <th class="p-4 text-sm font-semibold">Client</th>
-                                    <!-- NEW COLUMN ADDED -->
                                     <th class="p-4 text-sm font-semibold text-right">Submitted Premium</th>
                                     <th class="p-4 text-sm font-semibold text-right">Approved Premium</th>
                                     <th class="p-4 text-sm font-semibold text-right">Your Finder's Fee</th>
@@ -555,9 +555,6 @@
             });
 
             onSnapshot(doc(db, "users", user.uid), (userDoc) => {
-                // This log will appear in the browser console every time the user's data changes.
-                console.log("DEBUG: User data listener fired!", userDoc.data());
-
                 if (userDoc.exists()) {
                     currentUserData = userDoc.data(); 
                     
@@ -590,7 +587,7 @@
                 userReferrals = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
                 userReferrals.sort((a,b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
                 displayReferrals(userReferrals);
-                updateExpectedPayout(userReferrals); // UPDATED: Call new function
+                updatePerformanceChart(userReferrals); // UPDATED: Call chart function
             }, (error) => {
                 console.error("Error loading referrals:", error);
                 document.getElementById('referrals-table-body').innerHTML = `<tr><td colspan="7" class="text-center p-8 text-red-500">Could not load referrals due to a database error.</td></tr>`;
@@ -671,23 +668,84 @@
             container.innerHTML = progressHTML;
         }
         
-        // NEW FUNCTION: Calculate and display expected payout
-        function updateExpectedPayout(referrals) {
-            const expectedPayoutEl = document.getElementById('expected-payout-total');
-            const payoutPeriodInfoEl = document.getElementById('payout-period-info');
-            if (!expectedPayoutEl || !payoutPeriodInfoEl) return;
-
-            const now = new Date();
-            const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-            payoutPeriodInfoEl.textContent = `For business won in ${currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}.`
+        // NEW: Chart update function
+        function updatePerformanceChart(referrals) {
+            const ctx = document.getElementById('performanceChart')?.getContext('2d');
+            if (!ctx) return;
             
-            const expectedTotal = referrals
-                .filter(r => r.status === 'Won' && !r.feeWaived)
-                .reduce((total, r) => total + (r.finalFindersFee || r.findersFee || 0), 0);
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-            expectedPayoutEl.textContent = formatCurrency(expectedTotal);
+            const thisMonthReferrals = referrals.filter(r => (r.createdAt?.toDate() || new Date(0)) >= startOfMonth);
+            
+            const wonFees = thisMonthReferrals
+                .filter(r => (r.status === 'Won' || r.status === 'Paid') && !r.feeWaived)
+                .reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee || 0), 0);
+            
+            const otherFees = thisMonthReferrals
+                .filter(r => !['Won', 'Paid'].includes(r.status) && !r.feeWaived)
+                .reduce((sum, r) => sum + (r.findersFee || 0), 0);
+
+            const data = {
+                labels: ['Your Won Fees', 'Pending/Lost Fees'],
+                datasets: [{
+                    data: [wonFees, otherFees],
+                    backgroundColor: [ '#16a34a', '#d1d5db' ],
+                    borderColor: 'var(--bg-bento-box)',
+                    borderWidth: 4,
+                    hoverOffset: 8
+                }]
+            };
+
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw: (chart) => {
+                    const { ctx, width, height } = chart;
+                    const totalWon = chart.data.datasets[0].data[0] || 0;
+                    
+                    ctx.save();
+                    ctx.font = 'bold 24px Montserrat, sans-serif';
+                    ctx.fillStyle = '#16a34a';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const text = formatCurrency(totalWon);
+                    const textX = width / 2;
+                    const textY = height / 2;
+                    ctx.fillText(text, textX, textY);
+                    
+                    ctx.font = 'normal 12px Montserrat, sans-serif';
+                    ctx.fillStyle = 'var(--text-secondary)';
+                    ctx.fillText('Won This Month', textX, textY + 25);
+
+                    ctx.restore();
+                }
+            };
+
+            if (performanceChart) {
+                performanceChart.data = data;
+                performanceChart.update();
+            } else {
+                performanceChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => formatCurrency(context.parsed)
+                                }
+                            }
+                        }
+                    },
+                    plugins: [centerTextPlugin]
+                });
+            }
         }
+
 
         function displayReferrals(referrals) {
             const referralsTableBody = document.getElementById('referrals-table-body');
@@ -705,7 +763,6 @@
                     <tr class="border-b border-[var(--border-color)] hover:bg-[var(--bg-main)] ${referral.status === 'Paid' ? 'opacity-50' : ''}">
                         <td class="p-4">${referral.createdAt.toDate().toLocaleDateString()}</td>
                         <td class="p-4">${referral.clientName}</td>
-                        <!-- NEW DATA CELL ADDED -->
                         <td class="p-4 text-right">${referral.totalPremium ? formatCurrency(referral.totalPremium) : 'N/A'}</td>
                         <td class="p-4 text-right">${referral.approvedPremium ? formatCurrency(referral.approvedPremium) : 'N/A'}</td>
                         <td class="p-4 text-right text-green-600 font-semibold">${formatCurrency(finalFee)}</td>
