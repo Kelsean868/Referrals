@@ -1,94 +1,13 @@
 // Service Worker for the Insurance Referral Hub PWA
 
-const CACHE_NAME = 'referral-hub-cache-v4'; // Increment this version to trigger an update
+// Increment this version number whenever you make changes to the app shell files.
+// This will trigger the service worker update process.
+const CACHE_NAME = 'referral-hub-cache-v5'; 
+
 const SYNC_TAG = 'sync-new-referrals';
 
-// All the files the app needs to function offline
-const urlsToCache = [
-  './',
-  './index.html',
-  './admin.html',
-  './profile.html',
-  './motor_rater.html',
-  './health_rater.html',
-  './property_rater.html',
-  './motor_rater_data.js',
-  './health_rater_data.js',
-  './property_rater_data.js',
-  './manifest.json'
-  // Note: External CDN resources are not cached directly here to avoid CORS issues.
-  // The fetch handler will cache them on the fly.
-];
-
-// On install, cache the app shell
-self.addEventListener('install', event => {
-  console.log('[Service Worker] Install');
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('[Service Worker] Caching all: app shell and content');
-        return cache.addAll(urlsToCache);
-      })
-      .catch(error => {
-        console.error('Failed to cache during install:', error);
-      })
-  );
-  // --- NEW: Force the waiting service worker to become the active service worker. ---
-  self.skipWaiting();
-});
-
-// On activate, clean up old caches
-self.addEventListener('activate', event => {
-  console.log('[Service Worker] Activate');
-  event.waitUntil(
-    caches.keys().then(keyList => {
-      return Promise.all(keyList.map(key => {
-        if (key !== CACHE_NAME) {
-          console.log('[Service Worker] Removing old cache', key);
-          return caches.delete(key);
-        }
-      }));
-    })
-  );
-  // --- NEW: Tell the active service worker to take control of the page immediately. ---
-  return self.clients.claim();
-});
-
-// On fetch, serve from cache first, then network
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') {
-    return;
-  }
-  
-  event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        // Return cached response if found, otherwise fetch from network
-        return cachedResponse || fetch(event.request).then(
-          response => {
-            // Check if we received a valid response to cache
-            if (!response || response.status !== 200) {
-              return response;
-            }
-
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
-
-            return response;
-          }
-        );
-      })
-  );
-});
-// Service Worker for the Insurance Referral Hub PWA
-
-const CACHE_NAME = 'referral-hub-cache-v2'; // Incremented cache version
-const SYNC_TAG = 'sync-new-referrals';
-
-const urlsToCache = [
+// A list of all the essential files the app needs to function offline.
+const URLS_TO_CACHE = [
   './',
   './index.html',
   './admin.html',
@@ -100,18 +19,24 @@ const urlsToCache = [
   './health_rater_data.js',
   './property_rater_data.js',
   './manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Source+Serif+Pro:wght@600;700&display=swap'
+  // Note: External CDN resources are not pre-cached here to avoid CORS issues during install.
+  // The 'fetch' event handler will cache them on-the-fly when they are first requested.
 ];
 
+/**
+ * When the service worker is installed, open a new cache and add all the essential app files to it.
+ */
 self.addEventListener('install', event => {
   console.log('[Service Worker] Install');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('[Service Worker] Caching all: app shell and content');
-        return cache.addAll(urlsToCache);
+        console.log('[Service Worker] Caching app shell');
+        return cache.addAll(URLS_TO_CACHE);
+      })
+      .then(() => {
+        // Force the waiting service worker to become the active service worker.
+        return self.skipWaiting();
       })
       .catch(error => {
         console.error('Failed to cache during install:', error);
@@ -119,6 +44,9 @@ self.addEventListener('install', event => {
   );
 });
 
+/**
+ * When the new service worker activates, find and delete any old, outdated caches.
+ */
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activate');
   event.waitUntil(
@@ -131,47 +59,53 @@ self.addEventListener('activate', event => {
       }));
     })
   );
+  // Tell the active service worker to take control of the page immediately.
   return self.clients.claim();
 });
 
+/**
+ * Intercept all network requests.
+ * Strategy: Cache First. Try to serve the request from the cache. If it's not in the cache,
+ * fetch it from the network, put a copy in the cache for next time, and then return the response.
+ */
 self.addEventListener('fetch', event => {
-  // --- FIX: Only handle http/https requests. Ignore chrome-extension etc. ---
-  if (!(event.request.url.startsWith('http'))) {
-      return; 
-  }
-
+  // We only handle GET requests.
   if (event.request.method !== 'GET') {
     return;
   }
   
-  // For non-Firestore API calls, use a network-first strategy
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // If the fetch is successful, cache the response and return it
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME)
-          .then(cache => {
-            cache.put(event.request, responseToCache);
-          });
-        return response;
-      })
-      .catch(() => {
-        // If the network fails, try to serve from the cache
-        return caches.match(event.request);
+    caches.match(event.request)
+      .then(cachedResponse => {
+        // If the resource is in the cache, return it.
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+
+        // If it's not in the cache, fetch it from the network.
+        return fetch(event.request).then(
+          response => {
+            // Check if we received a valid response.
+            // Some third-party resources (like CDNs) might return an "opaque" response
+            // which is still valid to cache.
+            if (!response || (response.status !== 200 && response.type !== 'opaque')) {
+              return response;
+            }
+
+            // IMPORTANT: Clone the response. A response is a stream
+            // and because we want the browser to consume the response
+            // as well as the cache consuming the response, we need
+            // to clone it so we have two streams.
+            const responseToCache = response.clone();
+
+            caches.open(CACHE_NAME)
+              .then(cache => {
+                cache.put(event.request, responseToCache);
+              });
+
+            return response;
+          }
+        );
       })
   );
-});
-
-self.addEventListener('sync', event => {
-    if (event.tag === SYNC_TAG) {
-        console.log('[Service Worker] Sync event triggered for', SYNC_TAG);
-        // This functionality still requires IndexedDB integration in the rater files.
-        event.waitUntil(
-            new Promise((resolve, reject) => {
-                console.log("Sync logic to be implemented.");
-                resolve();
-            })
-        );
-    }
 });
