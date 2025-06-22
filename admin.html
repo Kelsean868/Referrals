@@ -150,7 +150,6 @@
                  <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
                     <h2 class="text-2xl font-bold">Commission Tier Management</h2>
                     <div class="flex gap-4">
-                        <button id="recalculate-counts-btn" class="button-base secondary-btn">Recalculate All Counts</button>
                         <button id="save-tiers-btn" class="button-base primary-btn">Save Tier Settings</button>
                     </div>
                 </div>
@@ -309,10 +308,11 @@
         </div>
     </div>
 
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, getDocs, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, updateDoc, addDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         const firebaseConfig = {
@@ -336,7 +336,7 @@
         let pendingReferralChanges = {};
         let isEditMode = false;
         let performanceChart = null;
-
+        
         function formatCurrency(value) {
             if (typeof value !== 'number' || isNaN(value)) return '$0.00';
             return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -462,7 +462,10 @@
                 allReferralsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 allReferralsData.sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
                 displayReferrals(allReferralsData);
-                // ... (update summary cards, etc.)
+                // Update summary cards
+                document.getElementById('pending-referrals-count').textContent = allReferralsData.filter(r => ['Pending', 'Resubmitted'].includes(r.status)).length;
+                const totalOwed = allReferralsData.filter(r => r.status === 'Won' && !r.feeWaived).reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
+                document.getElementById('finders-fee-owed-total').textContent = formatCurrency(totalOwed);
             });
 
             onSnapshot(collection(db, "users"), (snapshot) => {
@@ -470,6 +473,7 @@
                  document.getElementById('total-referrers-count').textContent = allReferrers.filter(u => u.role === 'referrer').length;
                  displayReferrersForManagement(allReferrers);
             });
+            // ... add back other listeners as needed
         }
         
         function displayReferrersForManagement(referrers) {
