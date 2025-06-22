@@ -664,7 +664,6 @@
             };
 
             try {
-                // Simply add the document. The onReferralUpdate Cloud Function will handle the tier logic automatically.
                 await addDoc(collection(db, "referrals"), newReferral);
             } catch (error) {
                 document.getElementById('manual-entry-error').textContent = "Error adding referral.";
