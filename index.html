@@ -318,6 +318,8 @@
                                 <tr class="border-b border-[var(--border-color)]">
                                     <th class="p-4 text-sm font-semibold">Date</th>
                                     <th class="p-4 text-sm font-semibold">Client</th>
+                                    <!-- NEW COLUMN ADDED -->
+                                    <th class="p-4 text-sm font-semibold text-right">Submitted Premium</th>
                                     <th class="p-4 text-sm font-semibold text-right">Approved Premium</th>
                                     <th class="p-4 text-sm font-semibold text-right">Your Finder's Fee</th>
                                     <th class="p-4 text-sm font-semibold text-center">Status</th>
@@ -589,10 +591,9 @@
                 userReferrals.sort((a,b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
                 displayReferrals(userReferrals);
                 updateExpectedPayout(userReferrals); // UPDATED: Call new function
-                // updatePerformanceChart(userReferrals); // This was removed as it's less relevant than expected payout
             }, (error) => {
                 console.error("Error loading referrals:", error);
-                document.getElementById('referrals-table-body').innerHTML = `<tr><td colspan="6" class="text-center p-8 text-red-500">Could not load referrals due to a database error.</td></tr>`;
+                document.getElementById('referrals-table-body').innerHTML = `<tr><td colspan="7" class="text-center p-8 text-red-500">Could not load referrals due to a database error.</td></tr>`;
             });
             
             try {
@@ -692,7 +693,7 @@
             const referralsTableBody = document.getElementById('referrals-table-body');
             if (!referralsTableBody) return;
             if (!referrals.length) {
-                referralsTableBody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-[var(--text-muted)]">You have not made any referrals yet.</td></tr>';
+                referralsTableBody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-[var(--text-muted)]">You have not made any referrals yet.</td></tr>';
                 return;
             }
             referralsTableBody.innerHTML = referrals.map(referral => {
@@ -704,6 +705,8 @@
                     <tr class="border-b border-[var(--border-color)] hover:bg-[var(--bg-main)] ${referral.status === 'Paid' ? 'opacity-50' : ''}">
                         <td class="p-4">${referral.createdAt.toDate().toLocaleDateString()}</td>
                         <td class="p-4">${referral.clientName}</td>
+                        <!-- NEW DATA CELL ADDED -->
+                        <td class="p-4 text-right">${referral.totalPremium ? formatCurrency(referral.totalPremium) : 'N/A'}</td>
                         <td class="p-4 text-right">${referral.approvedPremium ? formatCurrency(referral.approvedPremium) : 'N/A'}</td>
                         <td class="p-4 text-right text-green-600 font-semibold">${formatCurrency(finalFee)}</td>
                         <td class="p-4 text-center">
