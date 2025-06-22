@@ -217,6 +217,9 @@
             <h3 id="modal-header" class="text-xl font-bold leading-6 mb-4">Client & Property Information</h3>
             <div class="space-y-4">
                 <input type="text" id="client-name" placeholder="Client's Full Name" class="w-full">
+                <!-- FIX: Added Email and Contact fields -->
+                <input type="email" id="client-email" placeholder="Client's Email" class="w-full">
+                <input type="tel" id="client-contact" placeholder="Client's Contact Number" class="w-full">
                 <input type="text" id="property-address" placeholder="Property Address" class="w-full">
             </div>
              <div class="flex items-center space-x-3 mt-4 pt-4 border-t border-[var(--border-color)]">
@@ -347,25 +350,22 @@
             }
             
             getElement('client-name').value = data.clientName || '';
+            getElement('client-email').value = data.clientEmail || '';
+            getElement('client-contact').value = data.clientContact || '';
             getElement('property-address').value = data.propertyAddress || '';
             getElement('waive-fee-checkbox').checked = data.feeWaived || false;
             
             calculateAndDisplay();
         }
 
-        // --- FIX START: Corrected Event Listener Setup ---
         function setupEventListeners() {
-            // Specific listener for the main policy type dropdown
             getElement('policy-type').addEventListener('change', handlePolicyTypeChange);
 
-            // General listeners for all other inputs within the form sections
-            // 'input' is used for instant feedback on number/text fields. 'change' is used as a fallback.
             document.querySelectorAll('#homeowners-section input, #homeowners-section select, #commercial-section input, #commercial-section select').forEach(input => {
                 input.addEventListener('input', calculateAndDisplay);
                 input.addEventListener('change', calculateAndDisplay); 
             });
 
-            // Listeners for modals and buttons
             getElement('create-referral-btn').addEventListener('click', () => {
                 getElement('waive-fee-checkbox').checked = currentUserData?.waivesAllFees || false;
                 getElement('client-info-modal').style.display = 'flex';
@@ -373,7 +373,6 @@
             getElement('close-client-modal-btn').addEventListener('click', () => getElement('client-info-modal').style.display = 'none');
             getElement('submit-referral-btn').addEventListener('click', submitReferral);
         }
-        // --- FIX END ---
         
         const getFloatValue = (id) => parseFloat(getElement(id).value.replace(/,/g, '')) || 0;
         const formatCurrency = (value) => isNaN(value) ? '$0.00' : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -389,7 +388,6 @@
         function calculateAndDisplay() {
             const policyType = getElement('policy-type').value;
             if (!policyType) {
-                // Clear results if no policy type is selected
                 getElement('total-premium').textContent = '$0.00';
                 getElement('premium-breakdown').innerHTML = '';
                 getElement('finders-fee-section').classList.add('hidden');
@@ -485,12 +483,17 @@
         }
 
         async function submitReferral() {
+            // --- FIX: Gather new email and contact fields ---
             const clientName = getElement('client-name').value;
+            const clientEmail = getElement('client-email').value;
+            const clientContact = getElement('client-contact').value;
             const propertyAddress = getElement('property-address').value;
             const errorEl = getElement('client-modal-error');
 
-            if (!clientName || !propertyAddress) {
-                errorEl.textContent = "Please fill out all client and property fields."; return;
+            // --- FIX: Updated validation ---
+            if (!clientName || !clientEmail || !clientContact || !propertyAddress) {
+                errorEl.textContent = "Please fill out all client and property fields."; 
+                return;
             }
             errorEl.textContent = "";
 
@@ -503,6 +506,8 @@
             const referralData = { 
                 ...lastCalculatedData, 
                 clientName, 
+                clientEmail, // --- FIX: Add to data
+                clientContact, // --- FIX: Add to data
                 propertyAddress,
                 feeWaived,
                 findersFee: feeWaived ? 0 : lastCalculatedData.findersFee,
