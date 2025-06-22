@@ -292,7 +292,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        // --- FIX: Import `increment` for atomic updates ---
         import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, updateDoc, addDoc, where, Timestamp, deleteField, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
@@ -377,7 +376,6 @@
 
              onSnapshot(settingsRef, (doc) => {
                 if(doc.exists()){
-                    // --- FIX: Sort tiers by minReferrals to ensure correct tier progression ---
                     commissionTiers = doc.data().tiers.sort((a, b) => a.minReferrals - b.minReferrals);
                     displayTierSettings(commissionTiers);
                 }
@@ -547,7 +545,6 @@
             }
         });
 
-        // --- FIX START: Corrected `handleStatusChange` to update user stats ---
         async function handleStatusChange(event) {
             const selectElement = event.target;
             const newStatus = selectElement.value;
@@ -593,14 +590,7 @@
                     });
                     
                     // After updating the count, check if the tier needs to change
-                    const updatedUserDoc = await getDoc(userRef);
-                    if (updatedUserDoc.exists()) {
-                        const userData = updatedUserDoc.data();
-                        const newTier = determineTier(userData.wonReferralsCount, commissionTiers);
-                        if (newTier && newTier.name !== userData.currentTier) {
-                            await updateDoc(userRef, { currentTier: newTier.name });
-                        }
-                    }
+                    await updateUserTier(referrerId);
                 }
             } catch (error) { 
                 console.error("Error updating status: ", error); 
@@ -613,7 +603,6 @@
 
         function determineTier(wonCount, tiers) {
             if (!tiers || tiers.length === 0) return null;
-            // Tiers are assumed to be sorted by minReferrals ascending
             let determinedTier = tiers[0];
             for (const tier of tiers) {
                 if (wonCount >= tier.minReferrals) {
@@ -624,7 +613,18 @@
             }
             return determinedTier;
         }
-        // --- FIX END ---
+
+        async function updateUserTier(userId) {
+            const userRef = doc(db, "users", userId);
+            const userDoc = await getDoc(userRef);
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const newTier = determineTier(userData.wonReferralsCount || 0, commissionTiers);
+                if (newTier && newTier.name !== userData.currentTier) {
+                    await updateDoc(userRef, { currentTier: newTier.name });
+                }
+            }
+        }
 
         async function handleFeeWaiverChange(event) {
             const checkbox = event.target;
@@ -725,15 +725,21 @@
             const select = document.getElementById('manual-referrer');
             select.innerHTML = '<option value="">Select a referrer...</option>' + allReferrers.map(r => `<option value="${r.id}" data-name="${r.name}">${r.name}</option>`).join('');
         }
-
+        
+        // --- FIX START: Manual Entry form now updates user stats ---
         document.getElementById('manual-entry-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const referrerId = document.getElementById('manual-referrer').value;
+            const errorEl = document.getElementById('manual-entry-error');
+            errorEl.textContent = "";
+
             if (!referrerId) {
-                document.getElementById('manual-entry-error').textContent = "Please select a referrer.";
+                errorEl.textContent = "Please select a referrer.";
                 return;
             }
-            document.getElementById('manual-entry-error').textContent = "";
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
 
             const findersFee = await calculateNewFindersFee(parseFloat(document.getElementById('manual-premium').value), document.getElementById('manual-type').value, referrerId);
             
@@ -752,15 +758,28 @@
             };
 
             try {
+                // Step 1: Add the new referral document
                 await addDoc(collection(db, "referrals"), newReferral);
-            } catch (error) {
-                document.getElementById('manual-entry-error').textContent = "Error adding referral.";
-                console.error(error);
-            } finally {
+                
+                // Step 2: Increment the user's wonReferralsCount
+                const userRef = doc(db, "users", referrerId);
+                await updateDoc(userRef, {
+                    wonReferralsCount: increment(1)
+                });
+                
+                // Step 3: Update the user's tier based on the new count
+                await updateUserTier(referrerId);
+
                 document.getElementById('manual-entry-form').reset();
                 document.getElementById('manual-entry-modal').classList.add('hidden');
+            } catch (error) {
+                errorEl.textContent = "Error adding referral. Check console.";
+                console.error(error);
+            } finally {
+                submitBtn.disabled = false;
             }
         });
+        // --- FIX END ---
 
         document.getElementById('process-payout-btn').addEventListener('click', async (e) => {
             if (!confirm("Are you sure you want to process this payout? This action cannot be undone.")) return;
