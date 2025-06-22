@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Insurance Referral Hub</title>
     
-    <!-- PWA Manifest & Meta Tags -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#005f73">
+    <meta name="mobile-web-app-capable" content="yes"> 
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Referral Hub Admin">
@@ -469,6 +469,26 @@
                      </td>
                  </tr>
              `).join('');
+        }
+        
+        function displayPaymentHistory(payments) {
+            const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
+            if (!paymentHistoryTableBody) return;
+
+            payments.sort((a, b) => b.payoutDate.toDate() - a.payoutDate.toDate());
+            
+            if(!payments || payments.length === 0) {
+                paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">No payment history found.</td></tr>`;
+                return;
+            }
+
+             paymentHistoryTableBody.innerHTML = payments.map(p => `
+                <tr class="border-b border-[var(--border-color)]">
+                    <td class="p-4">${p.payoutDate.toDate().toLocaleDateString()}</td>
+                    <td class="p-4">${p.periodCovered}</td>
+                    <td class="p-4 text-right font-semibold">${formatCurrency(p.totalPaid)}</td>
+                </tr>
+            `).join('');
         }
 
         function displayTierSettings(tiers) {
