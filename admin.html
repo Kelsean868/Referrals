@@ -396,7 +396,7 @@
                 allReferrers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 document.getElementById('total-referrers-count').textContent = allReferrers.filter(u => u.role === 'referrer').length;
                 populateReferrerDropdown();
-                displayReferrersForManagement(allReferrers.filter(u => u.role === 'referrer'));
+                displayReferrersForManagement(allReferrers);
              });
 
              const settingsRef = doc(db, "settings", "commissionTiers");
@@ -483,11 +483,11 @@
                 tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-[var(--text-muted)]">No bonuses owed at this time.</td></tr>`;
                 return;
              }
-             bonuses.sort((a,b) => b.earnedAt.toDate() - a.earnedAt.toDate());
+             bonuses.sort((a,b) => (b.earnedAt?.toDate() || 0) - (a.earnedAt?.toDate() || 0));
              tableBody.innerHTML = bonuses.map(bonus => `
                  <tr class="border-b border-[var(--border-color)]">
                      <td class="p-4">${bonus.referrerName}</td>
-                     <td class="p-4">${bonus.earnedAt.toDate().toLocaleDateString()}</td>
+                     <td class="p-4">${bonus.earnedAt?.toDate().toLocaleDateString() || 'N/A'}</td>
                      <td class="p-4">${bonus.period}</td>
                      <td class="p-4 text-right font-semibold text-green-600">${formatCurrency(bonus.bonusAmount)}</td>
                      <td class="p-4 text-center">
@@ -500,14 +500,14 @@
         function displayPaymentHistory(payments) {
             const tableBody = document.getElementById('payment-history-table-body');
             if (!tableBody) return;
-            payments.sort((a, b) => b.payoutDate.toDate() - a.payoutDate.toDate());
+            payments.sort((a, b) => (b.payoutDate?.toDate() || 0) - (a.payoutDate?.toDate() || 0));
             if(!payments || payments.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">No payment history found.</td></tr>`;
                 return;
             }
              tableBody.innerHTML = payments.map(p => `
                 <tr class="border-b border-[var(--border-color)]">
-                    <td class="p-4">${p.payoutDate.toDate().toLocaleDateString()}</td>
+                    <td class="p-4">${p.payoutDate?.toDate().toLocaleDateString() || 'N/A'}</td>
                     <td class="p-4">${p.periodCovered}</td>
                     <td class="p-4 text-right font-semibold">${formatCurrency(p.totalPaid)}</td>
                 </tr>
@@ -538,7 +538,7 @@
         // --- Dashboard Cards and Chart Updates ---
         function updateSummaryCards(referrals) {
             document.getElementById('pending-referrals-count').textContent = referrals.filter(r => ['Pending', 'Resubmitted'].includes(r.status)).length;
-            const totalOwed = referrals.filter(r => r.status === 'Won' && !r.feeWaived).reduce((total, r) => total + (r.finalFindersFee || r.findersFee), 0);
+            const totalOwed = referrals.filter(r => r.status === 'Won' && !r.feeWaived).reduce((total, r) => total + (r.finalFindersFee || r.findersFee || 0), 0);
             document.getElementById('finders-fee-owed-total').textContent = formatCurrency(totalOwed);
         }
         
