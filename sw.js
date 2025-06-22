@@ -1,5 +1,90 @@
 // Service Worker for the Insurance Referral Hub PWA
 
+const CACHE_NAME = 'referral-hub-cache-v4'; // Increment this version to trigger an update
+const SYNC_TAG = 'sync-new-referrals';
+
+// All the files the app needs to function offline
+const urlsToCache = [
+  './',
+  './index.html',
+  './admin.html',
+  './profile.html',
+  './motor_rater.html',
+  './health_rater.html',
+  './property_rater.html',
+  './motor_rater_data.js',
+  './health_rater_data.js',
+  './property_rater_data.js',
+  './manifest.json'
+  // Note: External CDN resources are not cached directly here to avoid CORS issues.
+  // The fetch handler will cache them on the fly.
+];
+
+// On install, cache the app shell
+self.addEventListener('install', event => {
+  console.log('[Service Worker] Install');
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        console.log('[Service Worker] Caching all: app shell and content');
+        return cache.addAll(urlsToCache);
+      })
+      .catch(error => {
+        console.error('Failed to cache during install:', error);
+      })
+  );
+  // --- NEW: Force the waiting service worker to become the active service worker. ---
+  self.skipWaiting();
+});
+
+// On activate, clean up old caches
+self.addEventListener('activate', event => {
+  console.log('[Service Worker] Activate');
+  event.waitUntil(
+    caches.keys().then(keyList => {
+      return Promise.all(keyList.map(key => {
+        if (key !== CACHE_NAME) {
+          console.log('[Service Worker] Removing old cache', key);
+          return caches.delete(key);
+        }
+      }));
+    })
+  );
+  // --- NEW: Tell the active service worker to take control of the page immediately. ---
+  return self.clients.claim();
+});
+
+// On fetch, serve from cache first, then network
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
+  event.respondWith(
+    caches.match(event.request)
+      .then(cachedResponse => {
+        // Return cached response if found, otherwise fetch from network
+        return cachedResponse || fetch(event.request).then(
+          response => {
+            // Check if we received a valid response to cache
+            if (!response || response.status !== 200) {
+              return response;
+            }
+
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME)
+              .then(cache => {
+                cache.put(event.request, responseToCache);
+              });
+
+            return response;
+          }
+        );
+      })
+  );
+});
+// Service Worker for the Insurance Referral Hub PWA
+
 const CACHE_NAME = 'referral-hub-cache-v2'; // Incremented cache version
 const SYNC_TAG = 'sync-new-referrals';
 
