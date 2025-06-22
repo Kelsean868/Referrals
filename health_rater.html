@@ -621,7 +621,7 @@
             getElement('finders-fee-breakdown').innerHTML = `
                 <div class="breakdown-row"><span>Premium for Fee Calc. (${frequency})</span><span class="font-semibold">${formatCurrency(premium)}</span></div>
                 <div class="breakdown-row mt-2"><span>Total Commission (25%)</span><span class="font-semibold">${formatCurrency(totalCommission)}</span></div>
-                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span>-${formatCurrency(tax)}</span></div>
+                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span>-${formatCurrency(incomeTax)}</span></div>
                 <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission Payable</span><span>${formatCurrency(netCommission)}</span></div>
                 <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (${commissionSplit*100}%)</span><span class="font-bold">${formatCurrency(fee)}</span></div>
             `;
