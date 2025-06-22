@@ -552,7 +552,6 @@
                 }
             });
 
-            // --- FIX: Add console.log for debugging ---
             onSnapshot(doc(db, "users", user.uid), (userDoc) => {
                 // This log will appear in the browser console every time the user's data changes.
                 console.log("DEBUG: User data listener fired!", userDoc.data());
@@ -563,11 +562,9 @@
                     const adminLinkContainer = document.getElementById('admin-link-container');
                     const dashboardTitle = document.getElementById('dashboard-title');
                     
-                    // Set default referrer title first
                     if(dashboardTitle) dashboardTitle.textContent = "Referrer Dashboard";
                     if(adminLinkContainer) adminLinkContainer.innerHTML = '';
                     
-                    // If user is also an admin, enhance the UI
                     if (currentUserData.role === 'admin') {
                        if(dashboardTitle) dashboardTitle.textContent = "Admin / Referrer Dashboard";
                        if(adminLinkContainer) adminLinkContainer.innerHTML = `<a href="./admin.html" class="button-base !px-4 !py-2 bg-[var(--secondary-accent)] text-white">Admin Panel</a>`;
