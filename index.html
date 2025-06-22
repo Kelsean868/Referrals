@@ -593,24 +593,24 @@
             
             // --- FIX START: Corrected query for payment history ---
             try {
-                // This query now correctly filters for payments where the current user was paid.
-                // It assumes payment docs have a 'paidUserIds' array field.
-                const paymentsQuery = query(collection(db, "payments"), where("paidUserIds", "array-contains", userId));
+                // This query is now secure because it only looks inside the logged-in user's own data.
+                // NOTE: This requires the 'processMonthlyPayouts' cloud function to be updated
+                // to write payment records to '/users/{userId}/paymentHistory/{paymentId}'.
+                const paymentsQuery = query(collection(db, "users", userId, "paymentHistory"));
                 onSnapshot(paymentsQuery, (snapshot) => {
                     const userPayments = snapshot.docs.map(p => {
                         const paymentData = p.data();
-                        // It's assumed the payment doc contains a map of payouts,
-                        // where the key is the user ID. We extract the specific amount for this user.
+                        // Data structure is now simpler as it's directly from the user's subcollection.
                         return {
                             id: p.id,
                             payoutDate: paymentData.payoutDate,
                             periodCovered: paymentData.periodCovered,
-                            totalPaid: paymentData.payouts?.[userId] || 0,
+                            totalPaid: paymentData.totalPaid || 0,
                         };
                     });
                     displayPaymentHistory(userPayments); // Display the filtered list
                 }, (error) => {
-                     console.error("Could not load payment history due to permissions:", error.message);
+                     console.error("Could not load payment history:", error.message);
                      const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
                      if(paymentHistoryTableBody) paymentHistoryTableBody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-[var(--text-muted)]">Could not load payment history.</td></tr>`;
                 });
@@ -717,12 +717,10 @@
             }).join('');
         }
         
-        // --- FIX: Removed userId parameter as it's no longer needed for filtering ---
         function displayPaymentHistory(payments) {
             const paymentHistoryTableBody = document.getElementById('payment-history-table-body');
             if (!paymentHistoryTableBody) return;
 
-            // Data is now pre-filtered by the Firestore query
             payments.sort((a, b) => b.payoutDate.toDate() - a.payoutDate.toDate());
             
             if(!payments.length) {
