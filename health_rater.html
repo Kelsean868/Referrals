@@ -591,7 +591,8 @@
             comparisonHTML += `</tbody></table>`;
             getElement('frequency-comparison').innerHTML = comparisonHTML;
 
-            calculateAndDisplayFindersFee(totalPremium, frequency);
+            // --- FIX START: Correctly handle findersFee calculation and storage ---
+            const findersFee = calculateAndDisplayFindersFee(totalPremium, frequency);
             
             lastCalculatedData = {
                 insuranceType: 'Health',
@@ -599,33 +600,33 @@
                 premiumFrequency: frequency,
                 basePremium: basePremium,
                 mmPremium: mmPremium,
+                findersFee: findersFee // Directly assign the returned fee
             };
+            // --- FIX END ---
         }
 
         function calculateAndDisplayFindersFee(premium, frequency) {
             const feeSection = getElement('finders-fee-section');
             if (!currentUserData || currentUserData.waivesAllFees) { 
-                feeSection.classList.add('hidden');
-                lastCalculatedData.findersFee = 0;
-                return;
+                feeSection.classList.add('hidden'); 
+                return 0; // Return 0 if no fee is applicable
             }
             const commissionSplit = (currentUserData.commissionSplit || 50) / 100;
 
             const totalCommission = premium * 0.25;
             const incomeTax = totalCommission * 0.25;
             const netCommission = totalCommission - incomeTax;
-            const findersFee = netCommission * commissionSplit;
+            const fee = netCommission * commissionSplit;
             
-            lastCalculatedData.findersFee = findersFee;
-
             getElement('finders-fee-breakdown').innerHTML = `
                 <div class="breakdown-row"><span>Premium for Fee Calc. (${frequency})</span><span class="font-semibold">${formatCurrency(premium)}</span></div>
                 <div class="breakdown-row mt-2"><span>Total Commission (25%)</span><span class="font-semibold">${formatCurrency(totalCommission)}</span></div>
-                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span>-${formatCurrency(incomeTax)}</span></div>
+                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span>-${formatCurrency(tax)}</span></div>
                 <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission Payable</span><span>${formatCurrency(netCommission)}</span></div>
-                <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (${commissionSplit*100}%)</span><span class="font-bold">${formatCurrency(findersFee)}</span></div>
+                <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (${commissionSplit*100}%)</span><span class="font-bold">${formatCurrency(fee)}</span></div>
             `;
             feeSection.classList.remove('hidden');
+            return fee; // Return the calculated fee
         }
         
         // --- QUOTE & PDF GENERATION ---
