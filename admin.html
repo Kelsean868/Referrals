@@ -136,7 +136,10 @@
             <section>
                  <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-bold">Commission Tier Management</h2>
-                    <button id="save-tiers-btn" class="button-base primary-btn">Save Tier Settings</button>
+                    <div class="flex gap-4">
+                        <button id="recalculate-counts-btn" class="button-base secondary-btn">Recalculate All Counts</button>
+                        <button id="save-tiers-btn" class="button-base primary-btn">Save Tier Settings</button>
+                    </div>
                 </div>
                 <div id="tier-settings-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 </div>
@@ -292,7 +295,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, updateDoc, addDoc, where, Timestamp, deleteField, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, updateDoc, addDoc, where, Timestamp, deleteField, increment, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         const firebaseConfig = {
@@ -390,7 +393,56 @@
                 const payments = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 displayPaymentHistory(payments);
              });
+             
+            // --- FIX: Add event listener for the new recalculate button ---
+            document.getElementById('recalculate-counts-btn').addEventListener('click', recalculateAllWonCounts);
+
         }
+        
+        // --- FIX START: Function to recalculate and correct all referrer counts ---
+        async function recalculateAllWonCounts() {
+            const btn = document.getElementById('recalculate-counts-btn');
+            btn.disabled = true;
+            btn.textContent = 'Recalculating...';
+
+            try {
+                const usersSnapshot = await getDocs(query(collection(db, "users"), where("role", "==", "referrer")));
+                const referralsSnapshot = await getDocs(collection(db, "referrals"));
+                const allReferrals = referralsSnapshot.docs.map(doc => doc.data());
+
+                let updates = [];
+
+                for (const userDoc of usersSnapshot.docs) {
+                    const userId = userDoc.id;
+                    const trueWonCount = allReferrals.filter(ref => ref.referrerId === userId && ref.status === 'Won').length;
+                    
+                    if (userDoc.data().wonReferralsCount !== trueWonCount) {
+                        const userRef = doc(db, "users", userId);
+                        const newTier = determineTier(trueWonCount, commissionTiers);
+                        updates.push(updateDoc(userRef, { 
+                            wonReferralsCount: trueWonCount,
+                            currentTier: newTier ? newTier.name : 'Bronze'
+                        }));
+                        console.log(`Correcting ${userDoc.data().name}: Old count ${userDoc.data().wonReferralsCount}, New count ${trueWonCount}`);
+                    }
+                }
+
+                if (updates.length > 0) {
+                    await Promise.all(updates);
+                    alert(`Successfully recalculated and corrected counts for ${updates.length} referrer(s).`);
+                } else {
+                    alert('All referrer counts are already correct.');
+                }
+
+            } catch (error) {
+                console.error("Error recalculating won counts:", error);
+                alert("An error occurred during recalculation. Please check the console.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Recalculate All Counts';
+            }
+        }
+        // --- FIX END ---
         
         function updateSummaryCards(referrals) {
             document.getElementById('pending-referrals-count').textContent = referrals.filter(r => ['Pending', 'Resubmitted'].includes(r.status)).length;
@@ -580,16 +632,17 @@
                 if (newStatus === 'Won' && oldStatus !== 'Won') {
                     countChange = 1;
                 } else if (newStatus !== 'Won' && oldStatus === 'Won') {
-                    countChange = -1;
+                    // --- FIX: Add a check to prevent negative counts ---
+                    const userDoc = await getDoc(userRef);
+                    if (userDoc.exists() && (userDoc.data().wonReferralsCount || 0) > 0) {
+                        countChange = -1;
+                    }
                 }
                 
-                // If there's a change, update the user's document
                 if (countChange !== 0) {
                     await updateDoc(userRef, {
                         wonReferralsCount: increment(countChange)
                     });
-                    
-                    // After updating the count, check if the tier needs to change
                     await updateUserTier(referrerId);
                 }
             } catch (error) { 
@@ -757,16 +810,13 @@
             };
 
             try {
-                // Step 1: Add the new referral document
                 await addDoc(collection(db, "referrals"), newReferral);
                 
-                // Step 2: Increment the user's wonReferralsCount
                 const userRef = doc(db, "users", referrerId);
                 await updateDoc(userRef, {
                     wonReferralsCount: increment(1)
                 });
                 
-                // Step 3: Update the user's tier based on the new count
                 await updateUserTier(referrerId);
 
                 document.getElementById('manual-entry-form').reset();
