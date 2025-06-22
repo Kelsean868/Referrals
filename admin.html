@@ -292,7 +292,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, updateDoc, addDoc, where, Timestamp, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // --- FIX: Import `increment` for atomic updates ---
+        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, updateDoc, addDoc, where, Timestamp, deleteField, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-functions.js";
 
         const firebaseConfig = {
@@ -342,7 +343,6 @@
         }
         
         async function loadAdminData() {
-            // --- FIX: Check for and create default tiers if they don't exist ---
             const settingsRef = doc(db, "settings", "commissionTiers");
             const settingsDoc = await getDoc(settingsRef);
             if (!settingsDoc.exists()) {
@@ -377,7 +377,8 @@
 
              onSnapshot(settingsRef, (doc) => {
                 if(doc.exists()){
-                    commissionTiers = doc.data().tiers;
+                    // --- FIX: Sort tiers by minReferrals to ensure correct tier progression ---
+                    commissionTiers = doc.data().tiers.sort((a, b) => a.minReferrals - b.minReferrals);
                     displayTierSettings(commissionTiers);
                 }
              });
@@ -502,7 +503,7 @@
 
              paymentHistoryTableBody.innerHTML = payments.map(p => `
                 <tr class="border-b border-[var(--border-color)]">
-                    <td class="p-4">${p.payoutDate.toDate().toLocaleDateString()}</td>
+                    <td class="p-4">${p.payoutDate.toLocaleDateString()}</td>
                     <td class="p-4">${p.periodCovered}</td>
                     <td class="p-4 text-right font-semibold">${formatCurrency(p.totalPaid)}</td>
                 </tr>
@@ -546,6 +547,7 @@
             }
         });
 
+        // --- FIX START: Corrected `handleStatusChange` to update user stats ---
         async function handleStatusChange(event) {
             const selectElement = event.target;
             const newStatus = selectElement.value;
@@ -556,25 +558,73 @@
 
             selectElement.disabled = true;
 
-            const updateData = { status: newStatus };
-            
-            if (newStatus === 'Won') {
-                updateData.wonAt = Timestamp.now();
-            } else if (oldStatus === 'Won') {
-                updateData.wonAt = deleteField();
-            }
-
             try {
                 const referralRef = doc(db, "referrals", referralId);
-                await updateDoc(referralRef, updateData);
+                const referralDoc = await getDoc(referralRef);
+                if (!referralDoc.exists()) throw new Error("Referral not found");
+                
+                const referralData = referralDoc.data();
+                const referrerId = referralData.referrerId;
+                if (!referrerId) throw new Error("Referrer ID missing from referral");
+
+                const userRef = doc(db, "users", referrerId);
+                
+                // Update the referral document
+                const referralUpdateData = { status: newStatus };
+                if (newStatus === 'Won') {
+                    referralUpdateData.wonAt = Timestamp.now();
+                } else if (oldStatus === 'Won') {
+                    referralUpdateData.wonAt = deleteField();
+                }
+                await updateDoc(referralRef, referralUpdateData);
+
+                // Determine if the user's won count needs to be updated
+                let countChange = 0;
+                if (newStatus === 'Won' && oldStatus !== 'Won') {
+                    countChange = 1;
+                } else if (newStatus !== 'Won' && oldStatus === 'Won') {
+                    countChange = -1;
+                }
+                
+                // If there's a change, update the user's document
+                if (countChange !== 0) {
+                    await updateDoc(userRef, {
+                        wonReferralsCount: increment(countChange)
+                    });
+                    
+                    // After updating the count, check if the tier needs to change
+                    const updatedUserDoc = await getDoc(userRef);
+                    if (updatedUserDoc.exists()) {
+                        const userData = updatedUserDoc.data();
+                        const newTier = determineTier(userData.wonReferralsCount, commissionTiers);
+                        if (newTier && newTier.name !== userData.currentTier) {
+                            await updateDoc(userRef, { currentTier: newTier.name });
+                        }
+                    }
+                }
             } catch (error) { 
                 console.error("Error updating status: ", error); 
-                alert("Could not update status.");
+                alert("Could not update status. Check console for details.");
                 selectElement.value = oldStatus; 
             } finally { 
                 selectElement.disabled = false; 
             }
         }
+
+        function determineTier(wonCount, tiers) {
+            if (!tiers || tiers.length === 0) return null;
+            // Tiers are assumed to be sorted by minReferrals ascending
+            let determinedTier = tiers[0];
+            for (const tier of tiers) {
+                if (wonCount >= tier.minReferrals) {
+                    determinedTier = tier;
+                } else {
+                    break; 
+                }
+            }
+            return determinedTier;
+        }
+        // --- FIX END ---
 
         async function handleFeeWaiverChange(event) {
             const checkbox = event.target;
