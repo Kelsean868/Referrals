@@ -675,35 +675,30 @@ Number of Children: ${getSelectedText('children-count')}
 
             const feeWaived = getElement('waive-fee-checkbox').checked;
 
-            // --- FIX START: Correctly handle maternity value ---
+            // --- FIX START: More robust data gathering for submission ---
+            const getSelectedText = (id) => getElement(id).options[getElement(id).selectedIndex].text;
+            const planType = getElement('plan-type').value;
             const maternitySelect = getElement('maternity');
-            const maternityValue = (maternitySelect.style.display === 'none' || maternitySelect.disabled) 
-                ? 'N/A' 
-                : maternitySelect.options[maternitySelect.selectedIndex].text;
-            // --- FIX END ---
             
-            const selectedOptions = Object.fromEntries(
-                [...document.querySelectorAll('#health-rater-app select')].map(sel => [
-                    sel.id.replace(/-/g, '_'), // e.g., 'family-status' -> 'family_status'
-                    sel.options[sel.selectedIndex].text
-                ])
-            );
-            
-             const submissionData = {
+            const submissionData = {
                 ...lastCalculatedData,
                 feeWaived: feeWaived,
                 findersFee: feeWaived ? 0 : lastCalculatedData.findersFee,
                 commissionSplitAtTimeOfReferral: currentUserData.commissionSplit || 50,
-                planType: selectedOptions.plan_type,
-                familyStatus: selectedOptions.family_status,
-                ageBand: selectedOptions.age_band,
-                childrenCount: selectedOptions.children_count,
-                dentalVision: selectedOptions.dental_vision,
-                maternity: maternityValue, // Use the corrected value
-                mmAmount: selectedOptions.major_medical_amount,
-                premiumFrequency: selectedOptions.payment_frequency,
+                planType: getSelectedText('plan-type'),
+                familyStatus: getSelectedText('family-status'),
+                ageBand: getSelectedText('age-band'),
+                childrenCount: getSelectedText('children-count'),
+                premiumFrequency: getSelectedText('payment-frequency'),
                 clientName, clientEmail, clientContact,
+                
+                // Explicitly handle conditional fields to avoid 'undefined'
+                dentalVision: planType !== 'mm_only' ? getSelectedText('dental-vision') : 'N/A',
+                maternity: (planType !== 'mm_only' && !maternitySelect.disabled) ? getSelectedText('maternity') : 'N/A',
+                mmAmount: planType !== 'base_only' ? getSelectedText('major-medical-amount') : 'N/A',
             };
+            // --- FIX END ---
+
 
             try {
                 if (editMode) {
