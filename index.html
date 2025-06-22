@@ -439,11 +439,8 @@
         let userReferrals = [];
         let performanceChart = null;
         
-        const commissionTiers = [
-            { name: "Bronze", minReferrals: 0, split: 50, bonusPercentage: 0 },
-            { name: "Silver", minReferrals: 10, split: 70, bonusPercentage: 0 },
-            { name: "Gold", minReferrals: 20, split: 95, bonusPercentage: 25 }
-        ];
+        // --- FIX: This will now be populated from Firestore ---
+        let commissionTiers = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             const logoutBtn = document.getElementById('logout-btn');
@@ -537,6 +534,22 @@
         async function setupDashboard(user) {
             document.getElementById('user-greeting').textContent = `Hello, ${user.displayName || user.email}!`;
             
+            // --- FIX: Fetch commission tiers from Firestore to ensure consistency ---
+            const settingsRef = doc(db, "settings", "commissionTiers");
+            onSnapshot(settingsRef, (settingsDoc) => {
+                if (settingsDoc.exists()) {
+                    commissionTiers = settingsDoc.data().tiers;
+                    // Re-render tier progress in case user data arrived first
+                    getDoc(doc(db, "users", user.uid)).then(userDoc => {
+                        if (userDoc.exists()) {
+                            displayTierProgress(userDoc.data());
+                        }
+                    });
+                } else {
+                    console.error("Commission Tiers settings not found in Firestore!");
+                }
+            });
+
             onSnapshot(doc(db, "users", user.uid), (userDoc) => {
                 const userData = userDoc.data();
                 if(userData) {
@@ -587,7 +600,11 @@
         
         function displayTierProgress(userData) {
             const container = document.getElementById('tier-progress-container');
-            if (!container || !commissionTiers.length) return;
+            if (!container || !commissionTiers || commissionTiers.length === 0) {
+                 // If tiers aren't loaded yet, display a placeholder and wait for the listener to re-render.
+                container.innerHTML = `<p class="text-sm text-[var(--text-muted)]">Loading tier progress...</p>`;
+                return;
+            }
             
             const currentTierName = userData.currentTier || 'Bronze';
             const wonCount = userData.wonReferralsCount || 0;
@@ -762,23 +779,19 @@
             const now = new Date();
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-            // Base the chart on referrals *submitted* this month for consistency.
             const submittedThisMonth = referrals.filter(r => {
                 const createdAt = r.createdAt.toDate();
                 return createdAt >= startOfMonth;
             });
 
-            // From this month's submissions, find the total potential fees.
             const potentialFees = submittedThisMonth
                 .filter(r => !r.feeWaived)
                 .reduce((sum, r) => sum + (r.findersFee || 0), 0);
 
-            // From this month's submissions, find the fees that have been won.
             const wonFees = submittedThisMonth
                 .filter(r => (r.status === 'Won' || r.status === 'Paid') && !r.feeWaived)
                 .reduce((sum, r) => sum + (r.finalFindersFee || r.findersFee || 0), 0);
             
-            // The remainder represents pending or lost fees from this month's submissions.
             const pendingOrLostFees = Math.max(0, potentialFees - wonFees);
 
             const data = {
