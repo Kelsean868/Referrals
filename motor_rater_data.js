@@ -21,3 +21,25 @@ const SPECIAL_DISCOUNTS = {
     'Manager Special': 'manager', 
     'Fleet Discount': 'fleet' 
 };
+
+const WINDSCREEN_RATES = {
+    private: {
+        comprehensive: {
+            rate: 0.10,
+            free_limit: 5000,
+            max_value: null // No maximum value
+        },
+        'third-party': {
+            rate: 0.10,
+            free_limit: 0, // No free limit
+            max_value: 7000
+        }
+    },
+    platinum: {
+        comprehensive: {
+            rate: 0.10,
+            free_limit: 20000,
+            max_value: null // No maximum value
+        }
+    }
+};
