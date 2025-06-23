@@ -195,7 +195,7 @@
                         </div>
                         <div id="base-plan-options" class="contents">
                             <div>
-                                <label for="dental-vision" class="block text-sm font-medium text-[var(--text-muted)]">Dental & Vision Included</label>
+                                <label for="dental-vision" class="block text-sm font-medium text-[var(--text-muted)]">Add Dental & Vision</label>
                                 <select id="dental-vision" class="mt-1 w-full p-2.5"></select>
                             </div>
                             <div id="maternity-container">
@@ -332,12 +332,11 @@
 
         // --- DOM ELEMENTS ---
         const getElement = (id) => document.getElementById(id);
-        const allInputs = () => document.querySelectorAll('select');
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
-            if (typeof RATES === 'undefined') {
-                document.body.innerHTML = '<div class="text-red-500 text-center p-8">Error: Could not load rate data. Please ensure health_rater_data.js is present.</div>';
+            if (typeof RATES === 'undefined' || !RATES.vision_dental) {
+                document.body.innerHTML = '<div class="text-red-500 text-center p-8">Error: Could not load rate data. Please ensure health_rater_data.js is present and correct.</div>';
                 return;
             }
 
@@ -390,72 +389,63 @@
             const referralDoc = await getDoc(referralRef);
             if (referralDoc.exists()) {
                 const data = referralDoc.data();
-                // Ensure the logged-in user is the owner of this referral
                 if(data.referrerId !== currentUserData.uid) {
                     document.body.innerHTML = `<div class="text-red-500 text-center p-8">Error: You do not have permission to edit this referral.</div>`;
                     return;
                 }
-                initializeRater(); // Init dropdowns and listeners first
-                populateFormWithData(data); // Then populate with data
+                initializeRater();
+                populateFormWithData(data);
             } else {
                  document.body.innerHTML = `<div class="text-red-500 text-center p-8">Error: Referral not found.</div>`;
             }
         }
         
         function populateFormWithData(data) {
-            // This function maps keys from the Firestore doc to select element IDs
             const keyToIdMap = {
-                familyStatus: 'family-status',
+                familyStatusText: 'family-status',
                 ageBand: 'age-band',
-                childrenCount: 'children-count',
+                childrenCountText: 'children-count',
                 planType: 'plan-type',
                 premiumFrequency: 'payment-frequency',
-                dentalVision: 'dental-vision',
+                dentalVisionAdded: 'dental-vision',
                 maternity: 'maternity',
                 mmAmount: 'major-medical-amount'
             };
             
-            // Map text values from DB back to value attributes in <select>
             const textToValueMap = {
-                // familyStatus
                 'Single Male': 'single_male', 'Single Female': 'single_female', 'Husband & Wife': 'husband_wife',
-                // ageBand
                 'Under 40': 'under_40', '40-49': '40_49', '50-59': '50_59', '60-65': '60_65', '66-67': '66_67', '68-70': '68_70',
-                // childrenCount
                 '0 Children': '0', '1 Child': '1', '2 or More': '2+',
-                // planType
                 'Base Plan + Major Medical': 'base_and_mm', 'COVERCARE Base Plan Only': 'base_only', 'Major Medical Only': 'mm_only',
-                // premiumFrequency
                 'Annual': 'annual', 'Semi-Annual': 'semi', 'Quarterly': 'quarterly',
-                // dentalVision & maternity
                 'Yes': 'yes', 'No': 'no',
-                // mmAmount
                 '$50,000': '50000', '$100,000': '100000', '$200,000': '200000', '$300,000': '300000', '$500,000': '500000'
             };
 
             for(const key in keyToIdMap) {
                 const elementId = keyToIdMap[key];
                 const element = getElement(elementId);
-                if(element && data[key]) {
-                    const valueToSet = textToValueMap[data[key]];
-                    if(valueToSet) {
-                       element.value = valueToSet;
+                if(element && data[key] !== undefined) {
+                    const valueFromDb = data[key];
+                    if (typeof valueFromDb === 'boolean') {
+                        element.value = valueFromDb ? 'yes' : 'no';
+                    } else {
+                         const valueToSet = textToValueMap[valueFromDb];
+                         if(valueToSet) {
+                           element.value = valueToSet;
+                         }
                     }
                 }
             }
             
-            // Populate client info in modal
             if(data.clientName) getElement('client-name').value = data.clientName;
             if(data.clientEmail) getElement('client-email').value = data.clientEmail;
             if(data.clientContact) getElement('client-contact').value = data.clientContact;
             getElement('waive-fee-checkbox').checked = data.feeWaived || false;
 
-
-            // Trigger calculation with populated data
             calculateAndDisplay();
         }
 
-        // --- DROPDOWN POPULATION ---
         function populateDropdowns() {
             const options = {
                 'family-status': {'Single Male': 'single_male', 'Single Female': 'single_female', 'Husband & Wife': 'husband_wife'},
@@ -473,7 +463,6 @@
             }
         }
         
-        // --- EVENT LISTENERS ---
         function setupEventListeners() {
             document.querySelectorAll('#health-rater-app select').forEach(input => input.addEventListener('change', calculateAndDisplay));
             getElement('proceed-to-quote-btn').addEventListener('click', () => {
@@ -494,7 +483,6 @@
             getElement('submit-referral-btn').addEventListener('click', submitReferral);
         }
 
-        // --- UI & HELPER FUNCTIONS ---
         function setupTheme() {
             const themeToggle = getElement('themeToggleCheckbox');
             const themeToggleLabel = getElement('themeToggleLabel');
@@ -533,55 +521,72 @@
             }
         }
 
-        // --- CALCULATION ENGINE ---
+        // --- CALCULATION ENGINE (UPDATED) ---
         function calculateAndDisplay() {
             handleUIChanges();
 
+            // --- Get all selected values from the form ---
             const planType = getElement('plan-type').value;
             const familyStatus = getElement('family-status').value;
             const ageBand = getElement('age-band').value;
             const childrenCount = getElement('children-count').value;
             const maternity = getElement('maternity').value;
-            const withDV = getElement('dental-vision').value === 'yes';
+            const addDV = getElement('dental-vision').value === 'yes';
             const mmAmount = getElement('major-medical-amount').value;
             const frequency = getElement('payment-frequency').value;
 
+            // --- 1. Calculate Base Premium ---
             let baseRateSet = {annual:0, semi:0, quarterly:0};
             if (planType !== 'mm_only') {
                 let baseRateKey = familyStatus;
                 if (familyStatus === 'single_female' || familyStatus === 'husband_wife') {
                     baseRateKey += (maternity === 'yes' && !getElement('maternity').disabled) ? '_with_maternity' : '_no_maternity';
                 }
-                const baseRateTable = withDV ? RATES.base.with_dv : RATES.base.standard;
-                baseRateSet = baseRateTable[baseRateKey]?.[ageBand]?.[childrenCount] || baseRateSet;
+                baseRateSet = RATES.base.standard[baseRateKey]?.[ageBand]?.[childrenCount] || {annual:0, semi:0, quarterly:0};
             }
 
+            // --- 2. Calculate Vision & Dental (V&D) Premium ---
+            let vdRateSet = {annual:0, semi:0, quarterly:0};
+            if (planType !== 'mm_only' && addDV) {
+                // Use a simplified key for V&D as rates are shared across maternity options
+                let vdFamilyKey = familyStatus.startsWith('single') ? 'single_female' : 'husband_wife';
+                if (familyStatus === 'single_male') vdFamilyKey = 'single_male';
+                
+                vdRateSet = RATES.vision_dental[vdFamilyKey]?.[childrenCount] || {annual:0, semi:0, quarterly:0};
+            }
+            
+            // --- 3. Calculate Major Medical (MM) Premium ---
             let mmRateSet = {annual:0, semi:0, quarterly:0};
             if (planType !== 'base_only') {
                 let mmRateKey = familyStatus;
                 if (familyStatus.startsWith('single_female')) mmRateKey = 'single_female';
                 const mmChildrenKey = (childrenCount === '0') ? '0' : '1+';
-                mmRateSet = RATES.major_medical[mmAmount]?.[mmRateKey]?.[ageBand]?.[mmChildrenKey] || mmRateSet;
+                mmRateSet = RATES.major_medical[mmAmount]?.[mmRateKey]?.[ageBand]?.[mmChildrenKey] || {annual:0, semi:0, quarterly:0};
             }
 
+            // --- 4. Sum up premiums for the selected frequency ---
             const basePremium = baseRateSet[frequency] || 0;
+            const vdPremium = vdRateSet[frequency] || 0;
             const mmPremium = mmRateSet[frequency] || 0;
-            const totalPremium = basePremium + mmPremium;
+            const totalPremium = basePremium + vdPremium + mmPremium;
             const frequencyLabel = frequency.charAt(0).toUpperCase() + frequency.slice(1);
             
             getElement('total-premium').textContent = formatCurrency(totalPremium);
             getElement('total-premium-label').textContent = `(Total ${frequencyLabel} Premium)`;
             
+            // --- 5. Update UI with itemized breakdown ---
             let breakdownHTML = '';
             if (planType !== 'mm_only') breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(basePremium)}</strong></p>`;
-            if (planType !== 'base_only') breakdownHTML += `<p class="breakdown-row"><span>Major Medical:</span> <strong>${formatCurrency(mmPremium)}</strong></p>`;
+            if (vdPremium > 0) breakdownHTML += `<p class="breakdown-row"><span>+ Vision & Dental Benefit:</span> <strong>${formatCurrency(vdPremium)}</strong></p>`;
+            if (planType !== 'base_only') breakdownHTML += `<p class="breakdown-row"><span>+ Major Medical:</span> <strong>${formatCurrency(mmPremium)}</strong></p>`;
             breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t border-[var(--border-color)] pt-2 mt-2"><span>Total ${frequencyLabel} Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
             getElement('premium-breakdown').innerHTML = breakdownHTML;
             
+            // --- 6. Update frequency comparison table ---
             let comparisonHTML = `<h4 class="font-bold text-md text-[var(--text-primary)]">Payment Options</h4><table class="w-full mt-2 text-xs"><thead><tr class="text-left"><th class="font-semibold pb-1">Frequency</th><th class="font-semibold pb-1 text-right">Premium</th><th class="font-semibold pb-1 text-right">Saving vs. Annual</th></tr></thead><tbody>`;
-            const annualTotal = (baseRateSet.annual || 0) + (mmRateSet.annual || 0);
+            const annualTotal = (baseRateSet.annual || 0) + (vdRateSet.annual || 0) + (mmRateSet.annual || 0);
             ['annual', 'semi', 'quarterly'].forEach(freq => {
-                const freqPremium = (baseRateSet[freq] || 0) + (mmRateSet[freq] || 0);
+                const freqPremium = (baseRateSet[freq] || 0) + (vdRateSet[freq] || 0) + (mmRateSet[freq] || 0);
                 const multiplier = { annual: 1, semi: 2, quarterly: 4}[freq];
                 const effectiveAnnualCost = freqPremium * multiplier;
                 const saving = annualTotal - effectiveAnnualCost;
@@ -591,25 +596,26 @@
             comparisonHTML += `</tbody></table>`;
             getElement('frequency-comparison').innerHTML = comparisonHTML;
 
-            // --- FIX START: Correctly handle findersFee calculation and storage ---
-            const findersFee = calculateAndDisplayFindersFee(totalPremium, frequency);
+            // --- 7. Calculate finder's fee and store data ---
+            const feeBasePremium = basePremium + vdPremium + mmPremium; // Fee is calculated on the total premium for the chosen frequency
+            const findersFee = calculateAndDisplayFindersFee(feeBasePremium);
             
             lastCalculatedData = {
                 insuranceType: 'Health',
-                totalPremium: totalPremium,
-                premiumFrequency: frequency,
-                basePremium: basePremium,
-                mmPremium: mmPremium,
-                findersFee: findersFee // Directly assign the returned fee
+                totalPremium, // The premium for the selected frequency
+                basePremium,
+                vdPremium,
+                mmPremium,
+                findersFee,
+                premiumFrequency: frequency
             };
-            // --- FIX END ---
         }
 
-        function calculateAndDisplayFindersFee(premium, frequency) {
+        function calculateAndDisplayFindersFee(premium) {
             const feeSection = getElement('finders-fee-section');
-            if (!currentUserData || currentUserData.waivesAllFees) { 
+            if (!currentUserData || currentUserData.waivesAllFees || premium <= 0) { 
                 feeSection.classList.add('hidden'); 
-                return 0; // Return 0 if no fee is applicable
+                return 0;
             }
             const commissionSplit = (currentUserData.commissionSplit || 50) / 100;
 
@@ -619,17 +625,16 @@
             const fee = netCommission * commissionSplit;
             
             getElement('finders-fee-breakdown').innerHTML = `
-                <div class="breakdown-row"><span>Premium for Fee Calc. (${frequency})</span><span class="font-semibold">${formatCurrency(premium)}</span></div>
+                <div class="breakdown-row"><span>Premium for Fee Calc.</span><span class="font-semibold">${formatCurrency(premium)}</span></div>
                 <div class="breakdown-row mt-2"><span>Total Commission (25%)</span><span class="font-semibold">${formatCurrency(totalCommission)}</span></div>
                 <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span>-${formatCurrency(incomeTax)}</span></div>
                 <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission Payable</span><span>${formatCurrency(netCommission)}</span></div>
                 <div class="breakdown-row text-green-600 mt-2"><span class="font-bold">Your Finder's Fee (${commissionSplit*100}%)</span><span class="font-bold">${formatCurrency(fee)}</span></div>
             `;
             feeSection.classList.remove('hidden');
-            return fee; // Return the calculated fee
+            return fee;
         }
         
-        // --- QUOTE & PDF GENERATION ---
         function generateFinalQuoteText() {
             const getSelectedText = (id) => getElement(id).options[getElement(id).selectedIndex].text;
             let quoteDetails = `
@@ -639,10 +644,10 @@ Age Band:           ${getSelectedText('age-band')}
 Number of Children: ${getSelectedText('children-count')}
 `;
             if (getElement('plan-type').value !== 'mm_only') {
-                quoteDetails += `Dental & Vision:    ${getElement('dental-vision').value === 'yes' ? 'Yes' : 'No'}\nMaternity Included: ${getElement('maternity').disabled ? 'N/A' : (getElement('maternity').value === 'yes' ? 'Yes' : 'No')}\n`;
+                quoteDetails += `Dental & Vision:    ${getElement('dental-vision').value === 'yes' ? 'Yes' : 'No'}\nMaternity Included: ${getElement('maternity').disabled ? 'N/A' : getSelectedText('maternity')}\n`;
             }
             if (getElement('plan-type').value !== 'base_only') {
-                 quoteDetails += `MM Coverage:        ${formatCurrency(parseInt(getElement('major-medical-amount').value))}\n`;
+                 quoteDetails += `MM Coverage:        ${getSelectedText('major-medical-amount')}\n`;
             }
             const breakdownText = getElement('premium-breakdown').innerText;
             const comparisonText = getElement('frequency-comparison').innerText.replace('Payment Options', '\nPAYMENT OPTIONS:\n--------------');
@@ -661,7 +666,6 @@ Number of Children: ${getSelectedText('children-count')}
             doc.save(`COVERCARE_Quote_for_${clientName.replace(/\s/g, '_')}.pdf`);
         }
 
-        // --- FIREBASE REFERRAL SUBMISSION ---
         async function submitReferral() {
             const clientName = getElement('client-name').value, clientEmail = getElement('client-email').value, clientContact = getElement('client-contact').value;
             const errorEl = getElement('client-modal-error');
@@ -675,31 +679,26 @@ Number of Children: ${getSelectedText('children-count')}
             submitBtn.disabled = true;
 
             const feeWaived = getElement('waive-fee-checkbox').checked;
-
-            // --- FIX START: More robust data gathering for submission ---
             const getSelectedText = (id) => getElement(id).options[getElement(id).selectedIndex].text;
             const planType = getElement('plan-type').value;
             const maternitySelect = getElement('maternity');
             
             const submissionData = {
                 ...lastCalculatedData,
-                feeWaived: feeWaived,
+                feeWaived,
                 findersFee: feeWaived ? 0 : lastCalculatedData.findersFee,
                 commissionSplitAtTimeOfReferral: currentUserData.commissionSplit || 50,
+                // Add human-readable text for the admin panel
                 planType: getSelectedText('plan-type'),
-                familyStatus: getSelectedText('family-status'),
+                familyStatusText: getSelectedText('family-status'),
                 ageBand: getSelectedText('age-band'),
-                childrenCount: getSelectedText('children-count'),
+                childrenCountText: getSelectedText('children-count'),
                 premiumFrequency: getSelectedText('payment-frequency'),
-                clientName, clientEmail, clientContact,
-                
-                // Explicitly handle conditional fields to avoid 'undefined'
-                dentalVision: planType !== 'mm_only' ? getSelectedText('dental-vision') : 'N/A',
+                dentalVisionAdded: getElement('dental-vision').value === 'yes',
                 maternity: (planType !== 'mm_only' && !maternitySelect.disabled) ? getSelectedText('maternity') : 'N/A',
                 mmAmount: planType !== 'base_only' ? getSelectedText('major-medical-amount') : 'N/A',
+                clientName, clientEmail, clientContact,
             };
-            // --- FIX END ---
-
 
             try {
                 if (editMode) {
