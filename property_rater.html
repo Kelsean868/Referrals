@@ -135,25 +135,20 @@
                     <h2 class="text-2xl font-bold mb-4"><span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">1</span>Select Policy Type</h2>
                     <select id="policy-type" class="w-full text-lg p-3">
                         <option value="">-- Please select --</option>
-                        <option value="homeowners">Homeowners Insurance</option>
-                        <option value="commercial">Commercial Fire Insurance</option>
+                        <option value="homeowners_building">Homeowners (Building & Contents)</option>
+                        <option value="homeowners_contents">Homeowners (Contents Only)</option>
+                        <option value="commercial">Commercial Property</option>
                     </select>
                 </div>
 
                 <!-- Step 2: Details Sections -->
                 <div id="details-sections">
-                    <!-- Homeowners Section -->
+                    <!-- Homeowners Section (Combined for Building and Contents) -->
                     <div id="homeowners-section" class="form-section space-y-8">
-                        <div class="bento-box">
-                             <div class="toggle-switch-container mb-4">
-                                <h2 class="text-2xl font-bold">
-                                    <span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">2</span>Building Details
-                                </h2>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="home-insure-building-check" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
+                        <div id="building-details-wrapper" class="bento-box">
+                            <h2 class="text-2xl font-bold mb-4">
+                                <span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">2</span>Building Details
+                            </h2>
                             <div id="home-building-container">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div class="md:col-span-2">
@@ -161,7 +156,6 @@
                                         <input type="text" inputmode="numeric" id="home-building-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 850,000">
                                     </div>
                                 </div>
-                                
                                 <div class="mt-6 pt-6 border-t border-[var(--border-color)]">
                                      <div class="toggle-switch-container">
                                         <label for="home-flood-prone-check" class="font-medium text-[var(--text-primary)]">Property in a Flood-Prone Area?</label>
@@ -184,7 +178,7 @@
                             </div>
                         </div>
 
-                        <div class="bento-box">
+                        <div id="contents-details-wrapper" class="bento-box">
                              <div class="toggle-switch-container mb-4">
                                 <h2 class="text-2xl font-bold">
                                     <span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">3</span>Contents Details
@@ -415,10 +409,10 @@
         }
         
         function populateFormWithData(data) {
-            getElement('policy-type').value = data.policyType;
+            getElement('policy-type').value = data.policyType || 'homeowners_building';
             handlePolicyTypeChange(); 
 
-            if(data.policyType === 'homeowners'){
+            if(data.policyType.startsWith('homeowners')){
                 getElement('home-insure-building-check').checked = data.insureBuilding;
                 getElement('home-building-container').style.display = data.insureBuilding ? 'block' : 'none';
                 getElement('home-building-sum-insured').value = data.buildingSumInsured || '';
@@ -464,24 +458,14 @@
             getElement('home-flood-prone-check').addEventListener('change', (e) => {
                 getElement('home-flood-options').classList.toggle('hidden', !e.target.checked);
             });
-
-            const buildingToggle = getElement('home-insure-building-check');
-            const contentsToggle = getElement('home-insure-contents-check');
-
-            buildingToggle.addEventListener('change', (e) => {
-                if (!e.target.checked && !contentsToggle.checked) {
+            
+            getElement('home-insure-contents-check').addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                const buildingToggle = getElement('home-insure-building-check');
+                 if (!isChecked && !buildingToggle.checked) {
                     e.target.checked = true; // Prevent unchecking if it's the last one
                 } else {
-                    getElement('home-building-container').style.display = e.target.checked ? 'block' : 'none';
-                    calculateAndDisplay();
-                }
-            });
-
-            contentsToggle.addEventListener('change', (e) => {
-                 if (!e.target.checked && !buildingToggle.checked) {
-                    e.target.checked = true; // Prevent unchecking if it's the last one
-                } else {
-                    getElement('home-contents-container').style.display = e.target.checked ? 'block' : 'none';
+                    getElement('home-contents-container').style.display = isChecked ? 'block' : 'none';
                     calculateAndDisplay();
                 }
             });
@@ -500,9 +484,32 @@
         
         function handlePolicyTypeChange() {
             const selectedType = getElement('policy-type').value;
-            getElement('homeowners-section').classList.toggle('active', selectedType === 'homeowners');
-            getElement('commercial-section').classList.toggle('active', selectedType === 'commercial');
+            const homeownersSection = getElement('homeowners-section');
+            const commercialSection = getElement('commercial-section');
+            const buildingWrapper = getElement('building-details-wrapper');
+            const contentsWrapper = getElement('contents-details-wrapper');
+            const contentsToggle = getElement('home-insure-contents-check');
+            const contentsContainer = getElement('home-contents-container');
+
+            homeownersSection.classList.toggle('active', selectedType.startsWith('homeowners'));
+            commercialSection.classList.toggle('active', selectedType === 'commercial');
             getElement('results-section').classList.toggle('hidden', !selectedType);
+
+            if (selectedType === 'homeowners_building') {
+                buildingWrapper.style.display = 'block';
+                contentsWrapper.style.display = 'block';
+                contentsToggle.checked = false;
+                contentsContainer.style.display = 'none';
+            } else if (selectedType === 'homeowners_contents') {
+                buildingWrapper.style.display = 'none';
+                contentsWrapper.style.display = 'block';
+                contentsToggle.checked = true;
+                contentsToggle.disabled = true; // Cannot toggle off for contents only
+                contentsContainer.style.display = 'block';
+            } else {
+                contentsToggle.disabled = false;
+            }
+
             calculateAndDisplay();
         }
         
@@ -520,23 +527,19 @@
                 getElement('finders-fee-section').classList.add('hidden');
                 return;
             }
-
-            if (policyType === 'homeowners') {
-                const insureBuilding = getElement('home-insure-building-check').checked;
-                const insureContents = getElement('home-insure-contents-check').checked;
-                if (!insureBuilding && !insureContents) {
-                    validationMsgEl.textContent = 'Please select Building or Contents to insure.';
-                    return;
-                }
-            }
             
             let premiumData = {};
-            if(policyType === 'homeowners') {
+            if(policyType.startsWith('homeowners')) {
                 premiumData = calculateHomeownersPremium();
             } else if (policyType === 'commercial') {
                 premiumData = calculateCommercialPremium();
             }
             
+            if (!premiumData) { // Check for validation failure
+                validationMsgEl.textContent = "Please enter a value for Building or Contents.";
+                return;
+            }
+
             const { basePremium, taxAmount, breakdownHTML } = premiumData;
             const totalPremium = basePremium + taxAmount;
             
@@ -559,14 +562,19 @@
 
         function calculateHomeownersPremium() {
             const R = PROPERTY_RATES.homeowners;
-            const insureBuilding = getElement('home-insure-building-check').checked;
-            const insureContents = getElement('home-insure-contents-check').checked;
+            const policyType = getElement('policy-type').value;
+            const insureBuilding = (policyType === 'homeowners_building');
+            const insureContents = (policyType === 'homeowners_contents') || getElement('home-insure-contents-check').checked;
+            
+            if (!insureBuilding && !insureContents) {
+                return null; // Invalid state
+            }
+
             const planType = getElement('home-plan-type').value;
             let buildingPremium = 0, buildingSumInsured = 0;
             let contentsPremiums = {}, totalContentsSumInsured = 0, totalContentsPremium = 0;
             let allRisksPremium = 0;
 
-            // 1. Calculate Building Premium
             if (insureBuilding) {
                 buildingSumInsured = getFloatValue('home-building-sum-insured');
                 const isFloodProne = getElement('home-flood-prone-check').checked;
@@ -576,7 +584,6 @@
                 buildingPremium = (buildingSumInsured / 1000) * buildingRate;
             }
             
-            // 2. Calculate Contents Premium
             if (insureContents) {
                 const generalVal = getFloatValue('home-contents-general');
                 const electronicsVal = getFloatValue('home-contents-electronics');
@@ -594,19 +601,16 @@
                 totalContentsSumInsured = generalVal + electronicsVal + jewelryVal + specialVal;
                 totalContentsPremium = Object.values(contentsPremiums).reduce((a, b) => a + b, 0);
 
-                 // 3. Calculate All Risks Premium
                 const addAllRisks = getElement('home-all-risks-check').checked;
                 if (addAllRisks && totalContentsSumInsured > 0) {
                     allRisksPremium = totalContentsSumInsured * R.all_risks.contents;
                 }
             }
 
-            // 4. Sum up and Calculate Tax
             const basePremium = buildingPremium + totalContentsPremium + allRisksPremium;
             const clientAge = getFloatValue('home-client-age');
             const taxAmount = (clientAge > 0 && clientAge < 60) ? basePremium * PROPERTY_RATES.tax.ipt : 0;
 
-            // 5. Build Breakdown HTML
             let breakdownHTML = '';
             if(buildingPremium > 0) breakdownHTML += `<p>Building Premium: <strong class="float-right">$${formatCurrency(buildingPremium)}</strong></p>`;
             
@@ -625,10 +629,9 @@
                 breakdownHTML += `<p>Insurance Premium Tax (6%): <strong class="float-right">${clientAge >= 60 ? 'Exempt' : '$' + formatCurrency(taxAmount)}</strong></p>`;
             }
 
-            // Excess info
             const isFloodProneCheck = getElement('home-flood-prone-check').checked;
             const floodOptionRadio = document.querySelector('input[name="flood-option"]:checked').value;
-            const floodExcess = isFloodProneCheck && floodOptionRadio === 'increase-excess' ? R.excess.flood_increased : R.excess.standard;
+            const floodExcess = insureBuilding && isFloodProneCheck && floodOptionRadio === 'increase-excess' ? R.excess.flood_increased : R.excess.standard;
             breakdownHTML += `<p class="text-xs text-[var(--text-muted)] mt-2 pt-2 border-t">Standard Excess: $${formatCurrency(R.excess.standard)} | Flood Excess: $${formatCurrency(floodExcess)}</p>`;
             
             return { basePremium, taxAmount, breakdownHTML, buildingSumInsured, totalContentsSumInsured, allRisksPremium, clientAge, planType };
@@ -700,11 +703,12 @@
                 commissionSplitAtTimeOfReferral: currentUserData.commissionSplit || 50,
             };
 
-            if (lastCalculatedData.policyType === 'homeowners') {
+            if (lastCalculatedData.policyType.startsWith('homeowners')) {
+                const policyType = getElement('policy-type').value;
                 referralData = {
                     ...referralData,
-                    insureBuilding: getElement('home-insure-building-check').checked,
-                    insureContents: getElement('home-insure-contents-check').checked,
+                    insureBuilding: (policyType === 'homeowners_building'),
+                    insureContents: (policyType === 'homeowners_contents') || getElement('home-insure-contents-check').checked,
                     isFloodProne: getElement('home-flood-prone-check').checked,
                     floodOption: document.querySelector('input[name="flood-option"]:checked').value,
                     contentsGeneral: getFloatValue('home-contents-general'),
