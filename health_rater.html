@@ -562,7 +562,10 @@
             const basePremium = baseRateSet[frequency] || 0;
             const vdPremium = vdRateSet[frequency] || 0;
             const mmPremium = mmRateSet[frequency] || 0;
-            const totalPremium = basePremium + vdPremium + mmPremium;
+            
+            const subTotal = basePremium + vdPremium + mmPremium;
+            const totalPremium = subTotal; // In case of future taxes/fees
+            
             const frequencyLabel = frequency.charAt(0).toUpperCase() + frequency.slice(1);
             
             getElement('total-premium').textContent = formatCurrency(totalPremium);
@@ -579,7 +582,12 @@
             }
             if (vdPremium > 0) breakdownHTML += `<p class="breakdown-row"><span>+ Vision & Dental Benefit:</span> <strong>${formatCurrency(vdPremium)}</strong></p>`;
             if (planType !== 'base_only') breakdownHTML += `<p class="breakdown-row"><span>+ Major Medical:</span> <strong>${formatCurrency(mmPremium)}</strong></p>`;
-            breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t border-[var(--border-color)] pt-2 mt-2"><span>Total ${frequencyLabel} Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
+            
+            if (subTotal > 0 && (vdPremium > 0 || mmPremium > 0)) {
+                breakdownHTML += `<p class="breakdown-row font-semibold border-t border-dashed border-[var(--border-color)] pt-1 mt-1"><span>Sub-Total:</span> <strong>${formatCurrency(subTotal)}</strong></p>`;
+            }
+
+            breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t-2 border-[var(--primary-accent)] pt-2 mt-2"><span>Total ${frequencyLabel} Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
             getElement('premium-breakdown').innerHTML = breakdownHTML;
             
             let comparisonHTML = `<h4 class="font-bold text-md text-[var(--text-primary)]">Payment Options</h4><table class="w-full mt-2 text-xs"><thead><tr class="text-left"><th class="font-semibold pb-1">Frequency</th><th class="font-semibold pb-1 text-right">Premium</th><th class="font-semibold pb-1 text-right">Saving vs. Annual</th></tr></thead><tbody>`;
