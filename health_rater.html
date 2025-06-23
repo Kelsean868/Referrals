@@ -521,11 +521,8 @@
             }
         }
 
-        // --- CALCULATION ENGINE (UPDATED) ---
         function calculateAndDisplay() {
             handleUIChanges();
-
-            // --- Get all selected values from the form ---
             const planType = getElement('plan-type').value;
             const familyStatus = getElement('family-status').value;
             const ageBand = getElement('age-band').value;
@@ -535,7 +532,6 @@
             const mmAmount = getElement('major-medical-amount').value;
             const frequency = getElement('payment-frequency').value;
 
-            // --- 1. Calculate Base Premium ---
             let baseRateSet = {annual:0, semi:0, quarterly:0};
             if (planType !== 'mm_only') {
                 let baseRateKey = familyStatus;
@@ -545,17 +541,14 @@
                 baseRateSet = RATES.base.standard[baseRateKey]?.[ageBand]?.[childrenCount] || {annual:0, semi:0, quarterly:0};
             }
 
-            // --- 2. Calculate Vision & Dental (V&D) Premium ---
             let vdRateSet = {annual:0, semi:0, quarterly:0};
             if (planType !== 'mm_only' && addDV) {
-                // Use a simplified key for V&D as rates are shared across maternity options
                 let vdFamilyKey = familyStatus.startsWith('single') ? 'single_female' : 'husband_wife';
                 if (familyStatus === 'single_male') vdFamilyKey = 'single_male';
                 
                 vdRateSet = RATES.vision_dental[vdFamilyKey]?.[childrenCount] || {annual:0, semi:0, quarterly:0};
             }
             
-            // --- 3. Calculate Major Medical (MM) Premium ---
             let mmRateSet = {annual:0, semi:0, quarterly:0};
             if (planType !== 'base_only') {
                 let mmRateKey = familyStatus;
@@ -564,7 +557,6 @@
                 mmRateSet = RATES.major_medical[mmAmount]?.[mmRateKey]?.[ageBand]?.[mmChildrenKey] || {annual:0, semi:0, quarterly:0};
             }
 
-            // --- 4. Sum up premiums for the selected frequency ---
             const basePremium = baseRateSet[frequency] || 0;
             const vdPremium = vdRateSet[frequency] || 0;
             const mmPremium = mmRateSet[frequency] || 0;
@@ -574,7 +566,6 @@
             getElement('total-premium').textContent = formatCurrency(totalPremium);
             getElement('total-premium-label').textContent = `(Total ${frequencyLabel} Premium)`;
             
-            // --- 5. Update UI with itemized breakdown ---
             let breakdownHTML = '';
             if (planType !== 'mm_only') breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(basePremium)}</strong></p>`;
             if (vdPremium > 0) breakdownHTML += `<p class="breakdown-row"><span>+ Vision & Dental Benefit:</span> <strong>${formatCurrency(vdPremium)}</strong></p>`;
@@ -582,7 +573,6 @@
             breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t border-[var(--border-color)] pt-2 mt-2"><span>Total ${frequencyLabel} Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
             getElement('premium-breakdown').innerHTML = breakdownHTML;
             
-            // --- 6. Update frequency comparison table ---
             let comparisonHTML = `<h4 class="font-bold text-md text-[var(--text-primary)]">Payment Options</h4><table class="w-full mt-2 text-xs"><thead><tr class="text-left"><th class="font-semibold pb-1">Frequency</th><th class="font-semibold pb-1 text-right">Premium</th><th class="font-semibold pb-1 text-right">Saving vs. Annual</th></tr></thead><tbody>`;
             const annualTotal = (baseRateSet.annual || 0) + (vdRateSet.annual || 0) + (mmRateSet.annual || 0);
             ['annual', 'semi', 'quarterly'].forEach(freq => {
@@ -596,13 +586,12 @@
             comparisonHTML += `</tbody></table>`;
             getElement('frequency-comparison').innerHTML = comparisonHTML;
 
-            // --- 7. Calculate finder's fee and store data ---
-            const feeBasePremium = basePremium + vdPremium + mmPremium; // Fee is calculated on the total premium for the chosen frequency
+            const feeBasePremium = basePremium + vdPremium + mmPremium;
             const findersFee = calculateAndDisplayFindersFee(feeBasePremium);
             
             lastCalculatedData = {
                 insuranceType: 'Health',
-                totalPremium, // The premium for the selected frequency
+                totalPremium,
                 basePremium,
                 vdPremium,
                 mmPremium,
@@ -635,6 +624,7 @@
             return fee;
         }
         
+        // UPDATED: generateFinalQuoteText to include maternity status
         function generateFinalQuoteText() {
             const getSelectedText = (id) => getElement(id).options[getElement(id).selectedIndex].text;
             let quoteDetails = `
@@ -644,7 +634,9 @@ Age Band:           ${getSelectedText('age-band')}
 Number of Children: ${getSelectedText('children-count')}
 `;
             if (getElement('plan-type').value !== 'mm_only') {
-                quoteDetails += `Dental & Vision:    ${getElement('dental-vision').value === 'yes' ? 'Yes' : 'No'}\nMaternity Included: ${getElement('maternity').disabled ? 'N/A' : getSelectedText('maternity')}\n`;
+                const maternitySelect = getElement('maternity');
+                const maternityStatus = maternitySelect.disabled ? 'N/A' : getSelectedText('maternity');
+                quoteDetails += `Dental & Vision:    ${getSelectedText('dental-vision')}\nMaternity Included: ${maternityStatus}\n`;
             }
             if (getElement('plan-type').value !== 'base_only') {
                  quoteDetails += `MM Coverage:        ${getSelectedText('major-medical-amount')}\n`;
@@ -655,14 +647,127 @@ Number of Children: ${getSelectedText('children-count')}
             getElement('quote-output').textContent = fullQuoteText.trim();
         }
 
+        // UPDATED: generateAndDownloadPDF for a professional look
         function generateAndDownloadPDF() {
             const clientName = getElement('client-name').value || 'Valued Client';
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            generateFinalQuoteText();
-            doc.setFont("courier", "normal");
-            doc.setFontSize(10);
-            doc.text(fullQuoteText.trim(), 10, 20);
+            
+            // --- Helper function to draw the page ---
+            const drawPage = (doc) => {
+                // Header
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(24);
+                doc.setTextColor('#005f73'); // Primary Accent
+                doc.text('TATIL', 14, 20);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor('#1d2d35'); // Text Primary
+                doc.text('TATIL Building, 11 Maraval Road, Port of Spain', 14, 28);
+
+                doc.setFontSize(18);
+                doc.setTextColor('#ae8625'); // Secondary Accent
+                doc.text('COVERCARE Health Insurance Quotation', 200, 24, { align: 'right' });
+                
+                doc.setDrawColor('#dce1e7'); // Border color
+                doc.line(14, 35, 200, 35);
+
+                // Document Info
+                let yPos = 45;
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Date:', 14, yPos);
+                doc.setFont('helvetica', 'normal');
+                doc.text(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }), 35, yPos);
+                
+                doc.setFont('helvetica', 'bold');
+                doc.text('Prepared For:', 14, yPos + 7);
+                doc.setFont('helvetica', 'normal');
+                doc.text(clientName, 42, yPos + 7);
+
+                yPos += 20;
+
+                // Plan Details Section
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor('#005f73');
+                doc.text('Selected Plan Details', 14, yPos);
+                doc.setDrawColor('#dce1e7');
+                doc.line(14, yPos + 2, 200, yPos + 2);
+                yPos += 10;
+                
+                const getSelectedText = (id) => getElement(id).options[getElement(id).selectedIndex].text;
+                const planDetails = [];
+                planDetails.push(['Plan Type:', getSelectedText('plan-type')]);
+                planDetails.push(['Family Status:', getSelectedText('family-status')]);
+                planDetails.push(['Age Band:', getSelectedText('age-band')]);
+                planDetails.push(['Number of Children:', getSelectedText('children-count')]);
+
+                if (getElement('plan-type').value !== 'mm_only') {
+                    const maternitySelect = getElement('maternity');
+                    const maternityStatus = maternitySelect.disabled ? 'N/A' : getSelectedText('maternity');
+                    planDetails.push(['Dental & Vision:', getSelectedText('dental-vision')]);
+                    planDetails.push(['Maternity Included:', maternityStatus]);
+                }
+                 if (getElement('plan-type').value !== 'base_only') {
+                    planDetails.push(['Major Medical Coverage:', getSelectedText('major-medical-amount')]);
+                }
+
+                doc.setFontSize(10);
+                doc.setTextColor('#1d2d35');
+                planDetails.forEach(detail => {
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(detail[0], 16, yPos);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(detail[1], 60, yPos);
+                    yPos += 7;
+                });
+                yPos += 5;
+
+                // Premium Breakdown Table
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor('#005f73');
+                doc.text('Premium Summary', 14, yPos);
+                doc.line(14, yPos + 2, 200, yPos + 2);
+                yPos += 10;
+
+                // Table Header
+                doc.setFillColor('#f4f6f9'); // Light background for header
+                doc.rect(14, yPos - 2, 186, 8, 'F');
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Benefit Description', 16, yPos + 4);
+                doc.text('Premium', 198, yPos + 4, { align: 'right' });
+                yPos += 10;
+
+                // Table Rows
+                doc.setFont('helvetica', 'normal');
+                const breakdownRows = Array.from(getElement('premium-breakdown').querySelectorAll('.breakdown-row'));
+                breakdownRows.forEach(row => {
+                    const label = row.children[0].textContent;
+                    const value = row.children[1].textContent;
+                    if (label.toLowerCase().includes('total')) {
+                        doc.setFont('helvetica', 'bold');
+                        doc.setDrawColor('#dce1e7');
+                        doc.line(14, yPos - 2, 200, yPos - 2);
+                    }
+                    doc.text(label, 16, yPos);
+                    doc.text(value, 198, yPos, { align: 'right' });
+                    yPos += 7;
+                     if (label.toLowerCase().includes('total')) {
+                        doc.setFont('helvetica', 'normal');
+                    }
+                });
+                
+                // Footer
+                doc.setFontSize(8);
+                doc.setTextColor('#718096'); // Muted text
+                doc.text('This is an unofficial quotation and is valid for 30 days. All premiums are in USD. Terms and conditions apply.', 105, 285, { align: 'center' });
+                doc.text('Generated by the TATIL Referral Hub.', 105, 290, { align: 'center' });
+            };
+
+            drawPage(doc);
             doc.save(`COVERCARE_Quote_for_${clientName.replace(/\s/g, '_')}.pdf`);
         }
 
@@ -688,7 +793,6 @@ Number of Children: ${getSelectedText('children-count')}
                 feeWaived,
                 findersFee: feeWaived ? 0 : lastCalculatedData.findersFee,
                 commissionSplitAtTimeOfReferral: currentUserData.commissionSplit || 50,
-                // Add human-readable text for the admin panel
                 planType: getSelectedText('plan-type'),
                 familyStatusText: getSelectedText('family-status'),
                 ageBand: getSelectedText('age-band'),
