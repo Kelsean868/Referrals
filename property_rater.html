@@ -85,12 +85,13 @@
         }
 
         .button-base { font-weight: 600; padding: 0.85rem 1.5rem; border-radius: 0.375rem; transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease; box-shadow: var(--shadow-soft); text-transform: uppercase; letter-spacing: 0.025em; cursor: pointer; }
-        .button-base:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
+        .button-base:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
+        .button-base:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
         .primary-btn { background-color: var(--primary-accent); color: white; }
-        .primary-btn:hover { background-color: var(--primary-accent-darker); }
+        .primary-btn:hover:not(:disabled) { background-color: var(--primary-accent-darker); }
         .dark-mode .primary-btn { color: var(--text-primary); }
         .secondary-btn { background-color: var(--secondary-accent); color: white; }
-        .secondary-btn:hover { background-color: var(--secondary-accent-darker); }
+        .secondary-btn:hover:not(:disabled) { background-color: var(--secondary-accent-darker); }
         .dark-mode .secondary-btn { color: var(--text-primary); }
         
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(29, 45, 53, 0.7); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(5px); }
@@ -144,43 +145,41 @@
                     <!-- Homeowners Section -->
                     <div id="homeowners-section" class="form-section space-y-8">
                         <div class="bento-box">
-                            <h2 class="text-2xl font-bold mb-4"><span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">2</span>Building & Risk Details</h2>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="home-client-age" class="block text-sm font-medium text-[var(--text-muted)]">Client's Age (for tax)</label>
-                                    <input type="number" id="home-client-age" class="mt-1 w-full p-2.5" placeholder="e.g., 55">
-                                </div>
-                                <div>
-                                    <label for="home-plan-type" class="block text-sm font-medium text-[var(--text-muted)]">Plan Type</label>
-                                    <select id="home-plan-type" class="mt-1 w-full p-2.5">
-                                        <option value="individual">Individual Plan</option>
-                                        <option value="group">Group Plan</option>
-                                    </select>
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label for="home-building-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Building Sum Insured ($)</label>
-                                    <input type="text" inputmode="numeric" id="home-building-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 850,000">
-                                </div>
+                             <div class="toggle-switch-container mb-4">
+                                <h2 class="text-2xl font-bold">
+                                    <span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">2</span>Building Details
+                                </h2>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="home-insure-building-check" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </div>
-                            
-                            <div class="mt-6 pt-6 border-t border-[var(--border-color)]">
-                                 <div class="toggle-switch-container">
-                                    <label for="home-flood-prone-check" class="font-medium text-[var(--text-primary)]">Property in a Flood-Prone Area?</label>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="home-flood-prone-check">
-                                        <span class="toggle-slider"></span>
-                                    </label>
+                            <div id="home-building-container">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="md:col-span-2">
+                                        <label for="home-building-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Building Sum Insured ($)</label>
+                                        <input type="text" inputmode="numeric" id="home-building-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 850,000">
+                                    </div>
                                 </div>
-                                <div id="home-flood-options" class="hidden mt-4 space-y-2 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                                    <label class="flex items-center">
-                                        <input type="radio" name="flood-option" value="increase-rate" class="h-4 w-4 text-[var(--primary-accent)] focus:ring-[var(--primary-accent)]">
-                                        <span class="ml-3 text-sm">Increase Rate to 0.5% ($5 per mille)</span>
-                                    </label>
-                                    <label class="flex items-center">
-                                        <input type="radio" name="flood-option" value="increase-excess" class="h-4 w-4" checked>
-                                        <span class="ml-3 text-sm">Increase Flood Excess to $5,000</span>
-                                    </label>
+                                
+                                <div class="mt-6 pt-6 border-t border-[var(--border-color)]">
+                                     <div class="toggle-switch-container">
+                                        <label for="home-flood-prone-check" class="font-medium text-[var(--text-primary)]">Property in a Flood-Prone Area?</label>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="home-flood-prone-check">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div id="home-flood-options" class="hidden mt-4 space-y-2 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                                        <label class="flex items-center">
+                                            <input type="radio" name="flood-option" value="increase-rate" class="h-4 w-4 text-[var(--primary-accent)] focus:ring-[var(--primary-accent)]">
+                                            <span class="ml-3 text-sm">Increase Rate to 0.5% ($5 per mille)</span>
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="flood-option" value="increase-excess" class="h-4 w-4" checked>
+                                            <span class="ml-3 text-sm">Increase Flood Excess to $5,000</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -231,6 +230,23 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="bento-box">
+                             <h2 class="text-2xl font-bold mb-4"><span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">4</span>Client Details</h2>
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="home-client-age" class="block text-sm font-medium text-[var(--text-muted)]">Client's Age (for tax)</label>
+                                    <input type="number" id="home-client-age" class="mt-1 w-full p-2.5" placeholder="e.g., 55">
+                                </div>
+                                <div>
+                                    <label for="home-plan-type" class="block text-sm font-medium text-[var(--text-muted)]">Plan Type</label>
+                                    <select id="home-plan-type" class="mt-1 w-full p-2.5">
+                                        <option value="individual">Individual Plan</option>
+                                        <option value="group">Group Plan</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Commercial Section -->
@@ -255,14 +271,14 @@
                     <h2 class="text-2xl font-bold mb-2">Premium Summary</h2>
                     <p id="total-premium" class="text-4xl font-bold text-[var(--primary-accent)] mt-4">$0.00</p>
                     <p class="text-sm text-[var(--text-muted)]">(Total Annual Premium)</p>
+                     <p id="validation-message" class="text-red-500 font-semibold mt-2 h-4"></p>
                     <div id="premium-breakdown" class="text-left mt-6 pt-4 border-t border-[var(--border-color)] text-[var(--text-secondary)] text-sm space-y-1">
-                        <!-- Breakdown populated by JS -->
                     </div>
                      <div id="finders-fee-section" class="text-left mt-6 pt-4 border-t-2 border-dashed border-[var(--secondary-accent)] hidden">
                         <h3 class="text-lg font-bold text-[var(--primary-accent)] mb-2">Finder's Fee Estimate</h3>
                         <div id="finders-fee-breakdown" class="text-[var(--text-secondary)] text-sm space-y-1"></div>
                     </div>
-                    <button id="create-referral-btn" class="mt-6 w-full primary-btn button-base py-3">
+                    <button id="create-referral-btn" class="mt-6 w-full primary-btn button-base py-3" disabled>
                         Create Referral
                     </button>
                 </div>
@@ -403,19 +419,21 @@
             handlePolicyTypeChange(); 
 
             if(data.policyType === 'homeowners'){
+                getElement('home-insure-building-check').checked = data.insureBuilding;
+                getElement('home-building-container').style.display = data.insureBuilding ? 'block' : 'none';
+                getElement('home-building-sum-insured').value = data.buildingSumInsured || '';
                 getElement('home-client-age').value = data.clientAge || '';
                 getElement('home-plan-type').value = data.planType || 'individual';
-                getElement('home-building-sum-insured').value = data.buildingSumInsured || '';
                 
                 getElement('home-flood-prone-check').checked = data.isFloodProne || false;
+                getElement('home-flood-options').classList.toggle('hidden', !data.isFloodProne);
                 if(data.isFloodProne){
-                    getElement('home-flood-options').classList.remove('hidden');
                     document.querySelector(`input[name="flood-option"][value="${data.floodOption || 'increase-excess'}"]`).checked = true;
                 }
                 
                 getElement('home-insure-contents-check').checked = data.insureContents || false;
+                getElement('home-contents-container').style.display = data.insureContents ? 'block' : 'none';
                  if(data.insureContents){
-                    getElement('home-contents-container').classList.remove('hidden');
                     getElement('home-contents-general').value = data.contentsGeneral || '';
                     getElement('home-contents-electronics').value = data.contentsElectronics || '';
                     getElement('home-contents-jewelry').value = data.contentsJewelry || '';
@@ -446,9 +464,28 @@
             getElement('home-flood-prone-check').addEventListener('change', (e) => {
                 getElement('home-flood-options').classList.toggle('hidden', !e.target.checked);
             });
-            getElement('home-insure-contents-check').addEventListener('change', (e) => {
-                getElement('home-contents-container').classList.toggle('hidden', !e.target.checked);
+
+            const buildingToggle = getElement('home-insure-building-check');
+            const contentsToggle = getElement('home-insure-contents-check');
+
+            buildingToggle.addEventListener('change', (e) => {
+                if (!e.target.checked && !contentsToggle.checked) {
+                    e.target.checked = true; // Prevent unchecking if it's the last one
+                } else {
+                    getElement('home-building-container').style.display = e.target.checked ? 'block' : 'none';
+                    calculateAndDisplay();
+                }
             });
+
+            contentsToggle.addEventListener('change', (e) => {
+                 if (!e.target.checked && !buildingToggle.checked) {
+                    e.target.checked = true; // Prevent unchecking if it's the last one
+                } else {
+                    getElement('home-contents-container').style.display = e.target.checked ? 'block' : 'none';
+                    calculateAndDisplay();
+                }
+            });
+
 
             getElement('create-referral-btn').addEventListener('click', () => {
                 getElement('waive-fee-checkbox').checked = currentUserData?.waivesAllFees || false;
@@ -471,11 +508,26 @@
         
         function calculateAndDisplay() {
             const policyType = getElement('policy-type').value;
+            const validationMsgEl = getElement('validation-message');
+            const referralBtn = getElement('create-referral-btn');
+            
+            validationMsgEl.textContent = '';
+            referralBtn.disabled = true;
+
             if (!policyType) {
                 getElement('total-premium').textContent = '$0.00';
                 getElement('premium-breakdown').innerHTML = '';
                 getElement('finders-fee-section').classList.add('hidden');
                 return;
+            }
+
+            if (policyType === 'homeowners') {
+                const insureBuilding = getElement('home-insure-building-check').checked;
+                const insureContents = getElement('home-insure-contents-check').checked;
+                if (!insureBuilding && !insureContents) {
+                    validationMsgEl.textContent = 'Please select Building or Contents to insure.';
+                    return;
+                }
             }
             
             let premiumData = {};
@@ -491,6 +543,10 @@
             getElement('total-premium').textContent = `$${formatCurrency(totalPremium)}`;
             getElement('premium-breakdown').innerHTML = breakdownHTML;
             
+            if (totalPremium > 0) {
+                referralBtn.disabled = false;
+            }
+            
             lastCalculatedData = {
                 insuranceType: 'Property',
                 policyType: policyType,
@@ -503,22 +559,24 @@
 
         function calculateHomeownersPremium() {
             const R = PROPERTY_RATES.homeowners;
-            const buildingSumInsured = getFloatValue('home-building-sum-insured');
+            const insureBuilding = getElement('home-insure-building-check').checked;
+            const insureContents = getElement('home-insure-contents-check').checked;
             const planType = getElement('home-plan-type').value;
-            
-            const isFloodProne = getElement('home-flood-prone-check').checked;
-            const floodOption = document.querySelector('input[name="flood-option"]:checked').value;
+            let buildingPremium = 0, buildingSumInsured = 0;
+            let contentsPremiums = {}, totalContentsSumInsured = 0, totalContentsPremium = 0;
+            let allRisksPremium = 0;
 
             // 1. Calculate Building Premium
-            const buildingRateKey = isFloodProne && floodOption === 'increase-rate' ? 'flood_prone' : planType;
-            const buildingRate = R.building[buildingRateKey];
-            const buildingPremium = (buildingSumInsured / 1000) * buildingRate;
+            if (insureBuilding) {
+                buildingSumInsured = getFloatValue('home-building-sum-insured');
+                const isFloodProne = getElement('home-flood-prone-check').checked;
+                const floodOption = document.querySelector('input[name="flood-option"]:checked').value;
+                const buildingRateKey = isFloodProne && floodOption === 'increase-rate' ? 'flood_prone' : planType;
+                const buildingRate = R.building[buildingRateKey];
+                buildingPremium = (buildingSumInsured / 1000) * buildingRate;
+            }
             
             // 2. Calculate Contents Premium
-            let contentsPremiums = {};
-            let totalContentsSumInsured = 0;
-            let totalContentsPremium = 0;
-            const insureContents = getElement('home-insure-contents-check').checked;
             if (insureContents) {
                 const generalVal = getFloatValue('home-contents-general');
                 const electronicsVal = getFloatValue('home-contents-electronics');
@@ -535,13 +593,12 @@
 
                 totalContentsSumInsured = generalVal + electronicsVal + jewelryVal + specialVal;
                 totalContentsPremium = Object.values(contentsPremiums).reduce((a, b) => a + b, 0);
-            }
 
-            // 3. Calculate All Risks Premium
-            let allRisksPremium = 0;
-            const addAllRisks = insureContents && getElement('home-all-risks-check').checked;
-            if (addAllRisks && totalContentsSumInsured > 0) {
-                allRisksPremium = totalContentsSumInsured * R.all_risks.contents;
+                 // 3. Calculate All Risks Premium
+                const addAllRisks = getElement('home-all-risks-check').checked;
+                if (addAllRisks && totalContentsSumInsured > 0) {
+                    allRisksPremium = totalContentsSumInsured * R.all_risks.contents;
+                }
             }
 
             // 4. Sum up and Calculate Tax
@@ -550,7 +607,9 @@
             const taxAmount = (clientAge > 0 && clientAge < 60) ? basePremium * PROPERTY_RATES.tax.ipt : 0;
 
             // 5. Build Breakdown HTML
-            let breakdownHTML = `<p>Building Premium: <strong class="float-right">$${formatCurrency(buildingPremium)}</strong></p>`;
+            let breakdownHTML = '';
+            if(buildingPremium > 0) breakdownHTML += `<p>Building Premium: <strong class="float-right">$${formatCurrency(buildingPremium)}</strong></p>`;
+            
             if(insureContents){
                 breakdownHTML += `<div class="pl-4 mt-1 border-l-2 border-gray-200">`;
                 if(contentsPremiums.general > 0) breakdownHTML += `<p>General Contents: <strong class="float-right">$${formatCurrency(contentsPremiums.general)}</strong></p>`;
@@ -567,7 +626,9 @@
             }
 
             // Excess info
-            const floodExcess = isFloodProne && floodOption === 'increase-excess' ? R.excess.flood_increased : R.excess.standard;
+            const isFloodProneCheck = getElement('home-flood-prone-check').checked;
+            const floodOptionRadio = document.querySelector('input[name="flood-option"]:checked').value;
+            const floodExcess = isFloodProneCheck && floodOptionRadio === 'increase-excess' ? R.excess.flood_increased : R.excess.standard;
             breakdownHTML += `<p class="text-xs text-[var(--text-muted)] mt-2 pt-2 border-t">Standard Excess: $${formatCurrency(R.excess.standard)} | Flood Excess: $${formatCurrency(floodExcess)}</p>`;
             
             return { basePremium, taxAmount, breakdownHTML, buildingSumInsured, totalContentsSumInsured, allRisksPremium, clientAge, planType };
@@ -639,13 +700,13 @@
                 commissionSplitAtTimeOfReferral: currentUserData.commissionSplit || 50,
             };
 
-            // Add specific homeowners data if applicable
             if (lastCalculatedData.policyType === 'homeowners') {
                 referralData = {
                     ...referralData,
+                    insureBuilding: getElement('home-insure-building-check').checked,
+                    insureContents: getElement('home-insure-contents-check').checked,
                     isFloodProne: getElement('home-flood-prone-check').checked,
                     floodOption: document.querySelector('input[name="flood-option"]:checked').value,
-                    insureContents: getElement('home-insure-contents-check').checked,
                     contentsGeneral: getFloatValue('home-contents-general'),
                     contentsElectronics: getFloatValue('home-contents-electronics'),
                     contentsJewelry: getFloatValue('home-contents-jewelry'),
