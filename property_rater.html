@@ -145,9 +145,26 @@
                 <div id="details-sections">
                     <!-- Homeowners Section (Combined for Building and Contents) -->
                     <div id="homeowners-section" class="form-section space-y-8">
+                        <div class="bento-box">
+                             <h2 class="text-2xl font-bold mb-4"><span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">2</span>Client Details</h2>
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="home-client-age" class="block text-sm font-medium text-[var(--text-muted)]">Client's Age (for tax)</label>
+                                    <input type="number" id="home-client-age" class="mt-1 w-full p-2.5" placeholder="e.g., 55">
+                                </div>
+                                <div>
+                                    <label for="home-plan-type" class="block text-sm font-medium text-[var(--text-muted)]">Plan Type</label>
+                                    <select id="home-plan-type" class="mt-1 w-full p-2.5">
+                                        <option value="individual">Individual Plan</option>
+                                        <option value="group">Group Plan</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                         <div id="building-details-wrapper" class="bento-box">
                             <h2 class="text-2xl font-bold mb-4">
-                                <span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">2</span>Building Details
+                                <span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">3</span>Building Details
                             </h2>
                             <div id="home-building-container">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -181,7 +198,7 @@
                         <div id="contents-details-wrapper" class="bento-box">
                              <div class="toggle-switch-container mb-4">
                                 <h2 class="text-2xl font-bold">
-                                    <span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">3</span>Contents Details
+                                    <span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">4</span>Contents Details
                                 </h2>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="home-insure-contents-check">
@@ -221,23 +238,6 @@
                                         <input type="checkbox" id="home-all-risks-check">
                                         <span class="toggle-slider"></span>
                                     </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bento-box">
-                             <h2 class="text-2xl font-bold mb-4"><span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">4</span>Client Details</h2>
-                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="home-client-age" class="block text-sm font-medium text-[var(--text-muted)]">Client's Age (for tax)</label>
-                                    <input type="number" id="home-client-age" class="mt-1 w-full p-2.5" placeholder="e.g., 55">
-                                </div>
-                                <div>
-                                    <label for="home-plan-type" class="block text-sm font-medium text-[var(--text-muted)]">Plan Type</label>
-                                    <select id="home-plan-type" class="mt-1 w-full p-2.5">
-                                        <option value="individual">Individual Plan</option>
-                                        <option value="group">Group Plan</option>
-                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -413,8 +413,6 @@
             handlePolicyTypeChange(); 
 
             if(data.policyType.startsWith('homeowners')){
-                getElement('home-insure-building-check').checked = data.insureBuilding;
-                getElement('home-building-container').style.display = data.insureBuilding ? 'block' : 'none';
                 getElement('home-building-sum-insured').value = data.buildingSumInsured || '';
                 getElement('home-client-age').value = data.clientAge || '';
                 getElement('home-plan-type').value = data.planType || 'individual';
@@ -425,7 +423,8 @@
                     document.querySelector(`input[name="flood-option"][value="${data.floodOption || 'increase-excess'}"]`).checked = true;
                 }
                 
-                getElement('home-insure-contents-check').checked = data.insureContents || false;
+                const contentsToggle = getElement('home-insure-contents-check');
+                contentsToggle.checked = data.insureContents || false;
                 getElement('home-contents-container').style.display = data.insureContents ? 'block' : 'none';
                  if(data.insureContents){
                     getElement('home-contents-general').value = data.contentsGeneral || '';
@@ -434,6 +433,10 @@
                     getElement('home-jewelry-coverage').value = data.jewelryCoverage || 'premises';
                     getElement('home-contents-special').value = data.contentsSpecial || '';
                     getElement('home-all-risks-check').checked = data.allRisks || false;
+                }
+                if (data.policyType === 'homeowners_contents') {
+                    contentsToggle.checked = true;
+                    contentsToggle.disabled = true;
                 }
 
             } else if(data.policyType === 'commercial'){
@@ -461,13 +464,8 @@
             
             getElement('home-insure-contents-check').addEventListener('change', (e) => {
                 const isChecked = e.target.checked;
-                const buildingToggle = getElement('home-insure-building-check');
-                 if (!isChecked && !buildingToggle.checked) {
-                    e.target.checked = true; // Prevent unchecking if it's the last one
-                } else {
-                    getElement('home-contents-container').style.display = isChecked ? 'block' : 'none';
-                    calculateAndDisplay();
-                }
+                getElement('home-contents-container').style.display = isChecked ? 'block' : 'none';
+                calculateAndDisplay();
             });
 
 
@@ -498,16 +496,19 @@
             if (selectedType === 'homeowners_building') {
                 buildingWrapper.style.display = 'block';
                 contentsWrapper.style.display = 'block';
-                contentsToggle.checked = false;
-                contentsContainer.style.display = 'none';
+                contentsToggle.checked = true; // Default to ON
+                contentsContainer.style.display = 'block';
+                contentsToggle.disabled = false;
             } else if (selectedType === 'homeowners_contents') {
                 buildingWrapper.style.display = 'none';
                 contentsWrapper.style.display = 'block';
                 contentsToggle.checked = true;
-                contentsToggle.disabled = true; // Cannot toggle off for contents only
                 contentsContainer.style.display = 'block';
+                contentsToggle.disabled = true; // Cannot toggle off for contents only
             } else {
-                contentsToggle.disabled = false;
+                 buildingWrapper.style.display = 'block';
+                 contentsWrapper.style.display = 'block';
+                 contentsToggle.disabled = false;
             }
 
             calculateAndDisplay();
@@ -531,15 +532,14 @@
             let premiumData = {};
             if(policyType.startsWith('homeowners')) {
                 premiumData = calculateHomeownersPremium();
+                 if (!premiumData) { // Check for validation failure
+                    validationMsgEl.textContent = "Please enter a value for Building or Contents.";
+                    return;
+                }
             } else if (policyType === 'commercial') {
                 premiumData = calculateCommercialPremium();
             }
             
-            if (!premiumData) { // Check for validation failure
-                validationMsgEl.textContent = "Please enter a value for Building or Contents.";
-                return;
-            }
-
             const { basePremium, taxAmount, breakdownHTML } = premiumData;
             const totalPremium = basePremium + taxAmount;
             
