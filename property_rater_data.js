@@ -19,7 +19,7 @@ const PROPERTY_RATES = {
             }
         },
         all_risks: {
-            contents: 0.03          // 3% of total contents value
+            contents: 0.004          // 0.4% of total contents value ($4 per mille)
         },
         excess: {
             standard: 2500,
