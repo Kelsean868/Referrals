@@ -98,13 +98,14 @@
 
         .form-section { display: none; }
         .form-section.active { display: block; }
-
-        .advanced-section {
-            display: none;
-            background-color: color-mix(in srgb, var(--secondary-accent) 10%, transparent);
-            border: 1px solid var(--secondary-accent);
-            border-radius: 0.5rem; padding: 1rem; margin-top: 1.5rem;
-        }
+        
+        .toggle-switch-container { display: flex; align-items: center; justify-content: space-between; }
+        .toggle-switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 28px; }
+        .toggle-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .toggle-slider { background-color: var(--primary-accent); }
+        input:checked + .toggle-slider:before { transform: translateX(22px); }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-6 lg:p-8">
@@ -141,31 +142,93 @@
                 <!-- Step 2: Details Sections -->
                 <div id="details-sections">
                     <!-- Homeowners Section -->
-                    <div id="homeowners-section" class="form-section bento-box">
-                        <div class="flex justify-between items-start mb-4">
-                            <h2 class="text-2xl font-bold"><span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">2</span>Homeowners Details</h2>
-                        </div>
-                        
-                        <div class="mb-6">
-                            <label for="home-client-age" class="block text-sm font-medium text-[var(--text-muted)]">Client's Age (for tax purposes)</label>
-                            <input type="number" id="home-client-age" class="mt-1 w-full p-2.5" placeholder="e.g., 55">
+                    <div id="homeowners-section" class="form-section space-y-8">
+                        <div class="bento-box">
+                            <h2 class="text-2xl font-bold mb-4"><span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">2</span>Building & Risk Details</h2>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="home-client-age" class="block text-sm font-medium text-[var(--text-muted)]">Client's Age (for tax)</label>
+                                    <input type="number" id="home-client-age" class="mt-1 w-full p-2.5" placeholder="e.g., 55">
+                                </div>
+                                <div>
+                                    <label for="home-plan-type" class="block text-sm font-medium text-[var(--text-muted)]">Plan Type</label>
+                                    <select id="home-plan-type" class="mt-1 w-full p-2.5">
+                                        <option value="individual">Individual Plan</option>
+                                        <option value="group">Group Plan</option>
+                                    </select>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label for="home-building-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Building Sum Insured ($)</label>
+                                    <input type="text" inputmode="numeric" id="home-building-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 850,000">
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 pt-6 border-t border-[var(--border-color)]">
+                                 <div class="toggle-switch-container">
+                                    <label for="home-flood-prone-check" class="font-medium text-[var(--text-primary)]">Property in a Flood-Prone Area?</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="home-flood-prone-check">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div id="home-flood-options" class="hidden mt-4 space-y-2 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                                    <label class="flex items-center">
+                                        <input type="radio" name="flood-option" value="increase-rate" class="h-4 w-4 text-[var(--primary-accent)] focus:ring-[var(--primary-accent)]">
+                                        <span class="ml-3 text-sm">Increase Rate to 0.5% ($5 per mille)</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="flood-option" value="increase-excess" class="h-4 w-4" checked>
+                                        <span class="ml-3 text-sm">Increase Flood Excess to $5,000</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
-                        <div id="home-standard-inputs" class="space-y-6">
-                            <div>
-                                <label for="home-plan-type" class="block text-sm font-medium text-[var(--text-muted)]">Plan Type</label>
-                                <select id="home-plan-type" class="mt-1 w-full p-2.5">
-                                    <option value="individual">Individual Plan</option>
-                                    <option value="group">Group Plan</option>
-                                </select>
+                        <div class="bento-box">
+                             <div class="toggle-switch-container mb-4">
+                                <h2 class="text-2xl font-bold">
+                                    <span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">3</span>Contents Details
+                                </h2>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="home-insure-contents-check">
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </div>
-                            <div>
-                                <label for="home-building-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">Building Sum Insured ($)</label>
-                                <input type="text" inputmode="numeric" id="home-building-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 850,000">
-                            </div>
-                            <div>
-                                <label for="home-contents-sum-insured" class="block text-sm font-medium text-[var(--text-muted)]">General Contents Sum Insured ($)</label>
-                                <input type="text" inputmode="numeric" id="home-contents-sum-insured" class="mt-1 w-full p-2.5" placeholder="e.g., 150,000">
+                            <div id="home-contents-container" class="hidden space-y-6">
+                                <div>
+                                    <label for="home-contents-general" class="block text-sm font-medium text-[var(--text-muted)]">General Contents Sum Insured ($)</label>
+                                    <input type="text" inputmode="numeric" id="home-contents-general" class="mt-1 w-full p-2.5" placeholder="e.g., 150,000">
+                                </div>
+                                <div>
+                                    <label for="home-contents-electronics" class="block text-sm font-medium text-[var(--text-muted)]">Specified Electronics Value ($)</label>
+                                    <input type="text" inputmode="numeric" id="home-contents-electronics" class="mt-1 w-full p-2.5" placeholder="e.g., 25,000">
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="home-contents-jewelry" class="block text-sm font-medium text-[var(--text-muted)]">Specified Jewelry Value ($)</label>
+                                        <input type="text" inputmode="numeric" id="home-contents-jewelry" class="mt-1 w-full p-2.5" placeholder="e.g., 10,000">
+                                    </div>
+                                    <div>
+                                        <label for="home-jewelry-coverage" class="block text-sm font-medium text-[var(--text-muted)]">Jewelry Coverage</label>
+                                        <select id="home-jewelry-coverage" class="mt-1 w-full p-2.5">
+                                            <option value="premises">On Premises Only</option>
+                                            <option value="trinidad">Trinidad & Tobago</option>
+                                            <option value="worldwide">Worldwide</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="home-contents-special" class="block text-sm font-medium text-[var(--text-muted)]">Other Special Items Value ($)</label>
+                                    <input type="text" inputmode="numeric" id="home-contents-special" class="mt-1 w-full p-2.5" placeholder="e.g., 5,000">
+                                </div>
+                                <div class="mt-6 pt-6 border-t border-[var(--border-color)] toggle-switch-container">
+                                     <label for="home-all-risks-check" class="font-medium text-[var(--text-primary)]">Add 'All Risks' Cover for Contents</label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="home-all-risks-check">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -189,7 +252,7 @@
             <!-- Right Column: Results -->
             <div class="lg:col-span-1 space-y-8">
                 <div id="results-section" class="bento-box sticky top-8 text-center hidden">
-                    <h2 class="text-2xl font-bold mb-2"><span class="inline-block bg-[var(--secondary-accent)] text-white rounded-full h-8 w-8 text-center leading-8 mr-3 text-lg">3</span>Premium Summary</h2>
+                    <h2 class="text-2xl font-bold mb-2">Premium Summary</h2>
                     <p id="total-premium" class="text-4xl font-bold text-[var(--primary-accent)] mt-4">$0.00</p>
                     <p class="text-sm text-[var(--text-muted)]">(Total Annual Premium)</p>
                     <div id="premium-breakdown" class="text-left mt-6 pt-4 border-t border-[var(--border-color)] text-[var(--text-secondary)] text-sm space-y-1">
@@ -217,7 +280,6 @@
             <h3 id="modal-header" class="text-xl font-bold leading-6 mb-4">Client & Property Information</h3>
             <div class="space-y-4">
                 <input type="text" id="client-name" placeholder="Client's Full Name" class="w-full">
-                <!-- FIX: Added Email and Contact fields -->
                 <input type="email" id="client-email" placeholder="Client's Email" class="w-full">
                 <input type="tel" id="client-contact" placeholder="Client's Contact Number" class="w-full">
                 <input type="text" id="property-address" placeholder="Property Address" class="w-full">
@@ -344,7 +406,24 @@
                 getElement('home-client-age').value = data.clientAge || '';
                 getElement('home-plan-type').value = data.planType || 'individual';
                 getElement('home-building-sum-insured').value = data.buildingSumInsured || '';
-                getElement('home-contents-sum-insured').value = data.contentsSumInsured || '';
+                
+                getElement('home-flood-prone-check').checked = data.isFloodProne || false;
+                if(data.isFloodProne){
+                    getElement('home-flood-options').classList.remove('hidden');
+                    document.querySelector(`input[name="flood-option"][value="${data.floodOption || 'increase-excess'}"]`).checked = true;
+                }
+                
+                getElement('home-insure-contents-check').checked = data.insureContents || false;
+                 if(data.insureContents){
+                    getElement('home-contents-container').classList.remove('hidden');
+                    getElement('home-contents-general').value = data.contentsGeneral || '';
+                    getElement('home-contents-electronics').value = data.contentsElectronics || '';
+                    getElement('home-contents-jewelry').value = data.contentsJewelry || '';
+                    getElement('home-jewelry-coverage').value = data.jewelryCoverage || 'premises';
+                    getElement('home-contents-special').value = data.contentsSpecial || '';
+                    getElement('home-all-risks-check').checked = data.allRisks || false;
+                }
+
             } else if(data.policyType === 'commercial'){
                  getElement('comm-building-sum-insured').value = data.buildingSumInsured || '';
             }
@@ -360,10 +439,15 @@
 
         function setupEventListeners() {
             getElement('policy-type').addEventListener('change', handlePolicyTypeChange);
-
-            document.querySelectorAll('#homeowners-section input, #homeowners-section select, #commercial-section input, #commercial-section select').forEach(input => {
+            document.querySelectorAll('#homeowners-section input, #homeowners-section select, #commercial-section input').forEach(input => {
                 input.addEventListener('input', calculateAndDisplay);
-                input.addEventListener('change', calculateAndDisplay); 
+                input.addEventListener('change', calculateAndDisplay);
+            });
+            getElement('home-flood-prone-check').addEventListener('change', (e) => {
+                getElement('home-flood-options').classList.toggle('hidden', !e.target.checked);
+            });
+            getElement('home-insure-contents-check').addEventListener('change', (e) => {
+                getElement('home-contents-container').classList.toggle('hidden', !e.target.checked);
             });
 
             getElement('create-referral-btn').addEventListener('click', () => {
@@ -374,7 +458,7 @@
             getElement('submit-referral-btn').addEventListener('click', submitReferral);
         }
         
-        const getFloatValue = (id) => parseFloat(getElement(id).value.replace(/,/g, '')) || 0;
+        const getFloatValue = (id) => parseFloat(String(getElement(id).value).replace(/,/g, '')) || 0;
         const formatCurrency = (value) => isNaN(value) ? '$0.00' : value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         
         function handlePolicyTypeChange() {
@@ -418,29 +502,75 @@
         }
 
         function calculateHomeownersPremium() {
+            const R = PROPERTY_RATES.homeowners;
             const buildingSumInsured = getFloatValue('home-building-sum-insured');
-            const contentsSumInsured = getFloatValue('home-contents-sum-insured');
             const planType = getElement('home-plan-type').value;
             
-            const buildingRate = PROPERTY_RATES.homeowners.building[planType];
-            const contentsRate = PROPERTY_RATES.homeowners.contents;
-            
+            const isFloodProne = getElement('home-flood-prone-check').checked;
+            const floodOption = document.querySelector('input[name="flood-option"]:checked').value;
+
+            // 1. Calculate Building Premium
+            const buildingRateKey = isFloodProne && floodOption === 'increase-rate' ? 'flood_prone' : planType;
+            const buildingRate = R.building[buildingRateKey];
             const buildingPremium = (buildingSumInsured / 1000) * buildingRate;
-            const contentsPremium = (contentsSumInsured / 1000) * contentsRate;
-            const basePremium = buildingPremium + contentsPremium;
             
+            // 2. Calculate Contents Premium
+            let contentsPremiums = {};
+            let totalContentsSumInsured = 0;
+            let totalContentsPremium = 0;
+            const insureContents = getElement('home-insure-contents-check').checked;
+            if (insureContents) {
+                const generalVal = getFloatValue('home-contents-general');
+                const electronicsVal = getFloatValue('home-contents-electronics');
+                const jewelryVal = getFloatValue('home-contents-jewelry');
+                const specialVal = getFloatValue('home-contents-special');
+                
+                contentsPremiums.general = (generalVal / 1000) * R.contents.general;
+                contentsPremiums.electronics = electronicsVal * R.contents.electronics;
+                
+                const jewelryCoverageType = getElement('home-jewelry-coverage').value;
+                contentsPremiums.jewelry = jewelryVal * R.contents.jewelry[jewelryCoverageType];
+                
+                contentsPremiums.special = specialVal * R.contents.special_items;
+
+                totalContentsSumInsured = generalVal + electronicsVal + jewelryVal + specialVal;
+                totalContentsPremium = Object.values(contentsPremiums).reduce((a, b) => a + b, 0);
+            }
+
+            // 3. Calculate All Risks Premium
+            let allRisksPremium = 0;
+            const addAllRisks = insureContents && getElement('home-all-risks-check').checked;
+            if (addAllRisks && totalContentsSumInsured > 0) {
+                allRisksPremium = totalContentsSumInsured * R.all_risks.contents;
+            }
+
+            // 4. Sum up and Calculate Tax
+            const basePremium = buildingPremium + totalContentsPremium + allRisksPremium;
             const clientAge = getFloatValue('home-client-age');
             const taxAmount = (clientAge > 0 && clientAge < 60) ? basePremium * PROPERTY_RATES.tax.ipt : 0;
+
+            // 5. Build Breakdown HTML
+            let breakdownHTML = `<p>Building Premium: <strong class="float-right">$${formatCurrency(buildingPremium)}</strong></p>`;
+            if(insureContents){
+                breakdownHTML += `<div class="pl-4 mt-1 border-l-2 border-gray-200">`;
+                if(contentsPremiums.general > 0) breakdownHTML += `<p>General Contents: <strong class="float-right">$${formatCurrency(contentsPremiums.general)}</strong></p>`;
+                if(contentsPremiums.electronics > 0) breakdownHTML += `<p>Electronics: <strong class="float-right">$${formatCurrency(contentsPremiums.electronics)}</strong></p>`;
+                if(contentsPremiums.jewelry > 0) breakdownHTML += `<p>Jewelry: <strong class="float-right">$${formatCurrency(contentsPremiums.jewelry)}</strong></p>`;
+                if(contentsPremiums.special > 0) breakdownHTML += `<p>Special Items: <strong class="float-right">$${formatCurrency(contentsPremiums.special)}</strong></p>`;
+                breakdownHTML += `</div>`;
+            }
+            if(allRisksPremium > 0) breakdownHTML += `<p>All Risks Cover: <strong class="float-right">$${formatCurrency(allRisksPremium)}</strong></p>`;
             
-            let breakdownHTML = '';
-            if (buildingPremium > 0) breakdownHTML += `<p>Building Premium: <strong class="float-right">$${formatCurrency(buildingPremium)}</strong></p>`;
-            if (contentsPremium > 0) breakdownHTML += `<p>Contents Premium: <strong class="float-right">$${formatCurrency(contentsPremium)}</strong></p>`;
             if (basePremium > 0) {
-                breakdownHTML += `<p class="border-t border-[var(--border-color)] pt-2 mt-2">Base Premium: <strong class="float-right">$${formatCurrency(basePremium)}</strong></p>`;
+                breakdownHTML += `<p class="border-t border-[var(--border-color)] pt-2 mt-2 font-semibold">Base Premium: <strong class="float-right">$${formatCurrency(basePremium)}</strong></p>`;
                 breakdownHTML += `<p>Insurance Premium Tax (6%): <strong class="float-right">${clientAge >= 60 ? 'Exempt' : '$' + formatCurrency(taxAmount)}</strong></p>`;
             }
+
+            // Excess info
+            const floodExcess = isFloodProne && floodOption === 'increase-excess' ? R.excess.flood_increased : R.excess.standard;
+            breakdownHTML += `<p class="text-xs text-[var(--text-muted)] mt-2 pt-2 border-t">Standard Excess: $${formatCurrency(R.excess.standard)} | Flood Excess: $${formatCurrency(floodExcess)}</p>`;
             
-            return { basePremium, taxAmount, breakdownHTML, clientAge, planType, buildingSumInsured, contentsSumInsured };
+            return { basePremium, taxAmount, breakdownHTML, buildingSumInsured, totalContentsSumInsured, allRisksPremium, clientAge, planType };
         }
         
         function calculateCommercialPremium() {
@@ -452,7 +582,7 @@
             let breakdownHTML = '';
              if (basePremium > 0) {
                 breakdownHTML += `<p>Commercial Fire Premium: <strong class="float-right">$${formatCurrency(basePremium)}</strong></p>`;
-                breakdownHTML += `<p class="border-t border-[var(--border-color)] pt-2 mt-2">Base Premium: <strong class="float-right">$${formatCurrency(basePremium)}</strong></p>`;
+                breakdownHTML += `<p class="border-t border-[var(--border-color)] pt-2 mt-2 font-semibold">Base Premium: <strong class="float-right">$${formatCurrency(basePremium)}</strong></p>`;
                 breakdownHTML += `<p>Insurance Premium Tax (6%): <strong class="float-right">$${formatCurrency(taxAmount)}</strong></p>`;
             }
             
@@ -468,29 +598,27 @@
             }
             
             const commissionSplit = (currentUserData.commissionSplit || 50) / 100;
-            const commission = basePremium * 0.125; // 12.5% commission for Property
+            const commission = basePremium * 0.125;
             const incomeTax = commission * 0.25;
             const net = commission - incomeTax;
             const fee = net * commissionSplit;
             
             lastCalculatedData.findersFee = fee;
             getElement('finders-fee-breakdown').innerHTML = `
-                <div class="breakdown-row"><span>Total Commission (12.5%)</span><span class="float-right font-semibold">${formatCurrency(commission)}</span></div>
-                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span class="float-right">-${formatCurrency(incomeTax)}</span></div>
-                <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission</span><span class="float-right">${formatCurrency(net)}</span></div>
-                <div class="breakdown-row text-green-600 mt-2 font-bold"><span class="breakdown-label">Your Estimated Fee (${commissionSplit*100}%)</span><span class="float-right">${formatCurrency(fee)}</span></div>`;
+                <div class="breakdown-row"><span>Total Commission (12.5%)</span><span class="float-right font-semibold">$${formatCurrency(commission)}</span></div>
+                <div class="breakdown-row text-red-600"><span>- Income Tax (25%)</span><span class="float-right">-$${formatCurrency(incomeTax)}</span></div>
+                <div class="breakdown-row font-semibold border-t pt-1 mt-1"><span>Net Commission</span><span class="float-right">$${formatCurrency(net)}</span></div>
+                <div class="breakdown-row text-green-600 mt-2 font-bold"><span class="breakdown-label">Your Estimated Fee (${commissionSplit*100}%)</span><span class="float-right">$${formatCurrency(fee)}</span></div>`;
             feeSection.classList.remove('hidden');
         }
 
         async function submitReferral() {
-            // --- FIX: Gather new email and contact fields ---
             const clientName = getElement('client-name').value;
             const clientEmail = getElement('client-email').value;
             const clientContact = getElement('client-contact').value;
             const propertyAddress = getElement('property-address').value;
             const errorEl = getElement('client-modal-error');
 
-            // --- FIX: Updated validation ---
             if (!clientName || !clientEmail || !clientContact || !propertyAddress) {
                 errorEl.textContent = "Please fill out all client and property fields."; 
                 return;
@@ -503,16 +631,29 @@
 
             const feeWaived = getElement('waive-fee-checkbox').checked;
             
-            const referralData = { 
+            let referralData = { 
                 ...lastCalculatedData, 
-                clientName, 
-                clientEmail, // --- FIX: Add to data
-                clientContact, // --- FIX: Add to data
-                propertyAddress,
+                clientName, clientEmail, clientContact, propertyAddress,
                 feeWaived,
                 findersFee: feeWaived ? 0 : lastCalculatedData.findersFee,
                 commissionSplitAtTimeOfReferral: currentUserData.commissionSplit || 50,
             };
+
+            // Add specific homeowners data if applicable
+            if (lastCalculatedData.policyType === 'homeowners') {
+                referralData = {
+                    ...referralData,
+                    isFloodProne: getElement('home-flood-prone-check').checked,
+                    floodOption: document.querySelector('input[name="flood-option"]:checked').value,
+                    insureContents: getElement('home-insure-contents-check').checked,
+                    contentsGeneral: getFloatValue('home-contents-general'),
+                    contentsElectronics: getFloatValue('home-contents-electronics'),
+                    contentsJewelry: getFloatValue('home-contents-jewelry'),
+                    jewelryCoverage: getElement('home-jewelry-coverage').value,
+                    contentsSpecial: getFloatValue('home-contents-special'),
+                    allRisks: getElement('home-all-risks-check').checked,
+                }
+            }
 
             try {
                 if (editMode) {
