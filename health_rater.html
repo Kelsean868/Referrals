@@ -521,13 +521,15 @@
             }
         }
 
+        // UPDATED: calculateAndDisplay to provide a more detailed itemized breakdown
         function calculateAndDisplay() {
             handleUIChanges();
             const planType = getElement('plan-type').value;
             const familyStatus = getElement('family-status').value;
             const ageBand = getElement('age-band').value;
             const childrenCount = getElement('children-count').value;
-            const maternity = getElement('maternity').value;
+            const maternitySelect = getElement('maternity');
+            const maternity = maternitySelect.value;
             const addDV = getElement('dental-vision').value === 'yes';
             const mmAmount = getElement('major-medical-amount').value;
             const frequency = getElement('payment-frequency').value;
@@ -536,7 +538,7 @@
             if (planType !== 'mm_only') {
                 let baseRateKey = familyStatus;
                 if (familyStatus === 'single_female' || familyStatus === 'husband_wife') {
-                    baseRateKey += (maternity === 'yes' && !getElement('maternity').disabled) ? '_with_maternity' : '_no_maternity';
+                    baseRateKey += (maternity === 'yes' && !maternitySelect.disabled) ? '_with_maternity' : '_no_maternity';
                 }
                 baseRateSet = RATES.base.standard[baseRateKey]?.[ageBand]?.[childrenCount] || {annual:0, semi:0, quarterly:0};
             }
@@ -567,7 +569,14 @@
             getElement('total-premium-label').textContent = `(Total ${frequencyLabel} Premium)`;
             
             let breakdownHTML = '';
-            if (planType !== 'mm_only') breakdownHTML += `<p class="breakdown-row"><span>COVERCARE Base Premium:</span> <strong>${formatCurrency(basePremium)}</strong></p>`;
+            if (planType !== 'mm_only') {
+                 let baseLabel = "COVERCARE Base Premium";
+                 if (familyStatus === 'single_female' || familyStatus === 'husband_wife') {
+                    const hasMaternity = maternity === 'yes' && !maternitySelect.disabled;
+                    baseLabel += hasMaternity ? " (w/ Maternity)" : " (No Maternity)";
+                 }
+                 breakdownHTML += `<p class="breakdown-row"><span>${baseLabel}:</span> <strong>${formatCurrency(basePremium)}</strong></p>`;
+            }
             if (vdPremium > 0) breakdownHTML += `<p class="breakdown-row"><span>+ Vision & Dental Benefit:</span> <strong>${formatCurrency(vdPremium)}</strong></p>`;
             if (planType !== 'base_only') breakdownHTML += `<p class="breakdown-row"><span>+ Major Medical:</span> <strong>${formatCurrency(mmPremium)}</strong></p>`;
             breakdownHTML += `<p class="breakdown-row font-bold text-lg border-t border-[var(--border-color)] pt-2 mt-2"><span>Total ${frequencyLabel} Premium:</span> <strong>${formatCurrency(totalPremium)}</strong></p>`;
@@ -624,7 +633,6 @@
             return fee;
         }
         
-        // UPDATED: generateFinalQuoteText to include maternity status
         function generateFinalQuoteText() {
             const getSelectedText = (id) => getElement(id).options[getElement(id).selectedIndex].text;
             let quoteDetails = `
@@ -647,32 +655,28 @@ Number of Children: ${getSelectedText('children-count')}
             getElement('quote-output').textContent = fullQuoteText.trim();
         }
 
-        // UPDATED: generateAndDownloadPDF for a professional look
         function generateAndDownloadPDF() {
             const clientName = getElement('client-name').value || 'Valued Client';
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // --- Helper function to draw the page ---
             const drawPage = (doc) => {
-                // Header
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(24);
-                doc.setTextColor('#005f73'); // Primary Accent
+                doc.setTextColor('#005f73');
                 doc.text('TATIL', 14, 20);
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(10);
-                doc.setTextColor('#1d2d35'); // Text Primary
+                doc.setTextColor('#1d2d35');
                 doc.text('TATIL Building, 11 Maraval Road, Port of Spain', 14, 28);
 
                 doc.setFontSize(18);
-                doc.setTextColor('#ae8625'); // Secondary Accent
+                doc.setTextColor('#ae8625');
                 doc.text('COVERCARE Health Insurance Quotation', 200, 24, { align: 'right' });
                 
-                doc.setDrawColor('#dce1e7'); // Border color
+                doc.setDrawColor('#dce1e7');
                 doc.line(14, 35, 200, 35);
 
-                // Document Info
                 let yPos = 45;
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
@@ -687,7 +691,6 @@ Number of Children: ${getSelectedText('children-count')}
 
                 yPos += 20;
 
-                // Plan Details Section
                 doc.setFontSize(12);
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor('#005f73');
@@ -724,7 +727,6 @@ Number of Children: ${getSelectedText('children-count')}
                 });
                 yPos += 5;
 
-                // Premium Breakdown Table
                 doc.setFontSize(12);
                 doc.setFont('helvetica', 'bold');
                 doc.setTextColor('#005f73');
@@ -732,8 +734,7 @@ Number of Children: ${getSelectedText('children-count')}
                 doc.line(14, yPos + 2, 200, yPos + 2);
                 yPos += 10;
 
-                // Table Header
-                doc.setFillColor('#f4f6f9'); // Light background for header
+                doc.setFillColor('#f4f6f9');
                 doc.rect(14, yPos - 2, 186, 8, 'F');
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
@@ -741,7 +742,6 @@ Number of Children: ${getSelectedText('children-count')}
                 doc.text('Premium', 198, yPos + 4, { align: 'right' });
                 yPos += 10;
 
-                // Table Rows
                 doc.setFont('helvetica', 'normal');
                 const breakdownRows = Array.from(getElement('premium-breakdown').querySelectorAll('.breakdown-row'));
                 breakdownRows.forEach(row => {
@@ -760,9 +760,8 @@ Number of Children: ${getSelectedText('children-count')}
                     }
                 });
                 
-                // Footer
                 doc.setFontSize(8);
-                doc.setTextColor('#718096'); // Muted text
+                doc.setTextColor('#718096');
                 doc.text('This is an unofficial quotation and is valid for 30 days. All premiums are in USD. Terms and conditions apply.', 105, 285, { align: 'center' });
                 doc.text('Generated by the TATIL Referral Hub.', 105, 290, { align: 'center' });
             };
