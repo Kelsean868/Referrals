@@ -2,7 +2,7 @@
 
 // Increment this version number whenever you make changes to the app shell files.
 // This will trigger the service worker update process.
-const CACHE_NAME = 'referral-hub-cache-v5'; 
+const CACHE_NAME = 'referral-hub-cache-v6'; 
 
 const SYNC_TAG = 'sync-new-referrals';
 
@@ -109,3 +109,4 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+```
